@@ -15,22 +15,29 @@ auto desired_altitude = 5.f;
 
 ros::Publisher pub_velocity;
 ros::Publisher pub_position;
-//ros::Publisher pub_mode;
 
 ros::Subscriber sub_state;
 ros::Subscriber sub_odom;
 
 ros::ServiceClient client_arm;
 ros::ServiceClient client_mode;
-ros::ServiceClient client_land;
+// ros::ServiceClient client_land;
 
 // state variables
 mavros_msgs::State state;
 auto reached_altitude = false;
 
 auto odom_cb(const nav_msgs::Odometry::ConstPtr& msg) -> void {
-    if (reached_altitude) return;
-    reached_altitude = (abs(desired_altitude - msg->pose.pose.position.z) < TOLERANCE);
+    if (reached_altitude) {
+        ROS_INFO("at altitude");
+        return;
+    }
+
+    // altitude error
+    auto error_alt = abs(desired_altitude - msg->pose.pose.position.z);
+    ROS_INFO("altitude error: %f.5", error_alt);
+
+    reached_altitude = (error_alt < TOLERANCE);
 }
 
 auto state_cb(const mavros_msgs::State::ConstPtr& msg) -> void {
@@ -97,7 +104,7 @@ auto main(int argc, char** argv) -> int {
             pose.pose.position.z = desired_altitude;
             pub_position.publish(pose);
 
-            ROS_INFO("flying to pose");
+            // ROS_INFO("flying to pose");
         }
         else {
             geometry_msgs::TwistStamped command;
@@ -111,13 +118,3 @@ auto main(int argc, char** argv) -> int {
 
     return 0;
 }
-
-// rosrun mavros mavsys node -c OFFBOARD
-// rosservice call /mavros/cmd/arming "value: true" - /mavros/cmd/arming
-// rosservice call /mavros/cmd/land "{}" - /mavros/cmd/land
-
-// set posistion
-// rostopic pub -r 10 /mavros/setpoint_position/local geometry_msgs/PoseStamped "{pose: {position: {x: 10, y: 7, z: 5}}}"
-
-// set velocity
-// /mavros/setpoint_velocity/local
