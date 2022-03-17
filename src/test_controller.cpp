@@ -3,8 +3,8 @@
 #include <geometry_msgs/PoseStamped.h>
 #include <nav_msgs/Odometry.h>
 #include <mavros_msgs/CommandBool.h>
-#include <mavros_msgs/State.h>
 #include <mavros_msgs/SetMode.h>
+#include <mavros_msgs/State.h>
 
 #define TOLERANCE 0.2
 
@@ -27,9 +27,9 @@ ros::ServiceClient client_land;
 // state variables
 mavros_msgs::State state;
 auto reached_altitude = false;
-auto armed = false;
 
 auto odom_cb(const nav_msgs::Odometry::ConstPtr& msg) -> void {
+    if (reached_altitude) return;
     reached_altitude = (abs(desired_altitude - msg->pose.pose.position.z) < TOLERANCE);
 }
 
@@ -40,7 +40,7 @@ auto state_cb(const mavros_msgs::State::ConstPtr& msg) -> void {
 auto main(int argc, char** argv) -> int {
     // ROS initialisations
     ros::init(argc, argv, "mdi_test_controller");
-    auto nh = ros::NodeHandle("~");
+    auto nh = ros::NodeHandle();
     ros::Rate rate(20.0);
 
     // state subsbricer
@@ -55,50 +55,59 @@ auto main(int argc, char** argv) -> int {
 
     // arm service client
     client_arm = nh.serviceClient<mavros_msgs::CommandBool>("/mavros/cmd/arming");
-    client_mode = nh.serviceClient<mavros_msgs::SetMode>("mavros/set_mode");
+    // mode service client
+    client_mode = nh.serviceClient<mavros_msgs::SetMode>("/mavros/set_mode");
 
-    if (!armed) {
-        // arm drone
-        mavros_msgs::CommandBool srv;
-        srv.request.value = true;
-        if (client_arm.call(srv)) {
-            ROS_INFO("throttle armed: success");
-        }
-        else {
-            ROS_WARN("throttle armed: fail");
-        }
-    }
-    
-    // set drone mode to OFFBOARD
-    if (state.mode != "OFFBOARD") {
-        mavros_msgs::SetMode offb_set_mode;
-        offb_set_mode.request.custom_mode = "OFFBOARD";
-
-        if (client_arm.call(offb_set_mode) && offb_set_mode.response.mode_sent) {
-            ROS_INFO("mode set: OFFBOARD");
-        }
-        else {
-            ROS_WARN("mode set: fail");
-        }
-    }
-
-    geometry_msgs::PoseStamped pose;
-    pose.pose.position.z = desired_altitude;
-    pub_position.publish(pose);
-
-    ROS_INFO("flying to pose");
-
-    // check tolerance
-    // give linear velocity
-
-    while (ros::ok() && !reached_altitude) {
+    // wait for FCU connection
+    while (ros::ok() && !state.connected){
         ros::spinOnce();
         rate.sleep();
     }
 
-    geometry_msgs::TwistStamped command;
-    command.twist.linear.x = 1;
-    pub_velocity.publish(command);
+    while (ros::ok()) {
+        // arm the drone
+        if (!state.armed) {
+            mavros_msgs::CommandBool srv;
+            srv.request.value = true;
+            if (client_arm.call(srv)) {
+                ROS_INFO("throttle armed: success");
+            }
+            else {
+                ROS_WARN("throttle armed: fail");
+            }
+        }
+        
+        // set drone mode to OFFBOARD
+        if (state.mode != "OFFBOARD") {
+            mavros_msgs::SetMode mode_msg;
+            mode_msg.request.custom_mode = "OFFBOARD";
+
+            if (client_mode.call(mode_msg) && mode_msg.response.mode_sent) {
+                ROS_INFO("mode set: OFFBOARD");
+            }
+            else {
+                ROS_WARN("mode set: fail");
+            }
+        }
+
+        // fly to pose
+        // then fly in a direction
+        if (!reached_altitude) {
+            geometry_msgs::PoseStamped pose;
+            pose.pose.position.z = desired_altitude;
+            pub_position.publish(pose);
+
+            ROS_INFO("flying to pose");
+        }
+        else {
+            geometry_msgs::TwistStamped command;
+            command.twist.linear.x = 1;
+            pub_velocity.publish(command);
+        }
+
+        ros::spinOnce();
+        rate.sleep();
+    }
 
     return 0;
 }
