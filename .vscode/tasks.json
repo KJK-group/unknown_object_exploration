@@ -1,0 +1,23 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "catkin build",
+            "type": "shell",
+            "command": "catkin",
+            "args": [
+                "build",
+                "--this",
+                "-j4",
+                "-DCMAKE_BUILD_TYPE=Release",
+                "-DCMAKE_EXPORT_COMPILE_COMMANDS=1",
+                "-DCMAKE_CXX_STANDARD=17"
+            ],
+            "problemMatcher": [],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        }
+    ]
+}
