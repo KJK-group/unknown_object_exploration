@@ -6,5 +6,8 @@
     "python.analysis.extraPaths": [
         "/home/jens/airsim_ws/devel/lib/python3/dist-packages",
         "/opt/ros/noetic/lib/python3/dist-packages"
-    ]
+    ],
+    "files.associations": {
+        "iomanip": "cpp"
+    }
 }

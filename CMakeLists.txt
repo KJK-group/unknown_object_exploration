@@ -12,11 +12,14 @@ find_package(catkin REQUIRED COMPONENTS
   nav_msgs
   mavros_msgs
   roscpp
+  tf2
+  tf2_ros
+  tf2_eigen
 )
 find_package(Eigen3 REQUIRED)
 
 ## System dependencies are found with CMake's conventions
-# find_package(Boost REQUIRED COMPONENTS system)
+find_package(Boost REQUIRED COMPONENTS system)
 
 
 ## Uncomment this if the package has a setup.py. This macro ensures
@@ -120,7 +123,7 @@ catkin_package(
 include_directories(
   include
   ${catkin_INCLUDE_DIRS}
-  ${Eigen_INCLUDE_DIRS}
+  ${Eigen3_INCLUDE_DIRS}
 )
 
 ## Declare a C++ library
