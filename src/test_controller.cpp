@@ -53,7 +53,7 @@ auto main(int argc, char** argv) -> int {
     // state subsbricer
     sub_state = nh.subscribe<mavros_msgs::State>("/mavros/state", 10, state_cb);
     // odom subsbricer
-    sub_odom = nh.subscribe<nav_msgs::Odometry>("/mavros/odometry/in", 10, odom_cb);
+    sub_odom = nh.subscribe<nav_msgs::Odometry>("/mavros/local_position/odom", 10, odom_cb);
 
     // velocity publisher
     pub_velocity =
