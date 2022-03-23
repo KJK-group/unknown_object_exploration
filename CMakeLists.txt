@@ -13,6 +13,7 @@ find_package(catkin REQUIRED COMPONENTS
   mavros_msgs
   roscpp
 )
+find_package(Eigen3 REQUIRED)
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -119,6 +120,7 @@ catkin_package(
 include_directories(
   include
   ${catkin_INCLUDE_DIRS}
+  ${Eigen_INCLUDE_DIRS}
 )
 
 ## Declare a C++ library
@@ -135,6 +137,7 @@ include_directories(
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
 add_executable(test_controller src/test_controller.cpp)
+add_executable(trajectory_follower src/trajectory_follower.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -145,9 +148,13 @@ add_executable(test_controller src/test_controller.cpp)
 ## Add cmake target dependencies of the executable
 ## same as for the library above
 add_dependencies(test_controller ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+add_dependencies(trajectory_follower ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(test_controller
+  ${catkin_LIBRARIES}
+)
+target_link_libraries(trajectory_follower
   ${catkin_LIBRARIES}
 )
 
@@ -157,6 +164,8 @@ target_link_libraries(test_controller
 
 # all install targets should use catkin DESTINATION variables
 # See http://ros.org/doc/api/catkin/html/adv_user_guide/variables.html
+
+install(PROGRAMS scripts/make_px4.sh DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
 
 ## Mark executable scripts (Python etc.) for installation
 ## in contrast to setup.py, you can choose the destination
