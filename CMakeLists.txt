@@ -12,6 +12,8 @@ find_package(catkin REQUIRED COMPONENTS
   nav_msgs
   mavros_msgs
   roscpp
+  tf2
+  tf2_ros
 )
 find_package(Eigen3 REQUIRED)
 
