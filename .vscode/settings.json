@@ -8,6 +8,10 @@
         "/opt/ros/noetic/lib/python3/dist-packages"
     ],
     "files.associations": {
-        "iomanip": "cpp"
+        "iomanip": "cpp",
+        "optional": "cpp",
+        "variant": "cpp",
+        "cmath": "cpp",
+        "complex": "cpp"
     }
 }
