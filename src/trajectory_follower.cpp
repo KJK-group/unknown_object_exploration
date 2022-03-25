@@ -70,7 +70,7 @@ auto subject_center = Vector3f(0.0f, 0.0f, move(altitude_offset));
 
 // controller gains
 auto k_alpha = 1.f;
-auto k_rho = 0.2f;
+auto k_rho = 1.f;
 
 //--------------------------------------------------------------------------------------------------
 // Polynomial Functions
@@ -152,7 +152,7 @@ auto odom_cb(const nav_msgs::Odometry::ConstPtr& msg) -> void {
     // fill point data
     point_world_frame.point.x = expected_pos(0);
     point_world_frame.point.y = expected_pos(1);
-    point_world_frame.point.z = expected_pos(2) + altitude_offset;
+    point_world_frame.point.z = -expected_pos(2) - altitude_offset;
     //----------------------------------------------------------------------------------------------
     // point in point_body_frame frame "PX4/odom_local_ned"
     auto point_body_frame = geometry_msgs::PointStamped();
@@ -163,7 +163,7 @@ auto odom_cb(const nav_msgs::Odometry::ConstPtr& msg) -> void {
     // apply transform outputting result to point_body_frame
     tf2::doTransform(point_world_frame, point_body_frame, transform);
     auto expected_pos_body =
-        Vector3f(point_world_frame.point.x, point_world_frame.point.y, point_world_frame.point.z);
+        Vector3f(point_body_frame.point.x, point_body_frame.point.y, point_body_frame.point.z);
     //----------------------------------------------------------------------------------------------
     // publish points
     pub_point_world.publish(point_world_frame);
@@ -174,9 +174,9 @@ auto odom_cb(const nav_msgs::Odometry::ConstPtr& msg) -> void {
     // auto error_x = expected_pos(0) - pos.x;
     // auto error_y = expected_pos(1) - pos.y;
     // auto error_z = expected_pos(2) + altitude_offset - pos.z;
-    auto error_x = expected_pos_body(0);
-    auto error_y = expected_pos_body(1);
-    auto error_z = expected_pos_body(2) - pos.z;
+    auto error_x = expected_pos_body(1);
+    auto error_y = expected_pos_body(0);
+    auto error_z = -expected_pos_body(2);  //  -pos.z;
 
     //----------------------------------------------------------------------------------------------
     // controller
@@ -184,6 +184,10 @@ auto odom_cb(const nav_msgs::Odometry::ConstPtr& msg) -> void {
     auto x_vel = k_rho * error_x;
     auto y_vel = k_rho * error_y;
     auto z_vel = k_rho * error_z;
+    omega = 0;
+    // x_vel = 0;
+    // y_vel = 0;
+    // z_vel = 0;
     //----------------------------------------------------------------------------------------------
     // control command
     geometry_msgs::TwistStamped command;
@@ -195,10 +199,14 @@ auto odom_cb(const nav_msgs::Odometry::ConstPtr& msg) -> void {
 
     //----------------------------------------------------------------------------------------------
     // logging for debugging
-    ROS_INFO_STREAM(magenta << "transform:\n" << transform << reset);
+    // ROS_INFO_STREAM(magenta << "transform:\n" << transform << reset);
     ROS_INFO_STREAM(magenta << "from pose:\n" << point_world_frame << reset);
     ROS_INFO_STREAM(magenta << "to pose:\n" << point_body_frame << reset);
     // standard state logging
+    ROS_INFO_STREAM(green << bold << italic << "position:" << reset);
+    ROS_INFO_STREAM("  x: " << format("%1.5f") % group(setfill(' '), setw(8), pos.x));
+    ROS_INFO_STREAM("  y: " << format("%1.5f") % group(setfill(' '), setw(8), pos.y));
+    ROS_INFO_STREAM("  z: " << format("%1.5f") % group(setfill(' '), setw(8), pos.z));
     ROS_INFO_STREAM(green << bold << italic << "errors:" << reset);
     ROS_INFO_STREAM("  heading: " << format("%1.5f") % group(setfill(' '), setw(8), error_heading));
     ROS_INFO_STREAM("  x:       " << format("%1.5f") % group(setfill(' '), setw(8), error_x));
