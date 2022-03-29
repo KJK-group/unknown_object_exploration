@@ -42,6 +42,7 @@ auto underline = "\u001b[4m";
 ros::Publisher pub_velocity;
 ros::Publisher pub_point_world;
 ros::Publisher pub_point_body;
+ros::Publisher pub_point_est;
 
 // subscibers
 ros::Subscriber sub_state;
@@ -56,21 +57,25 @@ ros::Time start_time;
 
 // transform utilities
 tf2_ros::Buffer tf_buffer;
+// frames
+auto frame_world = "PX4";
+auto frame_body = "PX4/odom_local_ned";
 
 // sequence counters
 auto seq_point_world = 0;
 auto seq_point_body = 0;
+auto seq_point_est = 0;
 
 // state variables
 mavros_msgs::State state;
 
 // targets
-auto altitude_offset = 1.f;
+auto altitude_offset = 5.f;
 auto subject_center = Vector3f(0.0f, 0.0f, move(altitude_offset));
 
 // controller gains
-auto k_alpha = 1.f;
 auto k_rho = 1.f;
+auto k_alpha = 0.f;
 
 //--------------------------------------------------------------------------------------------------
 // Polynomial Functions
@@ -90,7 +95,7 @@ auto trajectory_slope(float x) -> float {
 // Vector Functions
 //--------------------------------------------------------------------------------------------------
 
-auto scale = 1;
+auto scale = 4;
 
 // circle vector function
 auto circle_trajectory(float t) -> Vector2f {
@@ -99,7 +104,7 @@ auto circle_trajectory(float t) -> Vector2f {
 
 // 3D trajectory
 auto circle_trajectory_3d(float t) -> Vector3f {
-    return Vector3f(scale * cos(V_MAX * t), scale * sin(V_MAX * t), 0 * cos(t));
+    return Vector3f(scale * cos(V_MAX * t), scale * sin(V_MAX * t), 1 * cos(t));
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -113,6 +118,12 @@ auto odom_cb(const nav_msgs::Odometry::ConstPtr& msg) -> void {
     auto yaw = tf2::getYaw(msg->pose.pose.orientation);
     // time diff
     auto delta_time = (ros::Time::now() - start_time).toNSec() / pow(10, 9);
+    //----------------------------------------------------------------------------------------------
+    // estimated point for
+    // auto point_est = geometry_msgs::PointStamped();
+    // point_est.header.seq = seq_point_est++;
+    // point_est.header.stamp = ros::Time::now();
+    // point_est.header.frame_id = frame_world;
 
     //----------------------------------------------------------------------------------------------
     // heading error
@@ -127,8 +138,6 @@ auto odom_cb(const nav_msgs::Odometry::ConstPtr& msg) -> void {
 
     //----------------------------------------------------------------------------------------------
     // lookup transform
-    auto frame_world = "PX4";
-    auto frame_body = "PX4/odom_local_ned";
     geometry_msgs::TransformStamped transform;
     try {
         // transform from px4 drone odom to px4 world
@@ -168,6 +177,7 @@ auto odom_cb(const nav_msgs::Odometry::ConstPtr& msg) -> void {
     // publish points
     pub_point_world.publish(point_world_frame);
     pub_point_body.publish(point_body_frame);
+    pub_point_est.publish(point_est);
 
     //----------------------------------------------------------------------------------------------
     // position errors
@@ -184,7 +194,7 @@ auto odom_cb(const nav_msgs::Odometry::ConstPtr& msg) -> void {
     auto x_vel = k_rho * error_x;
     auto y_vel = k_rho * error_y;
     auto z_vel = k_rho * error_z;
-    omega = 0;
+    // omega = 0;
     // x_vel = 0;
     // y_vel = 0;
     // z_vel = 0;
@@ -255,6 +265,7 @@ auto main(int argc, char** argv) -> int {
         nh.advertise<geometry_msgs::PointStamped>("/mdi/points/expected_pos/body_frame", 10);
     pub_point_world =
         nh.advertise<geometry_msgs::PointStamped>("/mdi/points/expected_pos/world_frame", 10);
+    pub_point_est = nh.advertise<geometry_msgs::PointStamped>("/mdi/points/estimated_pos", 10);
 
     //----------------------------------------------------------------------------------------------
     // arm service client
