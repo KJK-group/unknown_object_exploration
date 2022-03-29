@@ -12,6 +12,7 @@
         "optional": "cpp",
         "variant": "cpp",
         "cmath": "cpp",
-        "complex": "cpp"
+        "complex": "cpp",
+        "vector": "cpp"
     }
 }
