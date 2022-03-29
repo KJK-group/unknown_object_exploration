@@ -1,0 +1,35 @@
+<?xml version="1.0"?>
+<launch>
+    <arg name="package" value="multi_drone_inspection" />
+    <arg name="package_path" value="$(find multi_drone_inspection)" />
+
+    <arg name="robot_name" default="my_robot" />
+    <arg name="voxel_size" default="0.20" />
+    <arg name="voxels_per_side" default="16" />
+    <arg name="world_frame" default="base_link" />
+    <group ns="$(arg robot_name)">
+
+        <node name="voxblox_node" pkg="voxblox_ros" type="esdf_server" output="screen" args="-alsologtostderr" clear_params="true">
+            <remap from="pointcloud" to="/d435/depth/color/points" />
+            <remap from="voxblox_node/esdf_map_out" to="esdf_map" />
+            <param name="tsdf_voxel_size" value="$(arg voxel_size)" />
+            <param name="tsdf_voxels_per_side" value="$(arg voxels_per_side)" />
+            <param name="publish_esdf_map" value="true" />
+            <param name="publish_pointclouds" value="true" />
+            <param name="use_tf_transforms" value="true" />
+            <param name="update_mesh_every_n_sec" value="1.0" />
+            <param name="clear_sphere_for_planning" value="true" />
+            <param name="world_frame" value="$(arg world_frame)" />
+        </node>
+
+    </group>
+
+
+    <!-- <node pkg="$(arg package)" type="make_px4.sh" name="make_px4" />
+
+    <include file="$(find mavros)/launch/px4.launch">
+        <arg name="fcu_url" default="udp://:14550@127.0.0.1:14557" />
+    </include>
+    <include file="$(find airsim_ros_pkgs)/launch/airsim_node.launch" />
+    <include file="$(find airsim_ros_pkgs)/launch/rviz.launch" /> -->
+</launch>
