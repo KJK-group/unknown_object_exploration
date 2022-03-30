@@ -200,6 +200,7 @@ auto odom_cb(const nav_msgs::Odometry::ConstPtr& msg) -> void {
     ROS_INFO_STREAM("  delta_time: " << format("%1.2f") % group(setfill(' '), setw(5), delta_time));
 }
 
+
 auto state_cb(const mavros_msgs::State::ConstPtr& msg) -> void { state = *msg; }
 
 auto main(int argc, char** argv) -> int {
