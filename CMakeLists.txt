@@ -23,7 +23,6 @@ find_package(xacro REQUIRED)
 ## System dependencies are found with CMake's conventions
 find_package(Boost REQUIRED COMPONENTS system)
 
-
 ## Uncomment this if the package has a setup.py. This macro ensures
 ## modules and global scripts declared therein get installed
 ## See http://ros.org/doc/api/catkin/html/user_guide/setup_dot_py.html
@@ -143,6 +142,7 @@ include_directories(
 ## The recommended prefix ensures that target names across packages don't collide
 add_executable(test_controller src/test_controller.cpp)
 add_executable(trajectory_follower src/trajectory_follower.cpp)
+add_executable(spline_tester src/spline_tester.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -154,12 +154,16 @@ add_executable(trajectory_follower src/trajectory_follower.cpp)
 ## same as for the library above
 add_dependencies(test_controller ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 add_dependencies(trajectory_follower ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+add_dependencies(spline_tester ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(test_controller
   ${catkin_LIBRARIES}
 )
 target_link_libraries(trajectory_follower
+  ${catkin_LIBRARIES}
+)
+target_link_libraries(spline_tester
   ${catkin_LIBRARIES}
 )
 
