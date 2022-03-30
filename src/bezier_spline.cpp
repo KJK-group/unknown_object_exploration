@@ -64,6 +64,17 @@ auto BezierSpline::get_point_at_time(float time) -> Vector3f {
     assert(time <= 1.0 && time >= 0);
     return this->spline_points[(int)(this->spline_points.size() * time)];
 }
+//--------------------------------------------------------------------------------------------------
+// Returns the point at the `distance` along the spline
+auto BezierSpline::get_point_at_distance(float distance) -> Vector3f {
+    // have a distance vs time LUT
+    // generate this in arc length approximation method
+
+    // find the two distances from the LUT, that the `distance` lies withing
+    // then remap the distance the two distances, to the distance between the two time values
+    // then take the lowest time value and add the mapped time value between the two time value
+    // of the two distances closest to the given `distance`
+}
 
 //--------------------------------------------------------------------------------------------------
 // Returns a vector of all points along the spline
