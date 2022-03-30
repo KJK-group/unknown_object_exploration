@@ -1,16 +1,17 @@
-#ifndef _MDI_BEZIER_SPLINE_HPP_
-#define _MDI_BEZIER_SPLINE_HPP_
+#ifndef _MULTI_DRONE_INSPECTION_BEZIER_SPLINE_HPP_
+#define _MULTI_DRONE_INSPECTION_BEZIER_SPLINE_HPP_
 
 #include <tf2_eigen/tf2_eigen.h>
 
-#include <boost/math/special_functions/factorials.hpp>
 #include <cassert>
 #include <cmath>
 #include <utility>
 #include <vector>
 
-using boost::math::factorial;
+#include "multi_drone_inspection/utils/math.hpp"
+
 using Eigen::Vector3f;
+// using mdi::utils::binomial_coefficient;
 using std::pair;
 using std::pow;
 using std::vector;
@@ -24,6 +25,7 @@ class BezierSpline {
     auto generate_spline(vector<Vector3f> points, int resolution = 20) -> void;
     auto get_point_at_time(float time) -> Vector3f;
     auto get_point_at_distance(float distance) -> Vector3f;
+    auto get_spline_points() -> vector<Vector3f>;
 
    private:
     vector<Vector3f> spline_points;
@@ -32,8 +34,7 @@ class BezierSpline {
     float resolution;
     auto get_time(float distance) -> float;
     auto generate_binomial_lut(int n) -> void;
-    auto binomial_coefficient(int n, int i) -> int;
 };
 }  // namespace mdi
 
-#endif
+#endif  // _MULTI_DRONE_INSPECTION_BEZIER_SPLINE_HPP_
