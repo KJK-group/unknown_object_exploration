@@ -4,6 +4,7 @@
 #include <tf2_eigen/tf2_eigen.h>
 
 #include <boost/math/special_functions/factorials.hpp>
+#include <cassert>
 #include <cmath>
 #include <utility>
 #include <vector>
@@ -21,8 +22,8 @@ class BezierSpline {
    public:
     BezierSpline(vector<Vector3f> points, int resolution = 20);
     auto generate_spline(vector<Vector3f> points, int resolution = 20) -> void;
-    auto get_point(float time) -> Vector3f;
-    auto get_point(float distance) -> Vector3f;
+    auto get_point_at_time(float time) -> Vector3f;
+    auto get_point_at_distance(float distance) -> Vector3f;
 
    private:
     vector<Vector3f> spline_points;

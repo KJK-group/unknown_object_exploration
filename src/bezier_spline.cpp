@@ -48,4 +48,9 @@ auto BezierSpline::generate_binomial_lut(int n) -> void {
         binomial_lut.push_back(binomial_coefficient(n, i));
     }
 }
+
+auto BezierSpline::get_point_at_time(float time) -> Vector3f {
+    assert(time <= 1.0 && time >= 0);
+    return this->spline_points[(int)(this->spline_points.size() * time)];
+}
 }  // namespace mdi
