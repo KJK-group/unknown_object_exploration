@@ -34,6 +34,7 @@ class BezierSpline {
     float resolution;
     auto get_time(float distance) -> float;
     auto generate_binomial_lut(int n) -> void;
+    auto approximate_arc_length() -> void;
 };
 }  // namespace mdi
 
