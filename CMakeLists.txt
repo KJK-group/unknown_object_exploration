@@ -144,6 +144,11 @@ add_executable(test_controller src/test_controller.cpp)
 add_executable(trajectory_follower src/trajectory_follower.cpp)
 add_executable(spline_tester src/spline_tester.cpp)
 
+target_sources(spline_tester
+               PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src/bezier_spline.cpp
+               PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src/math.cpp)
+#target_compile_features(spline_tester "-g")
+
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
 ## target back to the shorter version for ease of user use
