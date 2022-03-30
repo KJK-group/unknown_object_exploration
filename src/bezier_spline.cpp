@@ -24,7 +24,7 @@ auto BezierSpline::generate_spline(vector<Vector3f> points, int resolution) -> v
     assert(points.size() == binomial_lut.size());
 
     // let t run through [0;1] with steps defined by the resolution
-    for (int t = 0; t <= 1 * resolution; t += 1) {
+    for (int t = 0; t <= resolution; t += 1) {
         // sum up all bezier terms, using the explicit definition given by:
         // https://en.wikipedia.org/wiki/B%C3%A9zier_curve
         auto time = (float)t / (float)resolution;
