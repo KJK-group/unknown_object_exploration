@@ -40,6 +40,9 @@ auto underline = "\u001b[4m";
 
 // publishers
 ros::Publisher pub_velocity;
+ros::Publisher pub_point_world;
+ros::Publisher pub_point_body;
+ros::Publisher pub_point_est;
 
 // subscibers
 ros::Subscriber sub_state;
@@ -54,21 +57,25 @@ ros::Time start_time;
 
 // transform utilities
 tf2_ros::Buffer tf_buffer;
+// frames
+auto frame_world = "PX4";
+auto frame_body = "PX4/odom_local_ned";
 
 // sequence counters
 auto seq_point_world = 0;
 auto seq_point_body = 0;
+auto seq_point_est = 0;
 
 // state variables
 mavros_msgs::State state;
 
 // targets
-auto altitude_offset = 50.f;
+auto altitude_offset = 5.f;
 auto subject_center = Vector3f(0.0f, 0.0f, move(altitude_offset));
 
 // controller gains
-auto k_alpha = 1.f;
 auto k_rho = 1.f;
+auto k_alpha = 0.f;
 
 //--------------------------------------------------------------------------------------------------
 // Polynomial Functions
@@ -88,7 +95,7 @@ auto trajectory_slope(float x) -> float {
 // Vector Functions
 //--------------------------------------------------------------------------------------------------
 
-auto scale = 1;
+auto scale = 4;
 
 // circle vector function
 auto circle_trajectory(float t) -> Vector2f {
@@ -97,7 +104,7 @@ auto circle_trajectory(float t) -> Vector2f {
 
 // 3D trajectory
 auto circle_trajectory_3d(float t) -> Vector3f {
-    return Vector3f(scale * cos(V_MAX * t), scale * sin(V_MAX * t), 0 * cos(t));
+    return Vector3f(scale * cos(V_MAX * t), scale * sin(V_MAX * t), 1 * cos(t));
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -111,7 +118,14 @@ auto odom_cb(const nav_msgs::Odometry::ConstPtr& msg) -> void {
     auto yaw = tf2::getYaw(msg->pose.pose.orientation);
     // time diff
     auto delta_time = (ros::Time::now() - start_time).toNSec() / pow(10, 9);
+    //----------------------------------------------------------------------------------------------
+    // estimated point for
+    // auto point_est = geometry_msgs::PointStamped();
+    // point_est.header.seq = seq_point_est++;
+    // point_est.header.stamp = ros::Time::now();
+    // point_est.header.frame_id = frame_world;
 
+    //----------------------------------------------------------------------------------------------
     // heading error
     auto desired_heading = atan2(subject_center(1) - pos.y, subject_center(0) - pos.x);
     auto error_heading = desired_heading - yaw;
@@ -122,9 +136,8 @@ auto odom_cb(const nav_msgs::Odometry::ConstPtr& msg) -> void {
         error_heading + 2 * M_PI;
     }
 
+    //----------------------------------------------------------------------------------------------
     // lookup transform
-    auto frame_world = "PX4";
-    auto frame_body = "PX4/odom_local_ned";
     geometry_msgs::TransformStamped transform;
     try {
         // transform from px4 drone odom to px4 world
@@ -133,11 +146,12 @@ auto odom_cb(const nav_msgs::Odometry::ConstPtr& msg) -> void {
         ROS_INFO("%s", ex.what());
         ros::Duration(1.0).sleep();
     }
-
+    //----------------------------------------------------------------------------------------------
     // get expected position
     auto expected_pos = circle_trajectory_3d(delta_time);
-    expected_pos = Vector3f(1, 1, 1);
+    // expected_pos = Vector3f(1, 1, 1);
     // transform expected_pos to point_body_frame frame
+    //----------------------------------------------------------------------------------------------
     // point in world frame "PX4"
     auto point_world_frame = geometry_msgs::PointStamped();
     // fill header
@@ -147,7 +161,8 @@ auto odom_cb(const nav_msgs::Odometry::ConstPtr& msg) -> void {
     // fill point data
     point_world_frame.point.x = expected_pos(0);
     point_world_frame.point.y = expected_pos(1);
-    point_world_frame.point.z = expected_pos(2);
+    point_world_frame.point.z = -expected_pos(2) - altitude_offset;
+    //----------------------------------------------------------------------------------------------
     // point in point_body_frame frame "PX4/odom_local_ned"
     auto point_body_frame = geometry_msgs::PointStamped();
     // fill header
@@ -157,35 +172,51 @@ auto odom_cb(const nav_msgs::Odometry::ConstPtr& msg) -> void {
     // apply transform outputting result to point_body_frame
     tf2::doTransform(point_world_frame, point_body_frame, transform);
     auto expected_pos_body =
-        Vector3f(point_world_frame.point.x, point_world_frame.point.y, point_world_frame.point.z);
+        Vector3f(point_body_frame.point.x, point_body_frame.point.y, point_body_frame.point.z);
+    //----------------------------------------------------------------------------------------------
+    // publish points
+    pub_point_world.publish(point_world_frame);
+    pub_point_body.publish(point_body_frame);
+    pub_point_est.publish(point_est);
 
+    //----------------------------------------------------------------------------------------------
     // position errors
     // auto error_x = expected_pos(0) - pos.x;
     // auto error_y = expected_pos(1) - pos.y;
     // auto error_z = expected_pos(2) + altitude_offset - pos.z;
-    auto error_x = expected_pos_body(0);
-    auto error_y = expected_pos_body(1);
-    auto error_z = expected_pos_body(2) + altitude_offset - pos.z;
+    auto error_x = expected_pos_body(1);
+    auto error_y = expected_pos_body(0);
+    auto error_z = -expected_pos_body(2);  //  -pos.z;
 
+    //----------------------------------------------------------------------------------------------
     // controller
     auto omega = k_alpha * error_heading;
     auto x_vel = k_rho * error_x;
     auto y_vel = k_rho * error_y;
     auto z_vel = k_rho * error_z;
-
+    // omega = 0;
+    // x_vel = 0;
+    // y_vel = 0;
+    // z_vel = 0;
+    //----------------------------------------------------------------------------------------------
     // control command
     geometry_msgs::TwistStamped command;
-    // command.twist.angular.z = omega;
-    // command.twist.linear.x = x_vel;
-    // command.twist.linear.y = y_vel;
-    // command.twist.linear.z = z_vel;
+    command.twist.angular.z = omega;
+    command.twist.linear.x = x_vel;
+    command.twist.linear.y = y_vel;
+    command.twist.linear.z = z_vel;
     pub_velocity.publish(command);
 
+    //----------------------------------------------------------------------------------------------
     // logging for debugging
-    ROS_INFO_STREAM(magenta << "transform:\n" << transform << reset);
+    // ROS_INFO_STREAM(magenta << "transform:\n" << transform << reset);
     ROS_INFO_STREAM(magenta << "from pose:\n" << point_world_frame << reset);
     ROS_INFO_STREAM(magenta << "to pose:\n" << point_body_frame << reset);
     // standard state logging
+    ROS_INFO_STREAM(green << bold << italic << "position:" << reset);
+    ROS_INFO_STREAM("  x: " << format("%1.5f") % group(setfill(' '), setw(8), pos.x));
+    ROS_INFO_STREAM("  y: " << format("%1.5f") % group(setfill(' '), setw(8), pos.y));
+    ROS_INFO_STREAM("  z: " << format("%1.5f") % group(setfill(' '), setw(8), pos.z));
     ROS_INFO_STREAM(green << bold << italic << "errors:" << reset);
     ROS_INFO_STREAM("  heading: " << format("%1.5f") % group(setfill(' '), setw(8), error_heading));
     ROS_INFO_STREAM("  x:       " << format("%1.5f") % group(setfill(' '), setw(8), error_x));
@@ -204,36 +235,52 @@ auto odom_cb(const nav_msgs::Odometry::ConstPtr& msg) -> void {
 auto state_cb(const mavros_msgs::State::ConstPtr& msg) -> void { state = *msg; }
 
 auto main(int argc, char** argv) -> int {
+    //----------------------------------------------------------------------------------------------
     // ROS initialisations
     ros::init(argc, argv, "mdi_test_controller");
     auto nh = ros::NodeHandle();
     ros::Rate rate(20.0);
     // save start_time
     start_time = ros::Time::now();
-
+    //----------------------------------------------------------------------------------------------
     // transform utilities
     tf2_ros::TransformListener tf_listener(tf_buffer);
 
+    //----------------------------------------------------------------------------------------------
+    // pass in arguments
+    if (argc > 1) k_rho = stof(argv[1]);
+    if (argc > 2) k_alpha = stof(argv[2]);
+
+    //----------------------------------------------------------------------------------------------
     // state subsbricer
     sub_state = nh.subscribe<mavros_msgs::State>("/mavros/state", 10, state_cb);
     // odom subsbricer
     sub_odom = nh.subscribe<nav_msgs::Odometry>("/mavros/local_position/odom", 10, odom_cb);
 
+    //----------------------------------------------------------------------------------------------
     // velocity publisher
     pub_velocity =
         nh.advertise<geometry_msgs::TwistStamped>("/mavros/setpoint_velocity/cmd_vel", 10);
+    // point publishers
+    pub_point_body =
+        nh.advertise<geometry_msgs::PointStamped>("/mdi/points/expected_pos/body_frame", 10);
+    pub_point_world =
+        nh.advertise<geometry_msgs::PointStamped>("/mdi/points/expected_pos/world_frame", 10);
+    pub_point_est = nh.advertise<geometry_msgs::PointStamped>("/mdi/points/estimated_pos", 10);
 
+    //----------------------------------------------------------------------------------------------
     // arm service client
     client_arm = nh.serviceClient<mavros_msgs::CommandBool>("/mavros/cmd/arming");
     // mode service client
     client_mode = nh.serviceClient<mavros_msgs::SetMode>("/mavros/set_mode");
 
+    //----------------------------------------------------------------------------------------------
     // wait for FCU connection
     while (ros::ok() && !state.connected) {
         ros::spinOnce();
         rate.sleep();
     }
-
+    //----------------------------------------------------------------------------------------------
     // arm the drone
     if (!state.armed) {
         mavros_msgs::CommandBool srv;
@@ -244,7 +291,7 @@ auto main(int argc, char** argv) -> int {
             ROS_INFO("throttle armed: fail");
         }
     }
-
+    //----------------------------------------------------------------------------------------------
     // set drone mode to OFFBOARD
     if (state.mode != "OFFBOARD") {
         mavros_msgs::SetMode mode_msg;
@@ -256,12 +303,12 @@ auto main(int argc, char** argv) -> int {
             ROS_INFO("mode set: fail");
         }
     }
-
+    //----------------------------------------------------------------------------------------------
     // ROS spin
     while (ros::ok()) {
         ros::spinOnce();
         rate.sleep();
     }
-
+    //----------------------------------------------------------------------------------------------
     return 0;
 }

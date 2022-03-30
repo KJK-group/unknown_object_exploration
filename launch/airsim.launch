@@ -14,5 +14,5 @@
         <arg name="fcu_url" default="udp://:14550@127.0.0.1:14557"/>
     </include>
     <include file="$(find airsim_ros_pkgs)/launch/airsim_node.launch"/>
-    <include file="$(find airsim_ros_pkgs)/launch/rviz.launch"/>
+    <include file="$(find multi_drone_inspection)/launch/rviz.launch"/>
 </launch>
