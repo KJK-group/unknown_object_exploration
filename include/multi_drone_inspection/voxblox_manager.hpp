@@ -2,7 +2,6 @@
 #define _MPI_VOXBLOX_MANAGER_HPP_
 
 #include <ros/ros.h>
-
 #include <voxblox_ros/esdf_server.h>
 #include <voxblox_ros/tsdf_server.h>
 
@@ -10,20 +9,15 @@
 
 namespace mpi {
 
-enum class VoxelStatus {
-    Free,
-    Occupied,
-    Unknown
-};
+enum class VoxelStatus { Free, Occupied, Unknown };
 
 class VoxbloxManager {
-
-  private:
+   private:
     ros::NodeHandle nh;
     ros::NodeHandle nh_private;
     voxblox::EsdfServer esdf_server;
 
-  public:
+   public:
     VoxbloxManager(const ros::NodeHandle& nh, const ros::NodeHandle& nh_private);
     ~VoxbloxManager() = default;
 
@@ -31,11 +25,11 @@ class VoxbloxManager {
         -> double const;
     auto get_voxel_status_at_position(const Eigen::Vector3d& position) -> VoxelStatus const;
 
-  private:
+   private:
     auto get_esdf_map_ptr() -> std::optional<decltype(esdf_server.getEsdfMapPtr())>;
 
-}; // class VoxbloxManager
+};  // class VoxbloxManager
 
-} // namespace mpi
+}  // namespace mpi
 
-#endif //_MPI_VOXBLOX_MANAGER_HPP_
+#endif  //_MPI_VOXBLOX_MANAGER_HPP_
