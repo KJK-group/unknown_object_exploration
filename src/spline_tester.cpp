@@ -30,10 +30,10 @@ auto main(int argc, char** argv) -> int {
 
     auto spline_points = spline.get_spline_points();
     for (int i = 0; i < spline_points.size(); i++) {
-        // ROS_INFO_STREAM("point:\n");
-        // ROS_INFO_STREAM("  x: " << spline_points[i](0));
-        // ROS_INFO_STREAM("  y: " << spline_points[i](1));
-        // ROS_INFO_STREAM("  z: " << spline_points[i](2));
+        ROS_INFO_STREAM("point:\n");
+        ROS_INFO_STREAM("  x: " << spline_points[i](0));
+        ROS_INFO_STREAM("  y: " << spline_points[i](1));
+        ROS_INFO_STREAM("  z: " << spline_points[i](2));
 
         geometry_msgs::PointStamped p;
         p.header.seq = seq++;

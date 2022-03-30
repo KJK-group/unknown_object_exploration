@@ -29,21 +29,10 @@ auto BezierSpline::generate_spline(vector<Vector3f> points, int resolution) -> v
         // https://en.wikipedia.org/wiki/B%C3%A9zier_curve
         auto time = (float)t / (float)resolution;
         auto spline_point = Vector3f(0, 0, 0);
-        std::cout << "time: " << time << std::endl;
         for (int i = 0; i < n; i++) {
-            std::cout << "points[" << i << "] = [" << points[i](0) << " " << points[i](1) << " "
-                      << points[i](2) << "]"
-                      << "\t";
-            std::cout << "binomial_lut[" << i << "] = " << binomial_lut[i] << "\t";
-
             auto w = binomial_lut[i] * pow(time, i) * pow(1 - time, n - i);
-
-            std::cout << "w for " << i << " = " << w << std::endl;
-
             spline_point += w * points[i];
         }
-        std::cout << "resulting point = [" << spline_point(0) << " " << spline_point(1) << " "
-                  << spline_point(2) << "]" << std::endl;
 
         spline_points.push_back(spline_point);
     }
