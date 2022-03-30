@@ -54,3 +54,4 @@ CATKIN_IGNORE
 .vscode/
 # !.vscode/c_cpp_properties.json
 !.vscode/settings.json
+!.vscode/cpp.json.code-snippets
