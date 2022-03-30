@@ -177,7 +177,7 @@ auto odom_cb(const nav_msgs::Odometry::ConstPtr& msg) -> void {
     // publish points
     pub_point_world.publish(point_world_frame);
     pub_point_body.publish(point_body_frame);
-    pub_point_est.publish(point_est);
+    // pub_point_est.publish(point_est);
 
     //----------------------------------------------------------------------------------------------
     // position errors
