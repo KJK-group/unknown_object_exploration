@@ -15,33 +15,46 @@ BezierSpline::BezierSpline(vector<Vector3f> points, int resolution) {
 // Generates the spline from the input points given in the vector `points`,
 // at a time resolution of `resolution`
 auto BezierSpline::generate_spline(vector<Vector3f> points, int resolution) -> void {
+    this->input_points = points;
     this->resolution = resolution;
     this->size = points.size();
     // in case the binomial lookup table isn't big enough, generate a new one
     if (binomial_lut.size() != this->size) {
-        generate_binomial_lut();
+        this->generate_binomial_lut();
     }
     assert(points.size() == binomial_lut.size());
+    this->generate_distance_lut();
 
-    // let t run through [0;1] with steps defined by the resolution
-    for (int t = 0; t <= resolution; t += 1) {
-        // sum up all bezier terms, using the explicit definition given by:
-        // https://en.wikipedia.org/wiki/B%C3%A9zier_curve
-        auto time = (float)t / (float)resolution;
-        auto spline_point = Vector3f(0, 0, 0);
-        for (int i = 0; i < this->size; i++) {
-            auto w = binomial_lut[i] * pow(time, i) * pow(1 - time, this->size - i);
-            spline_point += w * points[i];
-        }
+    // let t run through [0;resolution] with steps defined by the resolution
+    // for (int t = 0; t <= resolution; t += 1) {
+    //     auto time = (float)t / (float)resolution;
+    //     auto spline_point = Vector3f(0, 0, 0);
+    //     for (int i = 0; i < this->size; i++) {
+    //         auto w = binomial_lut[i] * pow(time, i) * pow(1 - time, this->size - i);
+    //         spline_point += w * points[i];
+    //     }
 
-        spline_points.push_back(spline_point);
+    //     spline_points.push_back(spline_point);
+    // }
+}
+
+//--------------------------------------------------------------------------------------------------
+// Returns the point along the spline at time `t`
+auto BezierSpline::f(float t) -> Vector3f {
+    // sum up all bezier terms, using the explicit definition given by:
+    // https://en.wikipedia.org/wiki/B%C3%A9zier_curve
+    auto spline_point = Vector3f(0, 0, 0);
+    for (int i = 0; i < this->size; i++) {
+        auto w = binomial_lut[i] * pow(t, i) * pow(1 - t, this->size - i);
+        spline_point += w * this->input_points[i];
     }
+    return spline_point;
 }
 
 //--------------------------------------------------------------------------------------------------
 // Approximates the arc length of the spline from the sum of euclidean distances
 // between all the calculated points along the spline
-auto BezierSpline::approximate_arc_length() -> void {
+auto BezierSpline::generate_distance_lut() -> void {
     // Approximate the arc length of the spline
     auto arc_length_sum = 0;
     // first entry into distance LUT at time 0
@@ -71,6 +84,7 @@ auto BezierSpline::get_point_at_time(float time) -> Vector3f {
     assert(time <= 1.0 && time >= 0);
     return this->spline_points[(int)(this->spline_points.size() * time)];
 }
+
 //--------------------------------------------------------------------------------------------------
 // Returns the point at the `distance` along the spline
 auto BezierSpline::get_point_at_distance(float distance) -> Vector3f {

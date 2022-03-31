@@ -29,14 +29,16 @@ class BezierSpline {
     auto get_spline_points() -> vector<Vector3f>;
 
    private:
+    vector<Vector3f> input_points;
     vector<Vector3f> spline_points;  // idx: out point number, element: 3D output point
     vector<int> binomial_lut;        // idx: input point number, element: binomial coeffient
     vector<float> distance_lut;      // idx: time, element: distance - arc length at last idx
     int resolution;
     int size;
+    auto f(float t) -> Vector3f;  // spline polynomial function
     auto get_time(float distance) -> float;
     auto generate_binomial_lut() -> void;
-    auto approximate_arc_length() -> void;
+    auto generate_distance_lut() -> void;
 };
 }  // namespace mdi
 
