@@ -39,6 +39,17 @@ auto BezierSpline::generate_spline(vector<Vector3f> points, int resolution) -> v
 }
 
 //--------------------------------------------------------------------------------------------------
+// Approximates the arc length of the spline from the calculated points along the spline
+auto BezierSpline::approximate_arc_length() -> void {
+    auto arc_length = 0;
+    for (int p = 1; p < spline_points.size(); p++) {
+        auto diff = spline_points[i-1] - spline_points[i];
+        arc_length += diff.norm();
+    }
+    this->arc_length = arc_length;
+}
+
+//--------------------------------------------------------------------------------------------------
 // Generates the binomial LUT for a Bezier pline with `n` point
 // This will be used to generate the spline
 auto BezierSpline::generate_binomial_lut(int n) -> void {
@@ -47,10 +58,25 @@ auto BezierSpline::generate_binomial_lut(int n) -> void {
     }
 }
 
+//--------------------------------------------------------------------------------------------------
+// Returns the closest point at the given `time`, where 0<=time<=1.
 auto BezierSpline::get_point_at_time(float time) -> Vector3f {
     assert(time <= 1.0 && time >= 0);
     return this->spline_points[(int)(this->spline_points.size() * time)];
 }
+//--------------------------------------------------------------------------------------------------
+// Returns the point at the `distance` along the spline
+auto BezierSpline::get_point_at_distance(float distance) -> Vector3f {
+    // have a distance vs time LUT
+    // generate this in arc length approximation method
 
+    // find the two distances from the LUT, that the `distance` lies withing
+    // then remap the distance the two distances, to the distance between the two time values
+    // then take the lowest time value and add the mapped time value between the two time value
+    // of the two distances closest to the given `distance`
+}
+
+//--------------------------------------------------------------------------------------------------
+// Returns a vector of all points along the spline
 auto BezierSpline::get_spline_points() -> vector<Vector3f> { return this->spline_points; }
 }  // namespace mdi

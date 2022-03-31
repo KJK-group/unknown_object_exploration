@@ -1,6 +1,10 @@
 #ifndef _MULTI_DRONE_INSPECTION_MATH_HPP_
 #define _MULTI_DRONE_INSPECTION_MATH_HPP_
 
+#include <tf2_eigen/tf2_eigen.h>
+
+using Eigen::Vector3f;
+
 namespace mdi::utils {
 //--------------------------------------------------------------------------------------------------
 // Return the factorial of `i`
