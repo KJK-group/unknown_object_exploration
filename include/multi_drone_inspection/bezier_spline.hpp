@@ -12,6 +12,7 @@
 
 using Eigen::Vector3f;
 // using mdi::utils::binomial_coefficient;
+using std::abs;
 using std::pair;
 using std::pow;
 using std::vector;
@@ -30,11 +31,11 @@ class BezierSpline {
    private:
     vector<Vector3f> spline_points;  // idx: out point number, element: 3D output point
     vector<int> binomial_lut;        // idx: input point number, element: binomial coeffient
-    vector<float> distance_lut;      // idx: time, element: distance
-    float arc_length;
-    float resolution;
+    vector<float> distance_lut;      // idx: time, element: distance - arc length at last idx
+    int resolution;
+    int size;
     auto get_time(float distance) -> float;
-    auto generate_binomial_lut(int n) -> void;
+    auto generate_binomial_lut() -> void;
     auto approximate_arc_length() -> void;
 };
 }  // namespace mdi

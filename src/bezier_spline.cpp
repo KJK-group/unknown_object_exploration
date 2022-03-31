@@ -16,10 +16,10 @@ BezierSpline::BezierSpline(vector<Vector3f> points, int resolution) {
 // at a time resolution of `resolution`
 auto BezierSpline::generate_spline(vector<Vector3f> points, int resolution) -> void {
     this->resolution = resolution;
-    auto n = points.size();
+    this->size = points.size();
     // in case the binomial lookup table isn't big enough, generate a new one
-    if (binomial_lut.size() != n) {
-        generate_binomial_lut(n);
+    if (binomial_lut.size() != this->size) {
+        generate_binomial_lut();
     }
     assert(points.size() == binomial_lut.size());
 
@@ -29,8 +29,8 @@ auto BezierSpline::generate_spline(vector<Vector3f> points, int resolution) -> v
         // https://en.wikipedia.org/wiki/B%C3%A9zier_curve
         auto time = (float)t / (float)resolution;
         auto spline_point = Vector3f(0, 0, 0);
-        for (int i = 0; i < n; i++) {
-            auto w = binomial_lut[i] * pow(time, i) * pow(1 - time, n - i);
+        for (int i = 0; i < this->size; i++) {
+            auto w = binomial_lut[i] * pow(time, i) * pow(1 - time, this->size - i);
             spline_point += w * points[i];
         }
 
@@ -54,15 +54,14 @@ auto BezierSpline::approximate_arc_length() -> void {
         // cumulative distance entry for ever time step
         this->distance_lut.push_back(arc_length_sum);
     }
-    this->arc_length = arc_length_sum;
 }
 
 //--------------------------------------------------------------------------------------------------
 // Generates the binomial LUT for a Bezier pline with `n` points
 // This will be used to generate the spline
-auto BezierSpline::generate_binomial_lut(int n) -> void {
-    for (int i = 0; i < n; i++) {
-        binomial_lut.push_back(mdi::utils::binomial_coefficient(n, i));
+auto BezierSpline::generate_binomial_lut() -> void {
+    for (int i = 0; i < this->size; i++) {
+        binomial_lut.push_back(mdi::utils::binomial_coefficient(this->size, i));
     }
 }
 
@@ -75,13 +74,54 @@ auto BezierSpline::get_point_at_time(float time) -> Vector3f {
 //--------------------------------------------------------------------------------------------------
 // Returns the point at the `distance` along the spline
 auto BezierSpline::get_point_at_distance(float distance) -> Vector3f {
-    // have a distance vs time LUT
-    // generate this in arc length approximation method
+    // // have a distance vs time LUT
+    // // generate this in arc length approximation method
 
-    // find the two distances from the LUT, that the `distance` lies withing
-    // then remap the distance the two distances, to the distance between the two time values
-    // then take the lowest time value and add the mapped time value between the two time value
-    // of the two distances closest to the given `distance`
+    // // find the two distances from the LUT, that the `distance` lies withing
+    // // then remap the distance the two distances, to the distance between the two time values
+    // // then take the lowest time value and add the mapped time value between the two time value
+    // // of the two distances closest to the given `distance`
+
+    // auto t = this->get_time(distance);
+
+    // // give that the found time idx is the last idx,
+    // // the given distance must have been >= arc length,
+    // // thus the last point is returned
+    // if (t == this->resolution) {
+    //     return this->spline_points[t];
+    // }
+    // // otherwise we want to interpolate between two time values,
+    // // the one given, which is the closest before the `distance`,
+    // // and the next one after the given `distance`
+
+    // // distance range to map from
+    // auto distance_diff = this->distance_lut[t + 1] - this->distance_lut[t];
+    // // distance to map
+    // auto distance_diff_given = this->distance_lut[t + 1] - distance;
+    // // mapping to time with
+    auto t_idx = this->get_time(distance);
+    assert(t_idx >= 0 && t_idx <= this->resolution);
+    return this->spline_points[t_idx];
+}
+
+//--------------------------------------------------------------------------------------------------
+// Returns the closes time idx, the given `distance` comes after
+// If `distance`<0 return minimum time idx; 0
+// If `distance`>arc_length, return max time idx; resolution
+auto BezierSpline::get_time(float distance) -> float {
+    auto found_t_idx = 0;
+    for (int t_idx = 0; t_idx < this->resolution; ++t_idx) {
+        if (this->distance_lut[t_idx] > distance) {
+            if (abs(distance_lut[t_idx] - distance) < abs(distance_lut[t_idx - 1] - distance)) {
+                found_t_idx = t_idx;
+            } else {
+                found_t_idx = t_idx - 1;
+            }
+            break;
+        }
+        found_t_idx = t_idx;
+    }
+    return found_t_idx;
 }
 
 //--------------------------------------------------------------------------------------------------
