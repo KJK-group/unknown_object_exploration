@@ -51,6 +51,8 @@ auto main(int argc, char** argv) -> int {
     m.scale.y = 0.1;
     m.scale.z = 0.1;
     pub_spline_input.publish(m);
+    ros::spinOnce();
+    rate.sleep();
 
     std::reverse(points.begin(), points.end());
     ROS_INFO_STREAM("Before constructor");
@@ -90,28 +92,5 @@ auto main(int argc, char** argv) -> int {
     marker.scale.z = 0.1;
     pub_spline.publish(marker);
 
-    auto delta_time = ros::Duration();
-    // while (ros::ok() && delta_time.toSec() < duration) {
-    //     auto delta_time = start_time - ros::Time::now();
-    //     auto point = spline.get_point_at_time((float)(delta_time.toSec() / duration));
-    //     // ROS_INFO_STREAM("point:\n");
-    //     // ROS_INFO_STREAM("  x: " << point(0));
-    //     // ROS_INFO_STREAM("  y: " << point(1));
-    //     // ROS_INFO_STREAM("  z: " << point(2));
-
-    //     // message
-    //     geometry_msgs::PointStamped p;
-    //     p.header.seq = seq++;
-    //     p.header.frame_id = "map";
-    //     p.header.stamp = ros::Time::now();
-
-    //     p.point.x = point(0);
-    //     p.point.y = point(1);
-    //     p.point.z = point(2);
-
-    //     pub_point.publish(p);
-    //     ros::spinOnce();
-    //     rate.sleep();
-    // }
     return 0;
 }
