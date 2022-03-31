@@ -43,7 +43,7 @@ auto BezierSpline::generate_spline(vector<Vector3f> points, int resolution) -> v
 auto BezierSpline::approximate_arc_length() -> void {
     auto arc_length = 0;
     for (int p = 1; p < spline_points.size(); p++) {
-        auto diff = spline_points[i-1] - spline_points[i];
+        auto diff = spline_points[p - 1] - spline_points[p];
         arc_length += diff.norm();
     }
     this->arc_length = arc_length;
