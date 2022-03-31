@@ -39,18 +39,26 @@ auto BezierSpline::generate_spline(vector<Vector3f> points, int resolution) -> v
 }
 
 //--------------------------------------------------------------------------------------------------
-// Approximates the arc length of the spline from the calculated points along the spline
+// Approximates the arc length of the spline from the sum of euclidean distances
+// between all the calculated points along the spline
 auto BezierSpline::approximate_arc_length() -> void {
-    auto arc_length = 0;
-    for (int p = 1; p < spline_points.size(); p++) {
-        auto diff = spline_points[p - 1] - spline_points[p];
-        arc_length += diff.norm();
+    // Approximate the arc length of the spline
+    auto arc_length_sum = 0;
+    // first entry into distance LUT at time 0
+    this->distance_lut.push_back(arc_length_sum);
+    for (int t = 1; t < spline_points.size(); t++) {
+        // difference vector between every two points
+        auto diff = spline_points[t - 1] - spline_points[t];
+        // euclidean norm of the difference vector
+        arc_length_sum += diff.norm();
+        // cumulative distance entry for ever time step
+        this->distance_lut.push_back(arc_length_sum);
     }
-    this->arc_length = arc_length;
+    this->arc_length = arc_length_sum;
 }
 
 //--------------------------------------------------------------------------------------------------
-// Generates the binomial LUT for a Bezier pline with `n` point
+// Generates the binomial LUT for a Bezier pline with `n` points
 // This will be used to generate the spline
 auto BezierSpline::generate_binomial_lut(int n) -> void {
     for (int i = 0; i < n; i++) {

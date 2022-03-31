@@ -28,8 +28,9 @@ class BezierSpline {
     auto get_spline_points() -> vector<Vector3f>;
 
    private:
-    vector<Vector3f> spline_points;
-    vector<int> binomial_lut;
+    vector<Vector3f> spline_points;  // idx: out point number, element: 3D output point
+    vector<int> binomial_lut;        // idx: input point number, element: binomial coeffient
+    vector<float> distance_lut;      // idx: time, element: distance
     float arc_length;
     float resolution;
     auto get_time(float distance) -> float;
