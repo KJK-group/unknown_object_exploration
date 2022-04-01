@@ -150,15 +150,15 @@ target_link_libraries(spline_tester
 )
 
 # target_link_libraries(main PRIVATE FunctionalPlus::fplus)
-add_executable(test_voxblox src/test_voxblox.cpp)
-add_dependencies(test_voxblox ${${PROJECT_NAME}_EXPORTED_TARGETS}
-                 ${catkin_EXPORTED_TARGETS})
-target_link_libraries(test_voxblox ${catkin_LIBRARIES})
-target_include_directories(test_voxblox
-                           PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
-target_sources(test_voxblox
-               PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src/voxblox_manager.cpp)
-target_compile_options(test_voxblox PUBLIC "-std=c++17")
+# add_executable(test_voxblox src/test_voxblox.cpp)
+# add_dependencies(test_voxblox ${${PROJECT_NAME}_EXPORTED_TARGETS}
+#                  ${catkin_EXPORTED_TARGETS})
+# target_link_libraries(test_voxblox ${catkin_LIBRARIES})
+# target_include_directories(test_voxblox
+#                            PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
+# target_sources(test_voxblox
+#                PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src/voxblox_manager.cpp)
+# target_compile_options(test_voxblox PUBLIC "-std=c++17")
 # ##############################################################################
 # Install ##
 # ##############################################################################
