@@ -27,6 +27,8 @@ class BezierSpline {
     auto get_point_at_time(float time) -> Vector3f;
     auto get_point_at_distance(float distance) -> Vector3f;
     auto get_spline_points() -> vector<Vector3f>;
+    auto get_length() -> float;
+    auto f(float t) -> Vector3f;  // spline polynomial function
 
    private:
     vector<Vector3f> input_points;   // idx: input point number, element: 3D input point
@@ -35,7 +37,6 @@ class BezierSpline {
     vector<float> distance_lut;      // idx: time, element: distance - arc length at last idx
     int resolution;
     int size;
-    auto f(float t) -> Vector3f;  // spline polynomial function
     auto get_time_idx(float distance) -> float;
     auto generate_binomial_lut() -> void;
     auto generate_distance_lut() -> void;

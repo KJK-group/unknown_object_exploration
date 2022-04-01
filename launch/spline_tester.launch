@@ -4,5 +4,5 @@
     <arg name="package_path" value="$(find multi_drone_inspection)" />
 
     <node pkg="rviz" type="rviz" name="rviz" args="-d $(find multi_drone_inspection)/rviz/spline.rviz" />
-    <node pkg="$(arg package)" type="spline_tester" name="spline_tester" />
+    <node pkg="$(arg package)" type="spline_tester" name="spline_tester" output="screen" />
 </launch>
