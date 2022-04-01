@@ -11,6 +11,8 @@
 
 namespace mpi {
 
+enum class VoxelStatus { Free, Occupied, Unknown };
+
 class VoxbloxManager {
    private:
     ros::NodeHandle nh;
