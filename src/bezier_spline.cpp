@@ -139,17 +139,6 @@ auto BezierSpline::get_point_at_distance(float distance) -> Vector3f {
 // If `distance`>arc_length, return max time idx; resolution
 auto BezierSpline::get_time_idx(float distance) -> float {
     auto found_t_idx = 0;
-    // for (int t_idx = 0; t_idx < this->resolution; ++t_idx) {
-    //     if (this->distance_lut[t_idx] > distance) {
-    //         if (abs(distance_lut[t_idx] - distance) < abs(distance_lut[t_idx - 1] - distance)) {
-    //             found_t_idx = t_idx;
-    //         } else {
-    //             found_t_idx = t_idx - 1;
-    //         }
-    //         break;
-    //     }
-    //     found_t_idx = t_idx;
-    // }
     for (int t_idx = 0; t_idx < this->resolution && this->distance_lut[t_idx] < distance; t_idx++) {
         found_t_idx = t_idx;
     }
@@ -159,6 +148,10 @@ auto BezierSpline::get_time_idx(float distance) -> float {
 //--------------------------------------------------------------------------------------------------
 // Returns a vector of all points along the spline
 auto BezierSpline::get_spline_points() -> vector<Vector3f> { return this->spline_points; }
+
+//--------------------------------------------------------------------------------------------------
+// Return the arc length of the spline,
+// found at the last index of the distance LUT
 auto BezierSpline::get_length() -> float {
     return this->distance_lut[this->distance_lut.size() - 1];
 }
