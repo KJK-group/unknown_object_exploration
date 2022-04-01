@@ -101,14 +101,16 @@ auto BezierSpline::get_point_at_time(float time) -> Vector3f {
 //--------------------------------------------------------------------------------------------------
 // Returns the point at the `distance` along the spline
 auto BezierSpline::get_point_at_distance(float distance) -> Vector3f {
-    // std::cout << "distance = " << distance << std::endl;
+    // assume distance is greater not negative
+    assert(distance >= 0);
+    std::cout << "distance = " << distance << std::endl;
     auto t_idx = this->get_time_idx(distance);
-    // std::cout << "t_idx = " << t_idx << std::endl;
+    std::cout << "t_idx = " << t_idx << std::endl;
 
     // given that the found time idx is the last idx,
     // the given distance must have been >= arc length,
     // thus the last point is returned
-    // std::cout << "this->resolution - 1 = " << this->resolution - 1 << std::endl;
+    std::cout << "this->resolution - 1 = " << this->resolution - 1 << std::endl;
     if (t_idx == this->resolution - 1) {
         return this->spline_points[t_idx];
     }
@@ -118,17 +120,17 @@ auto BezierSpline::get_point_at_distance(float distance) -> Vector3f {
 
     // distance range to map from
     auto distance_diff = this->distance_lut[t_idx + 1] - this->distance_lut[t_idx];
-    // std::cout << "distance_diff = " << distance_diff << std::endl;
+    std::cout << "distance_diff = " << distance_diff << std::endl;
     // distance to map
     auto distance_diff_given = this->distance_lut[t_idx + 1] - distance;
-    // std::cout << "distance_diff_given = " << distance_diff_given << std::endl;
+    std::cout << "distance_diff_given = " << distance_diff_given << std::endl;
     // mapping to time with fraction of the above two
     auto diff_frac = 1 - distance_diff_given / distance_diff;
-    // std::cout << "diff_frac = " << diff_frac << std::endl;
+    std::cout << "diff_frac = " << diff_frac << std::endl;
     assert(diff_frac >= 0 && diff_frac <= 1);
     // normalise to [0;1]
     auto t = ((float)t_idx + diff_frac) / resolution;
-    // std::cout << "t = " << t << "\n" << std::endl;
+    std::cout << "t = " << t << "\n" << std::endl;
 
     return this->f(t);
 }

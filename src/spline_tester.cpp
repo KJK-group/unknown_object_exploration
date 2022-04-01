@@ -7,6 +7,7 @@
 #include "multi_drone_inspection/bezier_spline.hpp"
 
 using mdi::BezierSpline;
+using std::abs;
 
 ros::Publisher pub_line;
 ros::Publisher pub_spline_anim;
@@ -120,13 +121,17 @@ auto main(int argc, char** argv) -> int {
 
     ROS_INFO_STREAM("arc length: " << spline.get_length());
 
+    auto forwards = true;
+    auto spline_length = spline.get_length();
+
     auto duration = ros::Duration(5.0);
-    auto speed = spline.get_length() / duration.toSec();  // 5 m/s
+    auto speed = spline_length / duration.toSec();  // 5 m/s
     auto st = ros::Time::now();
     ros::Duration dt;
     while (ros::ok()) {
         if (dt > duration) {
             st = ros::Time::now();
+            forwards = !forwards;
         }
         dt = ros::Time::now() - st;
 
@@ -137,6 +142,12 @@ auto main(int argc, char** argv) -> int {
         p1.z = point1(2);
 
         auto distance = speed * dt.toSec();
+        if (forwards) {
+            distance = spline_length - distance;
+            if (distance < 0) {
+                distance = 0;
+            }
+        }
         // ROS_INFO_STREAM("distance: " << distance);
         auto point2 = spline.get_point_at_distance(distance);
         geometry_msgs::Point p2;
@@ -144,7 +155,7 @@ auto main(int argc, char** argv) -> int {
         p2.y = point2(1);
         p2.z = point2(2);
 
-        anim_marker.points = vector<geometry_msgs::Point>{p1, p2};
+        anim_marker.points = vector<geometry_msgs::Point>{p2};
         anim_marker.header.seq = anim_seq++;
         pub_spline_anim.publish(anim_marker);
 

@@ -117,11 +117,17 @@ include_directories(include ${catkin_INCLUDE_DIRS} ${Eigen3_INCLUDE_DIRS})
 # Declare a C++ executable With catkin_make all packages are built within a
 # single CMake context The recommended prefix ensures that target names across
 # packages don't collide
+file(GLOB src_files ./src/*.cpp)
+
 add_executable(test_controller src/test_controller.cpp)
 add_executable(trajectory_follower src/trajectory_follower.cpp)
 add_executable(spline_tester src/spline_tester.cpp)
 
 target_sources(spline_tester
+               PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src/bezier_spline.cpp
+               PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src/math.cpp)
+
+target_sources(trajectory_follower
                PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src/bezier_spline.cpp
                PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src/math.cpp)
 #target_compile_features(spline_tester "-g")
