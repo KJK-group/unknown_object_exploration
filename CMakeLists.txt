@@ -29,13 +29,6 @@ add_subdirectory(deps/fmt)
 # System dependencies are found with CMake's conventions
 find_package(Boost REQUIRED COMPONENTS system)
 
-include(FetchContent)
-FetchContent_Declare(
-  functional_plus
-  GIT_REPOSITORY https://github.com/Dobiasd/FunctionalPlus.git
-  GIT_TAG master)
-FetchContent_MakeAvailable(functional_plus)
-
 # Uncomment this if the package has a setup.py. This macro ensures modules and
 # global scripts declared therein get installed See
 # http://ros.org/doc/api/catkin/html/user_guide/setup_dot_py.html
@@ -121,6 +114,13 @@ include_directories(include ${catkin_INCLUDE_DIRS} ${Eigen3_INCLUDE_DIRS})
 # packages don't collide
 add_executable(test_controller src/test_controller.cpp)
 add_executable(trajectory_follower src/trajectory_follower.cpp)
+add_executable(spline_tester src/spline_tester.cpp)
+
+target_sources(
+  spline_tester
+  PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src/bezier_spline.cpp
+  PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src/math.cpp)
+# target_compile_features(spline_tester "-g")
 
 # Rename C++ executable without prefix The above recommended prefix causes long
 # target names, the following renames the target back to the shorter version for
@@ -133,23 +133,24 @@ add_dependencies(test_controller ${${PROJECT_NAME}_EXPORTED_TARGETS}
                  ${catkin_EXPORTED_TARGETS})
 add_dependencies(trajectory_follower ${${PROJECT_NAME}_EXPORTED_TARGETS}
                  ${catkin_EXPORTED_TARGETS})
+add_dependencies(spline_tester ${${PROJECT_NAME}_EXPORTED_TARGETS}
+                 ${catkin_EXPORTED_TARGETS})
 
 # Specify libraries to link a library or executable target against
 target_link_libraries(test_controller ${catkin_LIBRARIES})
 target_link_libraries(trajectory_follower ${catkin_LIBRARIES})
+target_link_libraries(spline_tester ${catkin_LIBRARIES})
 
 # target_link_libraries(test_boost fmt::fmt)
 
 # target_link_libraries(main PRIVATE FunctionalPlus::fplus)
-add_executable(test_voxblox src/test_voxblox.cpp)
-add_dependencies(test_voxblox ${${PROJECT_NAME}_EXPORTED_TARGETS}
-                 ${catkin_EXPORTED_TARGETS})
-target_link_libraries(test_voxblox ${catkin_LIBRARIES})
-target_include_directories(test_voxblox
-                           PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
-target_sources(test_voxblox
-               PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src/voxblox_manager.cpp)
-target_compile_options(test_voxblox PUBLIC "-std=c++17")
+# add_executable(test_voxblox src/test_voxblox.cpp)
+# add_dependencies(test_voxblox ${${PROJECT_NAME}_EXPORTED_TARGETS}
+# ${catkin_EXPORTED_TARGETS}) target_link_libraries(test_voxblox
+# ${catkin_LIBRARIES}) target_include_directories(test_voxblox PUBLIC
+# ${CMAKE_CURRENT_SOURCE_DIR}/include) target_sources(test_voxblox PUBLIC
+# ${CMAKE_CURRENT_SOURCE_DIR}/src/voxblox_manager.cpp)
+# target_compile_options(test_voxblox PUBLIC "-std=c++17")
 # ##############################################################################
 # Install ##
 # ##############################################################################
