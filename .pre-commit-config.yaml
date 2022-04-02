@@ -1,0 +1,57 @@
+# See https://pre-commit.com for more information
+# See https://pre-commit.com/hooks.html for more hooks
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v3.2.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files
+
+  # - repo: https://github.com/pre-commit/mirrors-clang-format
+  #   rev: "" # Use the sha / tag you want to point at
+  #   hooks:
+  #     - id: clang-format
+
+  # - repo: https://github.com/commitizen-tools/commitizen
+  #   rev: master
+  #   hooks:
+  #     - id: commitizen
+  #       stages: [commit-msg]
+
+  # - repo: https://github.com/Lucas-C/pre-commit-hooks-go
+  #   rev: v1.0.1
+  #   hooks:
+  #     - id: checkmakeP
+
+  # - repo: https://github.com/jumanjihouse/pre-commit-hooks
+  #   rev: master # or specific git tag
+  #   hooks:
+  #     # - id: bundler-audit
+  #     # - id: check-mailmap
+  #     # - id: fasterer
+  #     - id: forbid-binary
+  #     - id: forbid-space-in-indent
+  #     - id: git-check # Configure in .gitattributes
+  #     - id: git-dirty # Configure in .gitignore
+  #     - id: markdownlint # Configure in .mdlrc
+  #     - id: reek
+  #     - id: require-ascii
+  #     # - id: rubocop
+  #     - id: script-must-have-extension
+  #     # - id: script-must-not-have-extension
+  #     - id: shellcheck
+  #     - id: shfmt
+
+  - repo: https://github.com/cheshirekow/cmake-format-precommit
+    rev: v0.6.10
+    hooks:
+      - id: cmake-format
+      # - id: cmake-lint
+
+  # - repo: https://github.com/editorconfig-checker/editorconfig-checker.python
+  #   rev: master # pick a git hash / tag to point to
+  #   hooks:
+  #     - id: editorconfig-checker
+  #       alias: ec

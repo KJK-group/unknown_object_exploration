@@ -24,6 +24,8 @@ find_package(
 find_package(Eigen3 REQUIRED)
 find_package(xacro REQUIRED)
 
+add_subdirectory(deps/fmt)
+
 # System dependencies are found with CMake's conventions
 find_package(Boost REQUIRED COMPONENTS system)
 
@@ -135,6 +137,8 @@ add_dependencies(trajectory_follower ${${PROJECT_NAME}_EXPORTED_TARGETS}
 # Specify libraries to link a library or executable target against
 target_link_libraries(test_controller ${catkin_LIBRARIES})
 target_link_libraries(trajectory_follower ${catkin_LIBRARIES})
+
+# target_link_libraries(test_boost fmt::fmt)
 
 # target_link_libraries(main PRIVATE FunctionalPlus::fplus)
 add_executable(test_voxblox src/test_voxblox.cpp)

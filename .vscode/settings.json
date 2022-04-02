@@ -12,7 +12,8 @@
         "optional": "cpp",
         "variant": "cpp",
         "cmath": "cpp",
-        "complex": "cpp"
+        "complex": "cpp",
+        "dense": "cpp"
     },
     "workbench.colorCustomizations": {
         "activityBar.activeBackground": "#3399ff",
