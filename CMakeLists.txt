@@ -141,6 +141,11 @@ target_link_libraries(test_controller ${catkin_LIBRARIES})
 target_link_libraries(trajectory_follower ${catkin_LIBRARIES})
 target_link_libraries(spline_tester ${catkin_LIBRARIES})
 
+add_executable(visualize_kdtree src/visualize_kdtree.cpp)
+add_dependencies(visualize_kdtree ${${PROJECT_NAME}_EXPORTED_TARGETS}
+                 ${catkin_EXPORTED_TARGETS})
+target_link_libraries(visualize_kdtree ${catkin_LIBRARIES})
+
 # target_link_libraries(test_boost fmt::fmt)
 
 # target_link_libraries(main PRIVATE FunctionalPlus::fplus)
