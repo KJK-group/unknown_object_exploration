@@ -8,6 +8,7 @@
 #include <ctime>
 #include <eigen3/Eigen/Dense>
 #include <eigen3/Eigen/Geometry>
+#include <iostream>
 #include <random>
 
 namespace mdi::utils::random {
@@ -77,18 +78,30 @@ auto sample_random_point_on_inside_circle(Vector2f direction, float bias) -> Vec
 //----------------------------------------------------------------
 
 auto sample_random_point_on_unit_sphere_surface() -> Vector3f {
-    return Eigen::Quaternionf::UnitRandom() * Vector3f::UnitX();
+    auto quat = Eigen::Quaternionf::UnitRandom();
+    auto unit = Vector3f{random01(), random01(), random01()}.normalized();
+    std::cout << "    " << unit << std::endl;
+    return (quat * unit).normalized();
+
+    // return Eigen::Quaternionf::UnitRandom() * Vector3f::UnitRandom();
 }
 
 auto sample_random_point_on_unit_sphere_surface(Vector3f direction, float x_bias, float y_bias,
                                                 float z_bias) -> Vector3f {
     direction.normalize();
+    std::cout << "direction: " << direction << std::endl;
     auto roll = get_bias_rotation_interval(x_bias);
     auto pitch = get_bias_rotation_interval(y_bias);
     auto yaw = get_bias_rotation_interval(z_bias);
-    auto quat = AngleAxisf(roll, Vector3f::UnitX()) * AngleAxisf(pitch, Vector3f::UnitY()) *
-                AngleAxisf(yaw, Vector3f::UnitZ());
-    return quat * direction;
+    std::cout << "roll interval is " << std::to_string(roll) << " pitch interval is "
+              << std::to_string(pitch) << " yaw interval is " << std::to_string(yaw) << std::endl;
+    Eigen::Matrix3f quat;
+    quat = AngleAxisf(roll, Vector3f::UnitX()) * AngleAxisf(pitch, Vector3f::UnitY()) *
+           AngleAxisf(yaw, Vector3f::UnitZ());
+
+    auto rotated = quat * direction;
+    std::cout << "rotated " << rotated << std::endl;
+    return rotated;
 }
 
 auto sample_random_point_on_unit_sphere_surface(Vector3f direction, float bias) -> Vector3f {
@@ -105,8 +118,11 @@ auto sample_random_point_inside_unit_sphere() -> Vector3f {
 auto sample_random_point_inside_unit_sphere(Vector3f direction, float x_bias, float y_bias,
                                             float z_bias) -> Vector3f {
     auto radial_distance = random01();
-    return sample_random_point_on_unit_sphere_surface(direction, x_bias, y_bias, z_bias) *
-           radial_distance;
+    radial_distance *= 1.f;
+    // DO NOT REMOVE LINE BELOW. RADIAL_DISTANCE IS NOT RANDOM IF NOT
+    std::cout << "radial distance: " << radial_distance << std::endl;
+    return radial_distance *
+           sample_random_point_on_unit_sphere_surface(direction, x_bias, y_bias, z_bias);
 }
 
 /**
