@@ -6,6 +6,9 @@ project(
   LANGUAGES CXX)
 
 add_compile_options(-std=c++17)
+# global configuration set(CMAKE_CXX_COMPILER "/usr/bin/clang++-12")
+# set(CMAKE_CXX_STANDARD 17) set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_EXPORT_COMPILE_COMMANDS 1)
 
 set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake" ${CMAKE_MODULE_PATH})
 
@@ -19,16 +22,30 @@ find_package(
              roscpp
              tf2
              tf2_ros
-             tf2_eigen
-             voxblox_ros)
+             tf2_eigen)
+# voxblox_ros)
 find_package(Eigen3 REQUIRED)
 find_package(xacro REQUIRED)
 
-add_subdirectory(deps/fmt)
-# add_subdirectory(deps/kdtree3)
+# add_subdirectory(deps/fmt)
 
 # System dependencies are found with CMake's conventions
 find_package(Boost REQUIRED COMPONENTS system)
+
+# dependencies
+find_package(Eigen3 REQUIRED)
+
+include_directories(${CMAKE_SOURCE_DIR}/include)
+# file(GLOB src_files ${CMAKE_SOURCE_DIR}/src/*.cpp) file(GLOB header_files
+# ${CMAKE_SOURCE_DIR}/include/**/*.hpp) file(GLOB kdtree3_header_files
+# ${CMAKE_SOURCE_DIR}/include/kdtree3/*.hpp)
+
+# library add_library(kdtree3 STATIC ${CMAKE_SOURCE_DIR}/src/kdtree3/kdtree3.cpp
+# ${kdtree3_header_files}) target_compile_features(kdtree3 PUBLIC cxx_std_17)
+
+# # test add_executable(mytest ${CMAKE_SOURCE_DIR}/test/kdtree3.test.cpp)
+# target_compile_features(mytest PUBLIC cxx_std_17) target_link_libraries(mytest
+# kdtree3)
 
 # Uncomment this if the package has a setup.py. This macro ensures modules and
 # global scripts declared therein get installed See
@@ -113,6 +130,16 @@ include_directories(include ${catkin_INCLUDE_DIRS} ${Eigen3_INCLUDE_DIRS})
 # Declare a C++ executable With catkin_make all packages are built within a
 # single CMake context The recommended prefix ensures that target names across
 # packages don't collide
+
+function(add_ros_executable name main)
+  add_executable(${name} ${CMAKE_CURRENT_SOURCE_DIR}/${main})
+  add_dependencies(${name} ${${PROJECT_NAME}_EXPORTED_TARGETS}
+                   ${catkin_EXPORTED_TARGETS})
+  target_link_libraries(${name} ${catkin_LIBRARIES})
+endfunction(add_ros_executable)
+
+add_ros_executable(visualize_kdtree src/visualize_kdtree.cpp)
+
 add_executable(test_controller src/test_controller.cpp)
 add_executable(trajectory_follower src/trajectory_follower.cpp)
 add_executable(spline_tester src/spline_tester.cpp)
@@ -142,10 +169,10 @@ target_link_libraries(test_controller ${catkin_LIBRARIES})
 target_link_libraries(trajectory_follower ${catkin_LIBRARIES})
 target_link_libraries(spline_tester ${catkin_LIBRARIES})
 
-add_executable(visualize_kdtree src/visualize_kdtree.cpp)
-add_dependencies(visualize_kdtree ${${PROJECT_NAME}_EXPORTED_TARGETS}
-                 ${catkin_EXPORTED_TARGETS})
-target_link_libraries(visualize_kdtree ${catkin_LIBRARIES})
+# add_executable(visualize_kdtree src/visualize_kdtree.cpp)
+# add_dependencies(visualize_kdtree ${${PROJECT_NAME}_EXPORTED_TARGETS}
+# ${catkin_EXPORTED_TARGETS}) target_link_libraries(visualize_kdtree kdtree3)
+# target_include_directories(visualize_kdtree PRIVATE kdtree3)
 
 # target_link_libraries(test_boost fmt::fmt)
 
