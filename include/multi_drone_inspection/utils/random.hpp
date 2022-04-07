@@ -22,11 +22,15 @@ using Eigen::Vector3f;
  * imp ref: https://stackoverflow.com/a/36527160
  * @return float [0, 1]
  */
-auto random01() -> float {
-    static std::default_random_engine e;
-    static std::uniform_real_distribution<> dis(
+auto random01() -> float {  //    std::random_device rd;
+    //    std::mt19937 gen(rd());
+    // static std::mt19937 mt(123);
+    // std::mt19937 generator(
+    //   std::chrono::steady_clock::now().time_since_epoch().count());
+    static auto gen = std::mt19937{std::random_device{}()};
+    static std::uniform_real_distribution<float> dis(
         0, std::nextafter(1.f, std::numeric_limits<float>::max()));
-    return dis(e);
+    return dis(gen);
 }
 
 auto get_bias_rotation_interval(float bias) -> float {
@@ -101,6 +105,7 @@ auto sample_random_point_on_unit_sphere_surface(Vector3f direction, float x_bias
 
     auto rotated = quat * direction;
     std::cout << "rotated " << rotated << std::endl;
+    std::cout << "rotated again" << rotated << std::endl;
     return rotated;
 }
 
@@ -121,8 +126,9 @@ auto sample_random_point_inside_unit_sphere(Vector3f direction, float x_bias, fl
     radial_distance *= 1.f;
     // DO NOT REMOVE LINE BELOW. RADIAL_DISTANCE IS NOT RANDOM IF NOT
     std::cout << "radial distance: " << radial_distance << std::endl;
-    return radial_distance *
-           sample_random_point_on_unit_sphere_surface(direction, x_bias, y_bias, z_bias);
+    auto v = sample_random_point_on_unit_sphere_surface(direction, x_bias, y_bias, z_bias);
+    std::cout << "v is " << v << std::endl;
+    return radial_distance * v;
 }
 
 /**

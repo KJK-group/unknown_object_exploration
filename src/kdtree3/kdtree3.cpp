@@ -1,5 +1,4 @@
 #include "kdtree3/kdtree3.hpp"
-#include "kdtree3/utils.hpp"
 
 #include <algorithm>
 #include <cassert>
@@ -7,133 +6,127 @@
 #include <iostream>
 #include <variant>
 
+#include "kdtree3/utils.hpp"
+
 using Eigen::Vector3f;
+using std::vector;
 
 namespace kdtree {
 
-kdtree3::kdtree3(const std::vector<Vector3f> &points) {
-  // todo: figure out how insert should handle duplicates.
-  std::for_each(points.cbegin(), points.cend(),
-                [this](const Vector3f &point) { insert(point); });
-  // version 2. find median of points
-  //   auto xs = std::vector<float>(points.size());
-  //   std::transform(points.cbegin(), points.cend(), xs.begin(),
-  //                  [](const Vector3f &p) { return p.x(); });
-  //   const auto median_x = utils::median(xs);
-  //   auto left_subtree_it = std::stable_partition(
-  //       points.begin(), points.end(),
-  //       [=](const auto &point) { return point.x() < median_x; });
+kdtree3::kdtree3(const vector<Vector3f>& points) {
+    // construct_(points, 0);
+    // todo: figure out how insert should handle duplicates.
+    std::for_each(points.cbegin(), points.cend(), [this](const Vector3f& point) { insert(point); });
+    // version 2. find median of points
+    //   auto xs = vector<float>(points.size());
+    //   std::transform(points.cbegin(), points.cend(), xs.begin(),
+    //                  [](const Vector3f &p) { return p.x(); });
+    //   const auto median_x = utils::median(xs);
+    //   auto left_subtree_it = std::stable_partition(
+    //       points.begin(), points.end(),
+    //       [=](const auto &point) { return point.x() < median_x; });
 }
 
-auto compare_positions_based_on_depth(const Vector3f &p1, const Vector3f &p2,
-                                      unsigned int depth) -> bool {
-  switch (depth % 3) {
-  case 0:
-    return p1.x() < p2.x();
-    break;
-  case 1:
-    return p1.y() < p2.y();
-    break;
-  case 2:
-    return p1.z() < p2.z();
-    break;
-  };
-}
+// auto kdtree3::construct_(const vector<Vector3f>& points, unsigned int depth) -> void {
 
-auto kdtree3::insert(std::unique_ptr<Node> &node, const Vector3f &value,
-                     unsigned int depth) -> void {
-  if (node) {
-    auto less_than =
-        compare_positions_based_on_depth(value, node->position_, depth);
+// }
 
-    insert(less_than ? node->left_ : node->right_, value, depth + 1);
-  } else {
-    node = std::make_unique<Node>(value, depth + 1);
-  }
-}
-
-auto kdtree3::contains(std::unique_ptr<Node> &node,
-                       const Eigen::Vector3f &value, unsigned int depth)
+auto compare_positions_based_on_depth(const Vector3f& p1, const Vector3f& p2, unsigned int depth)
     -> bool {
+    switch (depth % 3) {
+        case 0:
+            return p1.x() < p2.x();
+            break;
+        case 1:
+            return p1.y() < p2.y();
+            break;
+        case 2:
+            return p1.z() < p2.z();
+            break;
+    };
+}
 
-  if (!node) {
-    return false;
-  }
-  if (node->position_ == value) {
-    return true;
-  }
+auto kdtree3::insert(std::unique_ptr<Node>& node, const Vector3f& value, unsigned int depth)
+    -> void {
+    if (node) {
+        auto less_than = compare_positions_based_on_depth(value, node->position_, depth);
 
-  auto less_than =
-      compare_positions_based_on_depth(value, node->position_, depth);
-  return contains(less_than ? node->left_ : node->right_, value, depth + 1);
+        insert(less_than ? node->left_ : node->right_, value, depth + 1);
+    } else {
+        node = std::make_unique<Node>(value, depth + 1);
+    }
+}
+
+auto kdtree3::contains(std::unique_ptr<Node>& node, const Vector3f& value, unsigned int depth)
+    -> bool {
+    if (!node) {
+        return false;
+    }
+    if (node->position_ == value) {
+        return true;
+    }
+
+    auto less_than = compare_positions_based_on_depth(value, node->position_, depth);
+    return contains(less_than ? node->left_ : node->right_, value, depth + 1);
 }
 
 // todo: implementi
-auto kdtree3::knn_search(std::unique_ptr<Node> &node, unsigned int k,
-                         const Eigen::Vector3f &value)
-    -> std::vector<Eigen::Vector3f> {}
-
-auto kdtree3::is_balanced() -> bool {
-  return max_depth() < std::log2(n_nodes_);
+auto kdtree3::knn_search(std::unique_ptr<Node>& node, unsigned int k, const Vector3f& value,
+                         vector<Vector3f>& result) -> vector<Vector3f> {
+    // if (node)
+    return vector<Vector3f>();
 }
+
+auto kdtree3::is_balanced() -> bool { return max_depth() < std::log2(n_nodes_); }
 
 auto kdtree3::max_depth() -> unsigned int {
-  auto depths = std::vector<unsigned int>();
-  inorder_traversal([&depths](const Eigen::Vector3f &_, unsigned int depth) {
-    depths.push_back(depth);
-  });
+    auto depths = vector<unsigned int>();
+    inorder_traversal(
+        [&depths](const Vector3f& _, unsigned int depth) { depths.push_back(depth); });
 
-  return *std::max_element(depths.begin(), depths.end());
+    return *std::max_element(depths.begin(), depths.end());
 }
 
-auto kdtree3::inorder_traversal(std::unique_ptr<Node> &node,
-                                std::function<void(const Eigen::Vector3f &)> fn)
-    -> void {
-
-  if (!node) {
-    return;
-  }
-  inorder_traversal(node->left_, fn);
-  fn(node->position_);
-  inorder_traversal(node->right_, fn);
+auto kdtree3::inorder_traversal(std::unique_ptr<Node>& node,
+                                std::function<void(const Vector3f&)> fn) -> void {
+    if (!node) {
+        return;
+    }
+    inorder_traversal(node->left_, fn);
+    fn(node->position_);
+    inorder_traversal(node->right_, fn);
 }
 
-auto kdtree3::inorder_traversal(
-    std::unique_ptr<Node> &node,
-    std::function<void(const Eigen::Vector3f &, unsigned int)> fn,
-    unsigned int depth) -> void {
-
-  if (!node) {
-    return;
-  }
-  inorder_traversal(node->left_, fn, depth + 1);
-  fn(node->position_, depth);
-  inorder_traversal(node->right_, fn, depth + 1);
+auto kdtree3::inorder_traversal(std::unique_ptr<Node>& node,
+                                std::function<void(const Vector3f&, unsigned int)> fn,
+                                unsigned int depth) -> void {
+    if (!node) {
+        return;
+    }
+    inorder_traversal(node->left_, fn, depth + 1);
+    fn(node->position_, depth);
+    inorder_traversal(node->right_, fn, depth + 1);
 }
 
-auto kdtree3::preorder_traversal(
-    std::unique_ptr<Node> &node,
-    std::function<void(const Eigen::Vector3f &)> fn) -> void {
+auto kdtree3::preorder_traversal(std::unique_ptr<Node>& node,
+                                 std::function<void(const Vector3f&)> fn) -> void {
+    if (!node) {
+        return;
+    }
+    fn(node->position_);
 
-  if (!node) {
-    return;
-  }
-  fn(node->position_);
-
-  preorder_traversal(node->left_, fn);
-  preorder_traversal(node->right_, fn);
+    preorder_traversal(node->left_, fn);
+    preorder_traversal(node->right_, fn);
 }
 
-auto kdtree3::postorder_traversal(
-    std::unique_ptr<Node> &node,
-    std::function<void(const Eigen::Vector3f &)> fn) -> void {
-
-  if (!node) {
-    return;
-  }
-  postorder_traversal(node->left_, fn);
-  postorder_traversal(node->right_, fn);
-  fn(node->position_);
+auto kdtree3::postorder_traversal(std::unique_ptr<Node>& node,
+                                  std::function<void(const Vector3f&)> fn) -> void {
+    if (!node) {
+        return;
+    }
+    postorder_traversal(node->left_, fn);
+    postorder_traversal(node->right_, fn);
+    fn(node->position_);
 }
 
 // auto kdtree3::insert(const Vector3f &point) -> bool {
@@ -203,7 +196,7 @@ auto kdtree3::postorder_traversal(
 //   return parent_idx * 2 + 1;
 // }
 // auto kdtree3::inorder_traversal_(
-//     std::function<void(const Eigen::Vector3f &)> fn,
+//     std::function<void(const Vector3f &)> fn,
 //     unsigned int node_idx) const -> void {
 //   auto node = tree_[node_idx];
 //   try {
@@ -216,7 +209,7 @@ auto kdtree3::postorder_traversal(
 // }
 
 // auto kdtree3::inorder_traversal(
-//     std::function<void(const Eigen::Vector3f &)> fn) const -> void {
+//     std::function<void(const Vector3f &)> fn) const -> void {
 //   inorder_traversal_(fn, 1);
 // }
 
@@ -258,4 +251,4 @@ auto kdtree3::postorder_traversal(
 //             << std::endl;
 // }
 
-} // namespace kdtree
+}  // namespace kdtree

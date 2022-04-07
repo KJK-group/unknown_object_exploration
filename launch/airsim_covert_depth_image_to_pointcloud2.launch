@@ -1,0 +1,37 @@
+<launch>
+	<arg
+		name="drone"
+		value="PX4" />
+	<arg
+		name="camera"
+		value="DepthPerspective" />
+	<arg
+		name="image_type"
+		value="" />
+
+	<node
+		pkg="nodelet"
+		type="nodelet"
+		name="nodelet_manager"
+		args="manager" />
+
+	<node
+		pkg="nodelet"
+		type="nodelet"
+		name="nodelet1"
+		args="load depth_image_proc/point_cloud_xyz nodelet_manager">
+		<!-- <remap from="camera_info" to="/camera/depth/camera_info" />
+		<remap from="image_rect" to="/camera/depth/image_rect_raw" />
+		<remap from="points" to="/camera/depth/points" /> -->
+		<remap
+			from="camera_info"
+			to="/airsim_node/$(arg drone)/$(arg camera)/$(arg image_type)/depth/camera_info" />
+		<remap
+			from="image_rect"
+			to="/airsim_node/$(arg drone)/$(arg camera)/$(arg image_type)/depth/image_rect_raw" />
+		<remap
+			from="points"
+			to="/airsim_node/$(arg drone)/$(arg camera)/$(arg image_type)/depth/points" />
+
+	</node>
+</launch>

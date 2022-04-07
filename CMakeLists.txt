@@ -139,6 +139,8 @@ function(add_ros_executable name main)
 endfunction(add_ros_executable)
 
 add_ros_executable(visualize_kdtree src/visualize_kdtree.cpp)
+target_sources(visualize_kdtree PUBLIC src/kdtree3/kdtree3.cpp)
+target_compile_options(visualize_kdtree PRIVATE -g)
 
 add_executable(test_controller src/test_controller.cpp)
 add_executable(trajectory_follower src/trajectory_follower.cpp)
