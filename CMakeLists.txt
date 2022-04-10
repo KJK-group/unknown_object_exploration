@@ -139,6 +139,12 @@ function(add_ros_executable name main)
 endfunction(add_ros_executable)
 
 add_ros_executable(visualize_kdtree src/visualize_kdtree.cpp)
+
+add_ros_executable(linear_search_vs_kdtree test/linear_search_vs_kdtree.cpp)
+
+add_ros_executable(test_rrt test/rrt.test.cpp)
+target_sources(test_rrt PUBLIC src/rrt/rrt.cpp)
+
 target_sources(visualize_kdtree PUBLIC src/kdtree3/kdtree3.cpp)
 target_compile_options(visualize_kdtree PRIVATE -g)
 

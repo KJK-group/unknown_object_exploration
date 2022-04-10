@@ -18,62 +18,6 @@ using std::vector, std::optional;
  */
 class RRT {
    public:
-    struct Node {
-        Node(const Vector3f& position_, Node* parent_ = nullptr)
-            : position(position_), parent(parent_) {
-            if (parent != nullptr) {
-                parent->children.push_back(this);
-            }
-        }
-
-        ~Node() {}
-
-        auto get_parent() const { return parent; }
-
-        auto depth() const -> unsigned int {
-            auto n = 0;
-            for (const auto ancestor = parent; ancestor != nullptr; ancestor = ancestor->parent) {
-                ++n;
-            }
-            return n;
-        }
-
-       private:
-        Vector3f position;
-        Node* parent = nullptr;
-        vector<Node> children;
-    };
-
-   private:
-    float step_size_;
-    /**
-     * @brief
-     *
-     */
-    float max_step_size_;
-    bool adaptive_step_size_control_enabled_ = false;
-    float goal_bias_ = 0.0f;
-    float waypoint_bias_ = 0.0f;
-    /**
-     * The maximum number of random states in the state-space that we will
-     * try before giving up on finding a path to the goal.
-     */
-    unsigned int max_iterations_;
-    float max_dist_goal_tolerance_;
-    Vector3f start_position_;
-    Vector3f goal_position_;
-    /**
-     * @brief the interface which is used to query the voxel grid about
-     * occupancy status.
-     */
-
-    VoxelGrid voxelgrid_;
-
-    unsigned int n_nodes_ = 0;
-
-    std::function<Vector3f()> sample_random_point_on_unit_sphere_surface_;
-
-   public:
     RRT(Vector3f start_pos_, Vector3f goal_pos_, float step_size_, unsigned int max_iterations_,
         float max_dist_goal_tolerance_, VoxelGrid voxelgrid_);
 
@@ -113,6 +57,55 @@ class RRT {
     auto get_waypoints() -> vector<Vector3f>;
 
    private:
+    struct Node {
+        Node(const Vector3f& position_, Node* parent_ = nullptr)
+            : position(position_), parent(parent_) {
+            if (parent != nullptr) {
+                parent->children.push_back(this);
+            }
+        }
+
+        ~Node() {}
+
+        auto get_parent() const { return parent; }
+
+        auto depth() const -> unsigned int {
+            auto n = 0;
+            for (const auto ancestor = parent; ancestor != nullptr; ancestor = ancestor->parent) {
+                ++n;
+            }
+            return n;
+        }
+
+       private:
+        Vector3f position;
+        Node* parent = nullptr;
+        vector<Node> children;
+    };
+
+    float step_size_;
+    float max_step_size_;
+    bool adaptive_step_size_control_enabled_ = false;
+    float goal_bias_ = 0.0f;
+    float waypoint_bias_ = 0.0f;
+    /**
+     * The maximum number of random states in the state-space that we will
+     * try before giving up on finding a path to the goal.
+     */
+    unsigned int max_iterations_;
+    float max_dist_goal_tolerance_;
+    Vector3f start_position_;
+    Vector3f goal_position_;
+
+    float sampling_radius_;
+    /**
+     * @brief the interface which is used to query the voxel grid about
+     * occupancy status.
+     */
+
+    VoxelGrid voxelgrid_;
+
+    unsigned int n_nodes_ = 0;  // number of nodes in the tree
 };
 
 }  // namespace mpi
