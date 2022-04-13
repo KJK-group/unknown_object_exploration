@@ -1,0 +1,41 @@
+<launch>
+	<arg
+		name="drone"
+		value="PX4" />
+	<arg
+		name="camera"
+		value="rgbd_camera" />
+	<arg
+		name="camera_type"
+		value="DepthPlanar" />
+		<!-- value="DepthPerspective" /> -->
+		<!-- value="DepthVis" /> -->
+
+	<node
+		pkg="nodelet"
+		type="nodelet"
+		name="nodelet_manager"
+		args="manager" />
+
+	<node
+		pkg="nodelet"
+		type="nodelet"
+		name="rgbd_to_pointcloud2"
+		args="load depth_image_proc/point_cloud_xyz nodelet_manager">
+		<!-- <remap from="camera_info" to="/camera/depth/camera_info" />
+		<remap from="image_rect" to="/camera/depth/image_rect_raw" />
+		<remap from="points" to="/camera/depth/points" /> -->
+		<!-- see this for why we map the camera_info as we do... -->
+		<!-- https://github.com/ros-perception/image_pipeline/issues/687 -->
+		<remap
+			from="/airsim_node/$(arg drone)/$(arg camera)/camera_info"
+			to="/airsim_node/$(arg drone)/$(arg camera)/$(arg camera_type)/camera_info" />
+		<remap
+			from="image_rect"
+			to="/airsim_node/$(arg drone)/$(arg camera)/$(arg camera_type)" />
+		<remap
+			from="points"
+			to="/camera/depth/points" />
+
+	</node>
+</launch>
