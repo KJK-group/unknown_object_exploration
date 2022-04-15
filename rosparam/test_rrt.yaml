@@ -1,0 +1,5 @@
+rrt:
+  max_iterations: 750
+  goal_bias: 0.5
+  max_dist_goal_tolerance: 2
+  step_size: 1.5

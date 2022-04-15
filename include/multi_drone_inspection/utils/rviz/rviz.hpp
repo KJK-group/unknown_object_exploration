@@ -168,7 +168,20 @@ struct sphere_msg_gen : public visualization_marker_msg_gen {
 
         return msg;
     }
+
+    auto operator()(const Eigen::Vector3f v, ros::Time timestamp = ros::Time::now(),
+                    ros::Duration lifetime = ros::Duration(0)) -> visualization_msgs::Marker {
+        // set_fields();
+        // msg.header.stamp = timestamp;
+        // msg.lifetime = lifetime;
+        auto pose = geometry_msgs::Pose();
+        pose.position.x = v.x();
+        pose.position.y = v.y();
+        pose.position.z = v.z();
+        return this->operator()(pose, timestamp, lifetime);
+    }
 };
+
 
 struct text_msg_gen : public visualization_marker_msg_gen {
     text_msg_gen(float text_height = 0.5f, const std::string& ns = "text") {
@@ -200,10 +213,6 @@ struct text_msg_gen : public visualization_marker_msg_gen {
         pose.position.y = v.y();
         pose.position.z = v.z();
         return this->operator()(text, pose, timestamp, lifetime);
-
-        // msg.pose = pose;
-
-        // return msg;
     }
 };
 

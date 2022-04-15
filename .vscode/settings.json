@@ -75,6 +75,7 @@
         "typeindex": "cpp",
         "typeinfo": "cpp",
         "bit": "cpp",
-        "forward_list": "cpp"
+        "forward_list": "cpp",
+        "*.ipp": "cpp"
     }
 }

@@ -44,6 +44,7 @@ auto compare_positions_based_on_depth(const Vector3f& p1, const Vector3f& p2, un
             return p1.z() < p2.z();
             break;
     };
+    return false;
 }
 
 auto kdtree3::insert(std::unique_ptr<Node>& node, const Vector3f& value, unsigned int depth)
