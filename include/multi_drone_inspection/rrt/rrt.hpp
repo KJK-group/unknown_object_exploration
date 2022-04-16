@@ -4,12 +4,17 @@
 #include <ros/ros.h>
 
 #include <algorithm>
+#include <chrono>
 #include <cstddef>
+#include <cstdlib>
 #include <eigen3/Eigen/Dense>
+#include <filesystem>
+#include <fstream>
 #include <functional>
 #include <iostream>
 #include <limits>
 #include <optional>
+#include <ratio>
 #include <string_view>
 #include <utility>
 #include <vector>
@@ -29,6 +34,37 @@ class RRT {
     static RRTBuilder builder();
 
     static auto from_rosparam(std::string_view prefix) -> RRT;
+
+    ~RRT() {
+        if (log_perf_measurements_enabled_) {
+            // std::filesystem::is_regular_file(file_path_csv_);
+            // const auto path = std::filesystem::current_path() / "perf.csv";
+            std::cerr << "[DEBUG] " << __FILE__ << ":" << __LINE__ << ": "
+                      << " path = " << file_path_csv_ << '\n';
+
+            auto file = std::ofstream(file_path_csv_);
+            if (file.is_open()) {
+                file << "t,nodes\n";
+                const auto microseconds_to_seconds = [](double microseconds) {
+                    return microseconds / 1e6;
+                };
+                for (std::size_t i = 0; i < timimg_measurements_.size(); ++i) {
+                    const auto& measurement = timimg_measurements_[i];
+                    file << i << ","
+                         << microseconds_to_seconds(static_cast<double>(measurement.count()))
+                         << '\n';
+                }
+                file.close();
+            }
+        }
+    }
+
+    auto enable_perf_logging(const std::filesystem::path& p) -> void {
+        log_perf_measurements_enabled_ = true;
+        file_path_csv_ = p;
+    }
+
+    auto disable_perf_logging() -> void { log_perf_measurements_enabled_ = false; }
 
     auto print_each_node() const -> void {
         for (const auto& n : nodes_) {
@@ -111,11 +147,9 @@ class RRT {
     }
 
     [[nodiscard]] auto get_number_of_nodes() const noexcept -> std::size_t { return nodes_.size(); }
-    [[nodiscard]] std::size_t remaining_iterations() const noexcept {
-        return remaining_iterations_;
-    }
-    [[nodiscard]] std::size_t max_iterations() const  { return max_iterations_; }
-    [[nodiscard]] float sampling_radius() const  { return sampling_radius_; }
+    [[nodiscard]] int remaining_iterations() const noexcept { return remaining_iterations_; }
+    [[nodiscard]] std::size_t max_iterations() const { return max_iterations_; }
+    [[nodiscard]] float sampling_radius() const { return sampling_radius_; }
     [[nodiscard]] auto start_position() const -> vec3 { return start_position_; }
     [[nodiscard]] auto goal_position() const -> vec3 { return goal_position_; }
 
@@ -167,7 +201,7 @@ class RRT {
     // };
 
     auto sample_random_point() -> vec3;
-    auto get_nearest_neighbor(const vec3& point) -> node*;
+    auto find_nearest_neighbor(const vec3& point) -> node*;
     auto bft_(const std::function<void(const vec3& pt, const vec3& parent_pt)>& f) const -> void;
     [[nodiscard]] auto grow_() -> bool;
 
@@ -185,7 +219,7 @@ class RRT {
      * try before giving up on finding a path to the goal.
      */
     std::size_t max_iterations_{};
-    std::size_t remaining_iterations_{};
+    int remaining_iterations_{};
 
     float max_dist_goal_tolerance_{};
     vec3 start_position_{};
@@ -219,6 +253,11 @@ class RRT {
 
     std::vector<vec3> waypoints_{};
     std::vector<node> nodes_{};
+
+    bool log_perf_measurements_enabled_ = false;
+    std::filesystem::path file_path_csv_;
+    using microseconds_t = std::chrono::duration<double, std::micro>;
+    std::vector<std::chrono::microseconds> timimg_measurements_{};
 };  // namespace mdi::rrt
 
 }  // namespace mdi::rrt

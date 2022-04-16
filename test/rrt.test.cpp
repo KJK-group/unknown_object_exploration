@@ -4,9 +4,11 @@
 
 #include <cassert>
 #include <chrono>
+#include <cstddef>
 #include <cstdlib>
 #include <eigen3/Eigen/Dense>
 #include <iostream>
+#include <optional>
 #include <thread>
 
 #include "multi_drone_inspection/rrt/rrt.hpp"
@@ -32,23 +34,37 @@ auto main(int argc, char* argv[]) -> int {
         ros::spinOnce();
     };
 
-    ROS_INFO("creating rrt");
-
     auto arrow_msg_gen = mdi::utils::rviz::arrow_msg_gen::builder()
                              .arrow_head_width(0.01f)
                              .arrow_length(0.1f)
                              .arrow_width(0.02f)
                              .color({0, 1, 0, 1})
                              .build();
-
+    ROS_INFO("creating rrt");
     auto rrt = mdi::rrt::RRT::from_rosparam("/rrt");
-    rrt.register_cb_for_event_on_new_node_created([&](const vec3& parent, const vec3& new_node) {
-        auto msg = arrow_msg_gen({parent, new_node});
-        publish(msg);
+    if (const auto opt = [=]() -> std::optional<std::filesystem::path> {
+            if (argc >= 2) {
+                return std::make_optional(std::filesystem::path(argv[1]));
+            }
+            return std::nullopt;
+        }()) {
+        const auto measurement_dir = opt.value();
+        const auto measurement_file = measurement_dir / "perf.csv";
+        rrt.enable_perf_logging(measurement_file);
+    }
+
+    std::size_t i = 0;
+    rrt.register_cb_for_event_on_new_node_created([&](const auto& p1, const auto& p2) {
+        std::cout << "iteration: " << i << '\n';
+        ++i;
     });
 
-    // const auto start = vec3{0, 0, 0};
-    // const auto goal = vec3{5, 5, 4};
+    // rrt.register_cb_for_event_on_new_node_created([&](const vec3& parent, const vec3&
+    // new_node) {
+    //     auto msg = arrow_msg_gen({parent, new_node});
+    //     publish(msg);
+    // });
+
     const auto start = rrt.start_position();
     const auto goal = rrt.goal_position();
 
@@ -74,7 +90,7 @@ auto main(int argc, char* argv[]) -> int {
     auto sphere_tolerance_msg = sphere_msg_gen(goal);
     const auto goal_tolerance = [&]() {
         float goal_tolerance = 1.0f;
-        if (!nh.getParam("/rrt/max_dist_goal_tolerance", goal_tolerance)) {
+        if (! nh.getParam("/rrt/max_dist_goal_tolerance", goal_tolerance)) {
             std::exit(EXIT_FAILURE);
         }
         return goal_tolerance;
@@ -187,19 +203,19 @@ auto main(int argc, char* argv[]) -> int {
         std::cout << "[DEBUG] " << __FILE__ << ":" << __LINE__ << " "
                   << " found a solution" << '\n';
 
-        arrow_msg_gen.color.r = 1.0f;
-        arrow_msg_gen.color.g = 0.0f;
-        int i = 1;
-        arrow_msg_gen.scale.x = 0.1f;
-        arrow_msg_gen.scale.y = 0.1f;
-        arrow_msg_gen.scale.z = 0.1f;
-        while (ros::ok() && i < path.size()) {
-            auto& p1 = path[i - 1];
-            auto& p2 = path[i];
-            auto arrow = arrow_msg_gen({p1, p2});
-            publish(arrow);
-            ++i;
-        }
+        // arrow_msg_gen.color.r = 1.0f;
+        // arrow_msg_gen.color.g = 0.0f;
+        // int i = 1;
+        // arrow_msg_gen.scale.x = 0.1f;
+        // arrow_msg_gen.scale.y = 0.1f;
+        // arrow_msg_gen.scale.z = 0.1f;
+        // while (ros::ok() && i < path.size()) {
+        // 	auto& p1 = path[i - 1];
+        // 	auto& p2 = path[i];
+        // 	auto arrow = arrow_msg_gen({p1, p2});
+        // 	publish(arrow);
+        // 	++i;
+        // }
     }
 
     // auto i = std::size_t{0};

@@ -145,8 +145,10 @@ endfunction(add_ros_executable)
 add_ros_executable(test_rrt test/rrt.test.cpp)
 target_sources(test_rrt PUBLIC src/rrt/rrt.cpp)
 
-# target_link_libraries(test_rrt PRIVATE )
-target_compile_options(test_rrt PRIVATE -g -O0 -Wall -Wextra -Wpedantic)
+# target_link_libraries(test_rrt PRIVATE ) target_compile_options(test_rrt
+# PRIVATE -g -O0 -Wall -Wextra -Wpedantic)
+target_compile_options(test_rrt PRIVATE -O2 -Wall -Wextra -Wpedantic)
+# target_compile_options(test_rrt PRIVATE -g -O0 -Wall -Wextra -Wpedantic)
 
 # target_sources(visualize_kdtree PUBLIC src/kdtree3/kdtree3.cpp)
 # target_compile_options(visualize_kdtree PRIVATE -g)

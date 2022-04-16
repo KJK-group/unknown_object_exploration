@@ -88,7 +88,8 @@ RRT::RRT(const vec3& start_position, const vec3& goal_position, float step_size,
 
     max_iterations_ = max_iterations;
     remaining_iterations_ = max_iterations;
-    nodes_.reserve(max_iterations);
+    // DO NOT CHANGE THIS, IF A CONSTANT IS NOT ADDED THEN A DOUBLE FREE HAPPENS
+    nodes_.reserve(max_iterations + 10);
 
     if (max_dist_goal_tolerance < 0.f) {
         auto err_msg = "max_dist_goal_tolerance must be greater than 0.f";
@@ -96,15 +97,15 @@ RRT::RRT(const vec3& start_position, const vec3& goal_position, float step_size,
     }
     max_dist_goal_tolerance_ = max_dist_goal_tolerance;
 
-    if (!(0 <= goal_bias && goal_bias <= 1.f)) {
+    if (! (0 <= goal_bias && goal_bias <= 1.f)) {
         auto err_msg =
             "goal_bias must be in the range [0., 1.] but was " + std::to_string(goal_bias);
         throw std::invalid_argument(err_msg);
     }
     goal_bias_ = goal_bias;
 
-    if (!(0 <= probability_of_testing_full_path_from_new_node_to_goal &&
-          probability_of_testing_full_path_from_new_node_to_goal <= 1.f)) {
+    if (! (0 <= probability_of_testing_full_path_from_new_node_to_goal &&
+           probability_of_testing_full_path_from_new_node_to_goal <= 1.f)) {
         auto err_msg =
             "probability_of_testing_full_path_from_new_node_to_goal must be in the range "
             "[0., 1.] but was " +
@@ -122,7 +123,7 @@ auto RRT::sample_random_point() -> vec3 {
     return sampling_radius_ * random_pt + start_position_;
 }
 
-auto RRT::get_nearest_neighbor(const vec3& point) -> RRT::node* {
+auto RRT::find_nearest_neighbor(const vec3& point) -> RRT::node* {
     std::size_t index{0};
     auto shortest_distance = std::numeric_limits<double>::max();
     for (std::size_t i = 0; i < nodes_.size(); ++i) {
@@ -138,7 +139,7 @@ auto RRT::get_nearest_neighbor(const vec3& point) -> RRT::node* {
 auto RRT::bft_(const std::function<void(const vec3& pt, const vec3& parent_pt)>& f) const -> void {
     auto queue = std::queue<const node*>{};
     queue.push(&nodes_[0]);
-    while (!queue.empty()) {
+    while (! queue.empty()) {
         auto n = queue.front();
         queue.pop();
         // todo
@@ -160,20 +161,21 @@ auto RRT::bft_(const std::function<void(const vec3& pt, const vec3& parent_pt)>&
 }
 
 auto RRT::grow_() -> bool {
-    if (!(remaining_iterations_ > 0)) {
+    if (! (remaining_iterations_ > 0)) {
         return false;
     }
 
-    const auto t_start = std::chrono::system_clock::now();
+    const auto t_start = std::chrono::high_resolution_clock::now();
+
     const auto random_pt = sample_random_point();
-    auto nearest_neighbor = get_nearest_neighbor(random_pt);
+    auto nearest_neighbor = find_nearest_neighbor(random_pt);
 
     // this horrow is needed to avoid a race condition with Eigen that
     // causes the vector to be overwritten with garbage value.
-    auto [x, y, z] = [=, &nearest_neighbor]() {
-        auto& pt = nearest_neighbor->position_;
-        auto d = (random_pt - pt).normalized();
-        auto new_pt = pt + d * step_size_;
+    const auto [x, y, z] = [=, &nearest_neighbor]() {
+        const auto& pt = nearest_neighbor->position_;
+        const auto direction = (random_pt - pt).normalized();
+        const auto new_pt = pt + direction * step_size_;
         return std::make_tuple(new_pt.x(), new_pt.y(), new_pt.z());
     }();
 
@@ -181,13 +183,19 @@ auto RRT::grow_() -> bool {
     v << x, y, z;
 
     // TODO: use voxblox to check for valid raycast
+    const auto line_between_random_point_and_its_nearest_neighbor_is_free_space = true;
+    if (! line_between_random_point_and_its_nearest_neighbor_is_free_space) {
+        return false;
+    }
 
     // add new node to tree, and update pointers.
     nodes_.emplace_back(v, nearest_neighbor);
     auto& new_node = nodes_.back();
     nearest_neighbor->children.push_back(&new_node);
-    const auto t_end = std::chrono::system_clock::now();
-    const auto duration std::chrono::cast<std::chrono::microseconds>(t_end - t_start);
+
+    const auto t_end = std::chrono::high_resolution_clock::now();
+    const auto duration = std::chrono::duration_cast<std::chrono::microseconds>(t_end - t_start);
+    timimg_measurements_.push_back(duration);
 
     call_cbs_for_event_on_new_node_created(nearest_neighbor->position_, new_node.position_);
 
@@ -197,13 +205,17 @@ auto RRT::grow_() -> bool {
         (new_node.position_ - goal_position_).norm() <= max_dist_goal_tolerance_;
 
     if (reached_goal) {
+        // a path has been found from the start coordinate to the goal coordinate,
+        // so we need to backtrack to the start coordinate, to get the path as
+        // a list of coordinates.
         call_cbs_for_event_on_goal_reached(new_node.position_);
 
-        // backtrack to get waypoints
-        node* ptr = &new_node;
-        if (!waypoints_.empty()) {
+        // clear any previous waypoints found.
+        if (! waypoints_.empty()) {
             waypoints_.clear();
         }
+        // backtrack to get waypoints
+        node* ptr = &new_node;
         do {
             waypoints_.push_back(ptr->position_);
             ptr = ptr->parent;
@@ -211,6 +223,38 @@ auto RRT::grow_() -> bool {
 
         return true;
     }
+
+    // test direct path to goal
+    const auto test_full_edge_from_new_point_to_goal =
+        probability_of_testing_full_path_from_new_node_to_goal_ > rng_.random01();
+    call_cbs_for_event_on_trying_full_path();
+    if (test_full_edge_from_new_point_to_goal) {
+        const auto edge = (goal_position_ - new_node.position_);
+        // TODO: do raycast
+        const auto edge_is_valid = true;
+        if (edge_is_valid) {
+            // add new node to tree, and update pointers.
+            nodes_.emplace_back(goal_position_, &new_node);
+            // got this far
+            auto& new_node = nodes_.back();
+            nearest_neighbor->children.push_back(&new_node);
+
+            // TODO: refactor to make DRY
+            // clear any previous waypoints found.
+            if (! waypoints_.empty()) {
+                waypoints_.clear();
+            }
+            // backtrack to get waypoints
+            node* ptr = &new_node;
+            do {
+                waypoints_.push_back(ptr->position_);
+                ptr = ptr->parent;
+            } while (ptr != nullptr);
+
+            return true;
+        }
+    }
+
     return false;
 }
 
