@@ -33,3 +33,5 @@ CheckOptions:
     value: llvm
   - key: modernize-use-nullptr.NullMacros
     value: "NULL"
+  - key: modernize-concat-nested-namespaces
+    value: "1"

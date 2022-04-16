@@ -1,14 +1,10 @@
 <?xml version="1.0"?>
 <launch>
-	<arg name="debug" type="string" default="false"/>
-
-
 	<arg name="node" value="test_rrt"/>
 	<arg name="package" value="multi_drone_inspection"/>
 	<node pkg="rviz" type="rviz" name="rviz" args="-d $(dirname)/../rviz/$(arg node).rviz"/>
 	<rosparam command="load" file="$(dirname)/../rosparam/$(arg node).yaml"/>
 
 
-	<node pkg="$(arg package)" type="$(arg node)" name="$(arg node)" output="screen"/>
-	<!-- launch-prefix="kitty lldb"/> -->
+	<node pkg="$(arg package)" type="$(arg node)" name="$(arg node)" output="screen" launch-prefix="kitty lldb"/>
 </launch>

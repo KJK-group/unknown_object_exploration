@@ -30,11 +30,27 @@ auto main(int argc, char* argv[]) -> int {
         pub_visualize_rrt.publish(msg);
         publish_rate.sleep();
         ros::spinOnce();
-        // ROS_INFO("publishing marker");
     };
 
-    const auto start = vec3{0, 0, 0};
-    const auto goal = vec3{5, 5, 4};
+    ROS_INFO("creating rrt");
+
+    auto arrow_msg_gen = mdi::utils::rviz::arrow_msg_gen::builder()
+                             .arrow_head_width(0.01f)
+                             .arrow_length(0.1f)
+                             .arrow_width(0.02f)
+                             .color({0, 1, 0, 1})
+                             .build();
+
+    auto rrt = mdi::rrt::RRT::from_rosparam("/rrt");
+    rrt.register_cb_for_event_on_new_node_created([&](const vec3& parent, const vec3& new_node) {
+        auto msg = arrow_msg_gen({parent, new_node});
+        publish(msg);
+    });
+
+    // const auto start = vec3{0, 0, 0};
+    // const auto goal = vec3{5, 5, 4};
+    const auto start = rrt.start_position();
+    const auto goal = rrt.goal_position();
 
     const auto text_size = 0.8f;
     auto text_msg_gen = mdi::utils::rviz::text_msg_gen{text_size};
@@ -53,13 +69,6 @@ auto main(int argc, char* argv[]) -> int {
             return msg;
         }());
     }
-
-    auto arrow_msg_gen = mdi::utils::rviz::arrow_msg_gen::builder()
-                             .arrow_head_width(0.01f)
-                             .arrow_length(0.1f)
-                             .arrow_width(0.02f)
-                             .color({0, 1, 0, 1})
-                             .build();
 
     auto sphere_msg_gen = mdi::utils::rviz::sphere_msg_gen{};
     auto sphere_tolerance_msg = sphere_msg_gen(goal);
@@ -85,46 +94,45 @@ auto main(int argc, char* argv[]) -> int {
         }());
     }
 
-    ROS_INFO("creating rrt");
-    auto rrt = mdi::rrt::RRT::builder()
-                   .start_and_goal_position(start, goal)
-                   .max_iterations([&]() {
-                       int max_iterations = 500;
-                       if (!nh.getParam("/rrt/max_iterations", max_iterations)) {
-                           std::exit(EXIT_FAILURE);
-                       }
-                       return max_iterations;
-                   }())
-                   .goal_bias([&]() {
-                       float goal_bias;
-                       if (!nh.getParam("/rrt/goal_bias", goal_bias)) {
-                           std::exit(EXIT_FAILURE);
-                       }
-                       return goal_bias;
-                   }())
-                   .probability_of_testing_full_path_from_new_node_to_goal(0.0f)
-                   .max_dist_goal_tolerance(goal_tolerance)
-                   .step_size([&]() {
-                       int step_size = 1.5;
-                       if (!nh.getParam("/rrt/step_size", step_size)) {
-                           std::exit(EXIT_FAILURE);
-                       }
-                       return step_size;
-                   }())
-                   .on_new_node_created(
-                       [&arrow_msg_gen, &publish](const vec3& parent, const vec3& new_node) {
-                           //    ROS_INFO_STREAM("new_node at " << new_node);
-                           auto msg = arrow_msg_gen({parent, new_node});
-                           publish(msg);
-                       })
-                   .on_goal_reached([](const vec3& goal, std::size_t iterations) {
-                       std::cout << "found goal " << goal << " in " << iterations << '\n';
-                   })
-                   .on_trying_full_path([](const vec3& new_node, const vec3& goal) {
-                       std::cout << "trying full path " << '\n';
-                   })
-                   .on_clearing_nodes_in_tree([]() { std::cout << "clearing nodes" << '\n'; })
-                   .build();
+    // auto rrt = mdi::rrt::RRT::builder()
+    //                .start_and_goal_position(start, goal)
+    //                .max_iterations([&]() {
+    //                    int max_iterations = 500;
+    //                    if (!nh.getParam("/rrt/max_iterations", max_iterations)) {
+    //                        std::exit(EXIT_FAILURE);
+    //                    }
+    //                    return max_iterations;
+    //                }())
+    //                .goal_bias([&]() {
+    //                    float goal_bias;
+    //                    if (!nh.getParam("/rrt/goal_bias", goal_bias)) {
+    //                        std::exit(EXIT_FAILURE);
+    //                    }
+    //                    return goal_bias;
+    //                }())
+    //                .probability_of_testing_full_path_from_new_node_to_goal(0.0f)
+    //                .max_dist_goal_tolerance(goal_tolerance)
+    //                .step_size([&]() {
+    //                    int step_size = 1.5;
+    //                    if (!nh.getParam("/rrt/step_size", step_size)) {
+    //                        std::exit(EXIT_FAILURE);
+    //                    }
+    //                    return step_size;
+    //                }())
+    //                .on_new_node_created(
+    //                    [&arrow_msg_gen, &publish](const vec3& parent, const vec3& new_node) {
+    //                        //    ROS_INFO_STREAM("new_node at " << new_node);
+    //                        auto msg = arrow_msg_gen({parent, new_node});
+    //                        publish(msg);
+    //                    })
+    //                .on_goal_reached([](const vec3& goal, std::size_t iterations) {
+    //                    std::cout << "found goal " << goal << " in " << iterations << '\n';
+    //                })
+    //                .on_trying_full_path([](const vec3& new_node, const vec3& goal) {
+    //                    std::cout << "trying full path " << '\n';
+    //                })
+    //                .on_clearing_nodes_in_tree([]() { std::cout << "clearing nodes" << '\n'; })
+    //                .build();
 
     std::cout << rrt << std::endl;
 

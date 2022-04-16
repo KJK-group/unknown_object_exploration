@@ -1,6 +1,8 @@
 #ifndef _MULTI_DRONE_INSPECTION_RRT_HPP_
 #define _MULTI_DRONE_INSPECTION_RRT_HPP_
 
+#include <ros/ros.h>
+
 #include <algorithm>
 #include <cstddef>
 #include <eigen3/Eigen/Dense>
@@ -8,6 +10,7 @@
 #include <iostream>
 #include <limits>
 #include <optional>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -25,6 +28,8 @@ class RRT {
     friend class RRTBuilder;
     static RRTBuilder builder();
 
+    static auto from_rosparam(std::string_view prefix) -> RRT;
+
     auto print_each_node() const -> void {
         for (const auto& n : nodes_) {
             std::cout << n << '\n';
@@ -32,13 +37,8 @@ class RRT {
     }
 
     auto print_number_of_root_nodes() -> void {
-        int count = 0;
-        for (int i = 0; i < nodes_.size(); ++i) {
-            if (nodes_[i].is_root()) {
-                std::cout << "i" << '\n';
-                ++count;
-            }
-        }
+        const auto is_root = [](const node& n) { return n.is_root(); };
+        const auto count = std::count_if(nodes_.cbegin(), nodes_.cend(), is_root);
         std::cout << "number of root nodes" << count << '\n';
     }
 
@@ -47,11 +47,14 @@ class RRT {
     auto run() -> std::optional<std::vector<vec3>>;
     auto growN(int n) -> bool;                 // grow the tree n nodes.
     auto grow1() -> bool { return growN(1); }  // grow the tree one node.
-    auto clear() -> bool {
+                                               /**
+                                                * @brief // deallocate all nodes in the tree.
+                                                */
+    auto clear() -> void {
         nodes_.clear();
         call_cbs_for_event_on_clearing_nodes_in_tree();
-    }  // deallocate all nodes in the tree.
-    auto get_root_node() const -> vec3 { return start_position_; }
+    }
+
     [[nodiscard]] auto size() const -> std::size_t { return nodes_.size(); };
     auto get_waypoints() -> std::optional<std::vector<vec3>> {
         if (waypoints_.empty()) {
@@ -72,9 +75,26 @@ class RRT {
 
     auto fully_connected() const -> bool { return connectivity() == size(); }
 
+    auto register_cb_for_event_on_new_node_created(std::function<void(const vec3&, const vec3&)> cb)
+        -> void {
+        on_new_node_created_cb_list.push_back(cb);
+    }
+    auto register_cb_for_event_on_goal_reached(std::function<void(const vec3&, size_t)> cb)
+        -> void {
+        on_goal_reached_cb_list.push_back(cb);
+    }
+    auto register_cb_for_event_on_trying_full_path(std::function<void(const vec3&, const vec3&)> cb)
+        -> void {
+        on_trying_full_path_cb_list.push_back(cb);
+    }
+    auto register_cb_for_event_on_clearing_nodes_in_tree(std::function<void()> cb) -> void {
+        on_clearing_nodes_in_tree_cb_list.push_back(cb);
+    }
+
     auto unregister_cbs_for_event_on_new_node_created() -> void {
         on_new_node_created_cb_list.clear();
     }
+
     auto unregister_cbs_for_event_on_trying_full_path() -> void {
         on_trying_full_path_cb_list.clear();
     }
@@ -90,45 +110,61 @@ class RRT {
         unregister_cbs_for_event_on_clearing_nodes_in_tree();
     }
 
-    [[nodiscard]] auto get_number_of_nodes() const -> std::size_t { return nodes_.size(); }
-    [[nodiscard]] std::size_t remaining_iterations() const { return remaining_iterations_; }
-    [[nodiscard]] std::size_t max_iterations() const { return max_iterations_; }
-    [[nodiscard]] float sampling_radius() const { return sampling_radius_; }
+    [[nodiscard]] auto get_number_of_nodes() const noexcept -> std::size_t { return nodes_.size(); }
+    [[nodiscard]] std::size_t remaining_iterations() const noexcept {
+        return remaining_iterations_;
+    }
+    [[nodiscard]] std::size_t max_iterations() const  { return max_iterations_; }
+    [[nodiscard]] float sampling_radius() const  { return sampling_radius_; }
+    [[nodiscard]] auto start_position() const -> vec3 { return start_position_; }
+    [[nodiscard]] auto goal_position() const -> vec3 { return goal_position_; }
 
    private:
     RRT() = default;
+    RRT(const vec3& start_position, const vec3& goal_position, float step_size, float goal_bias,
+        std::size_t max_iterations, float max_dist_goal_tolerance,
+        float probability_of_testing_full_path_from_new_node_to_goal);
 
     struct node {
-        // node(vec3 pos, std::size_t parent_idx_ = 0)
+       public:
         node(vec3 pos, node* parent_ = nullptr)
-            // : position(std::move(pos)), parent_idx{parent_idx_}, children_indices{} {}
-            : position(std::move(pos)), parent(parent_), children{} {}
-        vec3 position;
-        node* parent;
-        // std::size_t parent_idx = 0;
-        // std::vector<std::size_t> children_indices{};
+            : parent(parent_), children{}, position_(std::move(pos)) {}
 
-        // std::reference_wrapper implies a non-owning reference, better than bare pointer.
+        node* parent = nullptr;
         std::vector<node*> children{};
+        vec3 position_{};
+
         [[nodiscard]] auto is_leaf() const -> bool { return children.empty(); }
-        // [[nodiscard]] auto is_leaf() const -> bool { return children_indices.empty(); }
         [[nodiscard]] auto is_root() const -> bool { return parent == nullptr; }
-        // [[nodiscard]] auto is_root() const -> bool {
-        // return parent_idx == std::numeric_limits<std::size_t>::max();
-        // }
         [[nodiscard]] auto get_number_of_children() const -> std::size_t { return children.size(); }
         friend std::ostream& operator<<(std::ostream& os, const node& n) {
             os << "RRT::node:\n";
             os << "  root: " << (n.is_root() ? "true" : "false") << '\n';
             os << "  leaf: " << (n.is_leaf() ? "true" : "false") << '\n';
             os << "  position:\n";
-            os << "    x: " << n.position.x() << '\n';
-            os << "    y: " << n.position.y() << '\n';
-            os << "    z: " << n.position.z() << '\n';
+            os << "    x: " << n.position_.x() << '\n';
+            os << "    y: " << n.position_.y() << '\n';
+            os << "    z: " << n.position_.z() << '\n';
             os << "  number_of_children: " << n.get_number_of_children() << '\n';
             return os;
         }
     };
+
+    using kdtree3 = kdtree::kdtree<float, 3>;
+    kdtree3* kdtree3_;
+
+    // todo: merge kdtree and list with by using the address of a leaf in kdtree,
+    // as the parent of the "root" node in the linear list.
+    // class backing_collection {
+    //    public:
+    //     backing_collection() = default;
+    //     // virtual ~backing_collection() {}
+    // 	insert
+
+    //    private:
+    //     std::vector<node> nodes_{};
+    //     std::vector<kdtree3> kdtrees_{};
+    // };
 
     auto sample_random_point() -> vec3;
     auto get_nearest_neighbor(const vec3& point) -> node*;
@@ -163,18 +199,19 @@ class RRT {
      */
     // TODO: implement
     // VoxelGrid voxelgrid_;
-    using kdtree3 = kdtree::kdtree<float, 3>;
-    kdtree3* kdtree3_;
 
     mdi::utils::random::random_point_generator rng_{0.0, 1.0};
 
     template <typename... Ts>
     using action = std::function<void(Ts...)>;
+    // template <typename... Ts>
+    // using callbacks = std::vector<action>;
 
     auto call_cbs_for_event_on_new_node_created(const vec3&, const vec3&) const -> void;
     auto call_cbs_for_event_on_goal_reached(const vec3&) const -> void;
     auto call_cbs_for_event_on_trying_full_path() const -> void;
     auto call_cbs_for_event_on_clearing_nodes_in_tree() const -> void;
+
     std::vector<std::function<void(const vec3&, const vec3&)>> on_new_node_created_cb_list{};
     std::vector<std::function<void(const vec3&, size_t)>> on_goal_reached_cb_list{};
     std::vector<std::function<void(const vec3&, const vec3&)>> on_trying_full_path_cb_list{};

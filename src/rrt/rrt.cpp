@@ -1,17 +1,26 @@
 #include "multi_drone_inspection/rrt/rrt.hpp"
 
+#include <fmt/core.h>
+
 #include <algorithm>
+#include <chrono>
+#include <filesystem>
+#include <fstream>
 #include <functional>
 #include <iostream>
 #include <numeric>
 #include <queue>
 #include <sstream>
 #include <tuple>
+#include <utility>
+#include <vector>
 
 #include "Eigen/src/Core/Matrix.h"
 #include "multi_drone_inspection/rrt/rrt_builder.hpp"
 #include "multi_drone_inspection/utils/eigen.hpp"
 #include "multi_drone_inspection/utils/random.hpp"
+#include "multi_drone_inspection/utils/rosparam.hpp"
+#include "ros/param.h"
 
 namespace mdi::rrt {
 
@@ -23,35 +32,6 @@ auto RRT::run() -> std::optional<std::vector<vec3>> {
             return waypoints_;
         }
     }
-    // for (std::size_t i = 0; i < max_iterations_; ++i) {
-    // test full path
-
-    // if (const auto random_probability = mdi::utils::random::random01();
-    //     probability_of_testing_full_path_from_new_node_to_goal_ > random_probability) {
-    //     const auto vector_from_new_node_to_goal = goal_position_ - new_node.position;
-    //     std::for_each(on_trying_full_path_cb_list.begin(), on_trying_full_path_cb_list.end(),
-    //                   [&](const auto& cb) { cb(new_node.position, goal_position_); });
-    //     // TODO: use voxblox to check for valid raycast
-    //     const auto direction_is_collision_free = true;
-
-    //     if (direction_is_collision_free) {
-    //         nodes_.emplace_back(node{goal_position_, &new_node});
-    //         // auto& new_node = nodes_.back();
-    //         // auto new_node = node{random_pt, &nearest_neighbor};
-    //         nearest_neighbor.children.push_back(&nodes_.back());
-    //         std::for_each(on_goal_reached_cb_list.begin(), on_goal_reached_cb_list.end(),
-    //                       [&](const auto& cb) { cb(new_node.position, nodes_.size()); });
-    //         // we did it reddit
-    //         node* ptr = &nodes_.back();
-    //         // auto solution_waypoint_path = std::vector<vec3>();
-    //         while (ptr->parent != nullptr) {
-    //             waypoints_.push_back(ptr->position);
-    //             ptr = ptr->parent;
-    //         }
-    //         return waypoints_;
-    //     }
-    // }
-    // }
 
     return std::nullopt;
 }
@@ -74,7 +54,7 @@ auto RRT::get_frontier_nodes() const -> std::vector<vec3> {
     auto frontier_nodes = std::vector<vec3>{};
     for (const auto& n : nodes_) {
         if (n.is_leaf()) {
-            frontier_nodes.push_back(n.position);
+            frontier_nodes.push_back(n.position_);
         }
     }
     return frontier_nodes;
@@ -88,17 +68,57 @@ auto RRT::bft(const std::function<void(const vec3& pt, const vec3& parent_pt)>& 
     bft_([&](const vec3& pt, const vec3& parent_pt) { f(pt, parent_pt); });
 }
 
+RRT::RRT(const vec3& start_position, const vec3& goal_position, float step_size, float goal_bias,
+         std::size_t max_iterations, float max_dist_goal_tolerance,
+         float probability_of_testing_full_path_from_new_node_to_goal) {
+    {
+        start_position_ = start_position;
+        goal_position_ = goal_position;
+        const auto direction = goal_position - start_position;
+        direction_from_start_to_goal_ = direction;
+        sampling_radius_ = direction.norm() * 2;
+        nodes_.emplace_back(start_position);
+    }
+
+    if (step_size < 0.f) {
+        auto err_msg = "step_size must be greater than 0.f";
+        throw std::invalid_argument(err_msg);
+    }
+    step_size_ = step_size;
+
+    max_iterations_ = max_iterations;
+    remaining_iterations_ = max_iterations;
+    nodes_.reserve(max_iterations);
+
+    if (max_dist_goal_tolerance < 0.f) {
+        auto err_msg = "max_dist_goal_tolerance must be greater than 0.f";
+        throw std::invalid_argument(err_msg);
+    }
+    max_dist_goal_tolerance_ = max_dist_goal_tolerance;
+
+    if (!(0 <= goal_bias && goal_bias <= 1.f)) {
+        auto err_msg =
+            "goal_bias must be in the range [0., 1.] but was " + std::to_string(goal_bias);
+        throw std::invalid_argument(err_msg);
+    }
+    goal_bias_ = goal_bias;
+
+    if (!(0 <= probability_of_testing_full_path_from_new_node_to_goal &&
+          probability_of_testing_full_path_from_new_node_to_goal <= 1.f)) {
+        auto err_msg =
+            "probability_of_testing_full_path_from_new_node_to_goal must be in the range "
+            "[0., 1.] but was " +
+            std::to_string(probability_of_testing_full_path_from_new_node_to_goal);
+        throw std::invalid_argument(err_msg);
+    }
+
+    probability_of_testing_full_path_from_new_node_to_goal_ =
+        probability_of_testing_full_path_from_new_node_to_goal;
+}
+
 auto RRT::sample_random_point() -> vec3 {
     auto random_pt =
         rng_.sample_random_point_inside_unit_sphere(direction_from_start_to_goal_, goal_bias_);
-
-    // std::cout << "[DEBUG] " << __FILE__ << ":" << __LINE__ << ": "
-    //           << " random_pt" << random_pt << '\n';
-    // std::cout << "[DEBUG] " << __FILE__ << ":" << __LINE__ << ": "
-    //           << " sampling_radius_" << sampling_radius_ << '\n';
-    // std::cout << "[DEBUG] " << __FILE__ << ":" << __LINE__ << ": "
-    //           << " start_position_" << start_position_ << '\n';
-
     return sampling_radius_ * random_pt + start_position_;
 }
 
@@ -106,7 +126,7 @@ auto RRT::get_nearest_neighbor(const vec3& point) -> RRT::node* {
     std::size_t index{0};
     auto shortest_distance = std::numeric_limits<double>::max();
     for (std::size_t i = 0; i < nodes_.size(); ++i) {
-        auto distance = (nodes_[i].position - point).norm();
+        auto distance = (nodes_[i].position_ - point).norm();
         if (distance < shortest_distance) {
             shortest_distance = distance;
             index = i;
@@ -127,7 +147,7 @@ auto RRT::bft_(const std::function<void(const vec3& pt, const vec3& parent_pt)>&
         // }
 
         // special case is the root node.
-        f(n->position, (n->parent == nullptr ? n->position : n->parent->position));
+        f(n->position_, (n->parent == nullptr ? n->position_ : n->parent->position_));
 
         if (n->is_leaf()) {
             continue;
@@ -144,76 +164,51 @@ auto RRT::grow_() -> bool {
         return false;
     }
 
+    const auto t_start = std::chrono::system_clock::now();
     const auto random_pt = sample_random_point();
     auto nearest_neighbor = get_nearest_neighbor(random_pt);
 
-    // TODO: use voxblox to check for valid raycast
+    // this horrow is needed to avoid a race condition with Eigen that
+    // causes the vector to be overwritten with garbage value.
     auto [x, y, z] = [=, &nearest_neighbor]() {
-        auto& pt = nearest_neighbor->position;
-        // std::cout << "[DEBUG] " << __FILE__ << ":" << __LINE__ << ": "
-        //   << " nearest_neighbor->position " << nearest_neighbor->position << '\n';
-
+        auto& pt = nearest_neighbor->position_;
         auto d = (random_pt - pt).normalized();
-        // std::cout << "[DEBUG] " << __FILE__ << ":" << __LINE__ << ": "
-        //   << " normalized distance " << d << '\n';
-
         auto new_pt = pt + d * step_size_;
-        // std::cout << "[DEBUG] " << __FILE__ << ":" << __LINE__ << ": "
-        //   << " HOW " << new_pt << '\n';
-
         return std::make_tuple(new_pt.x(), new_pt.y(), new_pt.z());
-
-        // return new_pt;
     }();
-
-    // std::cout << "[DEBUG] " << __FILE__ << ":" << __LINE__ << ": "
-    //   << " .x()" << new_pt.x() << '\n';
-
-    // std::cout << "[DEBUG] " << __FILE__ << ":" << __LINE__ << ": "
-    //   << " FUCCCCCC" << new_pt << '\n';
-
-    // new_pt.normalize();
-
-    // auto new_pt2 = new_pt.normalized();
-
-    // std::cout << "[DEBUG] " << __FILE__ << ":" << __LINE__ << ": "
-    //   << " new point " << new_pt << '\n';
-
-    // std::cout << "[DEBUG] " << __FILE__ << ":" << __LINE__ << ": "
-    //   << " x " << x << " y " << y << " z " << z << '\n';
 
     Eigen::Vector3f v;
     v << x, y, z;
 
+    // TODO: use voxblox to check for valid raycast
+
+    // add new node to tree, and update pointers.
     nodes_.emplace_back(v, nearest_neighbor);
     auto& new_node = nodes_.back();
     nearest_neighbor->children.push_back(&new_node);
-    call_cbs_for_event_on_new_node_created(nearest_neighbor->position, new_node.position);
+    const auto t_end = std::chrono::system_clock::now();
+    const auto duration std::chrono::cast<std::chrono::microseconds>(t_end - t_start);
+
+    call_cbs_for_event_on_new_node_created(nearest_neighbor->position_, new_node.position_);
 
     --remaining_iterations_;
 
     const auto reached_goal =
-        (new_node.position - goal_position_).norm() <= max_dist_goal_tolerance_;
+        (new_node.position_ - goal_position_).norm() <= max_dist_goal_tolerance_;
 
     if (reached_goal) {
-        call_cbs_for_event_on_goal_reached(new_node.position);
+        call_cbs_for_event_on_goal_reached(new_node.position_);
 
-        // we did it reddit
+        // backtrack to get waypoints
         node* ptr = &new_node;
         if (!waypoints_.empty()) {
             waypoints_.clear();
         }
         do {
-            waypoints_.push_back(ptr->position);
+            waypoints_.push_back(ptr->position_);
             ptr = ptr->parent;
         } while (ptr != nullptr);
-        // } while (ptr->parent != nullptr);
 
-        // while (ptr->parent != nullptr) {
-        //     waypoints_.push_back(ptr->position);
-        //     std::cout << *ptr << std::endl;
-        //     ptr = ptr->parent;
-        // }
         return true;
     }
     return false;
@@ -236,6 +231,57 @@ auto RRT::call_cbs_for_event_on_clearing_nodes_in_tree() const -> void {
 }
 
 auto RRT::builder() -> RRTBuilder { return RRTBuilder(); }
+
+auto RRT::from_rosparam(std::string_view prefix) -> RRT {
+    const auto prepend_prefix = [&](std::string_view key) {
+        return fmt::format("{}/{}", prefix, key);
+    };
+
+    const auto get_int = [&](std::string_view key) {
+        auto default_value = int{};
+        if (ros::param::get(prepend_prefix(key), default_value)) {
+            return default_value;
+        }
+
+        const auto error_msg = fmt::format("key {} does not exist in the parameter server.", key);
+        throw std::invalid_argument(error_msg);
+    };
+
+    const auto get_float = [&](std::string_view key) {
+        auto default_value = float{};
+
+        if (ros::param::get(prepend_prefix(key), default_value)) {
+            return default_value;
+        }
+
+        const auto error_msg = fmt::format("key {} does not exist in the parameter server.", key);
+        throw std::invalid_argument(error_msg);
+    };
+
+    const auto get_vec3 = [&](std::string_view key) {
+        auto default_value = std::vector<float>{};
+        std::cerr << "[DEBUG] " << __FILE__ << ":" << __LINE__ << ": "
+                  << " key " << prepend_prefix(key) << '\n';
+        if (ros::param::get(prepend_prefix(key), default_value)) {
+            assert(default_value.size() == 3);
+            const auto x = default_value[0];
+            const auto y = default_value[1];
+            const auto z = default_value[2];
+            return vec3{x, y, z};
+        }
+
+        const auto error_msg = fmt::format("key {} does not exist in the parameter server.", key);
+        throw std::invalid_argument(error_msg);
+    };
+
+    return {get_vec3("start_position"),
+            get_vec3("goal_position"),
+            get_float("step_size"),
+            get_float("goal_bias"),
+            static_cast<size_t>(get_int("max_iterations")),
+            get_float("max_dist_goal_tolerance"),
+            get_float("probability_of_testing_full_path_from_new_node_to_goal")};
+}  // namespace mdi::rrt
 
 std::ostream& operator<<(std::ostream& os, const RRT& rrt) {
     os << "RRT:\n";

@@ -1,5 +1,15 @@
 rrt:
+  start_position:
+    - 3
+    - -2
+    - 0
+  goal_position:
+    - 5
+    - 12
+    - 3
+
   max_iterations: 750
-  goal_bias: 0.5
+  goal_bias: 0.7
   max_dist_goal_tolerance: 2
   step_size: 1.5
+  probability_of_testing_full_path_from_new_node_to_goal: 0.05
