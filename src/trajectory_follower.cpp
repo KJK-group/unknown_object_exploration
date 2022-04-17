@@ -70,6 +70,7 @@ auto seq_point_est = 0;
 
 // state variables
 mavros_msgs::State state;
+nav_msgs::Odometry odom;
 
 // targets
 auto altitude_offset = 5.f;
@@ -149,6 +150,7 @@ auto circle_trajectory_3d(float t) -> Vector3f {
 //--------------------------------------------------------------------------------------------------
 
 auto odom_cb(const nav_msgs::Odometry::ConstPtr& msg) -> void {
+    odom = *msg;
     // current position
     auto pos = msg->pose.pose.position;
     // current yaw
