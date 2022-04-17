@@ -124,8 +124,8 @@ auto main(int argc, char** argv) -> int {
     auto forwards = true;
     auto spline_length = spline.get_length();
 
-    auto duration = ros::Duration(5.0);
-    auto speed = spline_length / duration.toSec();  // 5 m/s
+    auto speed = 0.5;  // m/s // spline_length / duration.toSec();
+    auto duration = ros::Duration(spline_length / speed);
     auto st = ros::Time::now();
     ros::Duration dt;
     while (ros::ok()) {
