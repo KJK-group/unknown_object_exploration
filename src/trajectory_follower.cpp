@@ -77,20 +77,22 @@ auto altitude_offset = 5.f;
 auto subject_center = Vector3f(0.0f, 0.0f, move(altitude_offset));
 
 // controller gains
-auto k_rho = 1.f;
-// auto k_rho_p = 1.f;
-// auto k_rho_i = 1.f;
-// auto k_rho_d = 1.f;
+// auto k_rho = 1.f;
+auto k_rho_p = 1.f;
+auto k_rho_i = 1.f;
+auto k_rho_d = 1.f;
 auto k_alpha = 0.f;
 
 // errors for PID
 auto error_integral = Vector3f(0, 0, 0);
 auto error_derivative = Vector3f(0, 0, 0);
+auto error_previous = Vector3f(0, 0, 0);
 
 // utility for PID
 // auto previous_velocity = Vector3f(0, 0, 0);
 // auto acceleration = Vector3f(0, 0, 0);
 // auto velocity = Vector3f(0, 0, 0);
+
 // auto acceleration_from_odom() -> Vector3f {
 //     acceleration =
 //         previous_velocity -
@@ -98,6 +100,7 @@ auto error_derivative = Vector3f(0, 0, 0);
 //         odom.twist.twist.linear.z);
 //     return acceleration;
 // }
+
 // auto velocity_from_odom() -> Vector3f {
 //     velocity =
 //         Vector3f(odom.twist.twist.linear.x, odom.twist.twist.linear.y,
@@ -149,143 +152,7 @@ auto circle_trajectory_3d(float t) -> Vector3f {
 // Callback Functions
 //--------------------------------------------------------------------------------------------------
 
-auto odom_cb(const nav_msgs::Odometry::ConstPtr& msg) -> void {
-    odom = *msg;
-    // current position
-    auto pos = msg->pose.pose.position;
-    // current yaw
-    auto yaw = tf2::getYaw(msg->pose.pose.orientation);
-    // time diff
-    auto delta_time = (ros::Time::now() - start_time).toNSec() / pow(10, 9);
-    //----------------------------------------------------------------------------------------------
-    // estimated point for
-    // auto point_est = geometry_msgs::PointStamped();
-    // point_est.header.seq = seq_point_est++;
-    // point_est.header.stamp = ros::Time::now();
-    // point_est.header.frame_id = frame_world;
-
-    //----------------------------------------------------------------------------------------------
-    // heading error
-    auto desired_heading = atan2(subject_center(1) - pos.y, subject_center(0) - pos.x);
-    auto error_heading = desired_heading - yaw;
-    // correct for magnitude larger than π
-    if (error_heading > M_PI) {
-        error_heading - 2 * M_PI;
-    } else if (error_heading < -M_PI) {
-        error_heading + 2 * M_PI;
-    }
-
-    //----------------------------------------------------------------------------------------------
-    // lookup transform
-    geometry_msgs::TransformStamped transform;
-    try {
-        // transform from px4 drone odom to px4 world
-        transform = tf_buffer.lookupTransform(frame_body, frame_world, ros::Time(0));
-    } catch (tf2::TransformException& ex) {
-        ROS_INFO("%s", ex.what());
-        ros::Duration(1.0).sleep();
-    }
-    //----------------------------------------------------------------------------------------------
-    // get expected position
-    // auto expected_pos = circle_trajectory_3d(delta_time);
-    auto distance_along_spline = delta_time * V_MAX;
-    auto spline_length = spline.get_length();
-    if (distance_along_spline >= spline_length) {
-        start_time = ros::Time::now();
-        forwards = !forwards;
-    }
-    if (forwards) {
-        distance_along_spline = spline_length - distance_along_spline;
-        if (distance_along_spline < 0) {
-            distance_along_spline = 0;
-        }
-    }
-
-    auto expected_pos = spline.get_point_at_distance(distance_along_spline);
-
-    // expected_pos = Vector3f(1, 1, 1);
-
-    //----------------------------------------------------------------------------------------------
-    // transform expected_pos to point_body_frame frame
-    //----------------------------------------------------------------------------------------------
-    // point in world frame "PX4"
-    auto point_world_frame = geometry_msgs::PointStamped();
-    // fill header
-    point_world_frame.header.seq = seq_point_world++;
-    point_world_frame.header.stamp = ros::Time::now();
-    point_world_frame.header.frame_id = frame_world;
-    // fill point data
-    point_world_frame.point.x = expected_pos(0);
-    point_world_frame.point.y = expected_pos(1);
-    point_world_frame.point.z = -expected_pos(2) - altitude_offset;
-    //----------------------------------------------------------------------------------------------
-    // point in point_body_frame frame "PX4/odom_local_ned"
-    auto point_body_frame = geometry_msgs::PointStamped();
-    // fill header
-    point_body_frame.header.seq = seq_point_body++;
-    point_body_frame.header.stamp = ros::Time::now();
-    point_body_frame.header.frame_id = frame_body;
-    // apply transform outputting result to point_body_frame
-    tf2::doTransform(point_world_frame, point_body_frame, transform);
-    auto expected_pos_body =
-        Vector3f(point_body_frame.point.x, point_body_frame.point.y, point_body_frame.point.z);
-    //----------------------------------------------------------------------------------------------
-    // publish points
-    pub_point_world.publish(point_world_frame);
-    pub_point_body.publish(point_body_frame);
-    // pub_point_est.publish(point_est);
-
-    //----------------------------------------------------------------------------------------------
-    // position errors
-    // auto error_x = expected_pos(0) - pos.x;
-    // auto error_y = expected_pos(1) - pos.y;
-    // auto error_z = expected_pos(2) + altitude_offset - pos.z;
-    auto error_x = expected_pos_body(1);
-    auto error_y = expected_pos_body(0);
-    auto error_z = -expected_pos_body(2);  //  -pos.z;
-
-    //----------------------------------------------------------------------------------------------
-    // controller
-    auto omega = k_alpha * error_heading;
-    auto x_vel = k_rho * error_x;
-    auto y_vel = k_rho * error_y;
-    auto z_vel = k_rho * error_z;
-    // omega = 0;
-    // x_vel = 0;
-    // y_vel = 0;
-    // z_vel = 0;
-    //----------------------------------------------------------------------------------------------
-    // control command
-    geometry_msgs::TwistStamped command;
-    command.twist.angular.z = omega;
-    command.twist.linear.x = x_vel;
-    command.twist.linear.y = y_vel;
-    command.twist.linear.z = z_vel;
-    pub_velocity.publish(command);
-
-    //----------------------------------------------------------------------------------------------
-    // logging for debugging
-    // ROS_INFO_STREAM(magenta << "transform:\n" << transform << reset);
-    ROS_INFO_STREAM(magenta << "from pose:\n" << point_world_frame << reset);
-    ROS_INFO_STREAM(magenta << "to pose:\n" << point_body_frame << reset);
-    // standard state logging
-    ROS_INFO_STREAM(green << bold << italic << "position:" << reset);
-    ROS_INFO_STREAM("  x: " << format("%1.5f") % group(setfill(' '), setw(8), pos.x));
-    ROS_INFO_STREAM("  y: " << format("%1.5f") % group(setfill(' '), setw(8), pos.y));
-    ROS_INFO_STREAM("  z: " << format("%1.5f") % group(setfill(' '), setw(8), pos.z));
-    ROS_INFO_STREAM(green << bold << italic << "errors:" << reset);
-    ROS_INFO_STREAM("  heading: " << format("%1.5f") % group(setfill(' '), setw(8), error_heading));
-    ROS_INFO_STREAM("  x:       " << format("%1.5f") % group(setfill(' '), setw(8), error_x));
-    ROS_INFO_STREAM("  y:       " << format("%1.5f") % group(setfill(' '), setw(8), error_y));
-    ROS_INFO_STREAM("  z:       " << format("%1.5f") % group(setfill(' '), setw(8), error_z));
-    ROS_INFO_STREAM(green << bold << italic << "controller outputs:" << reset);
-    ROS_INFO_STREAM("  omega: " << format("%1.5f") % group(setfill(' '), setw(8), omega));
-    ROS_INFO_STREAM("  x_vel: " << format("%1.5f") % group(setfill(' '), setw(8), x_vel));
-    ROS_INFO_STREAM("  y_vel: " << format("%1.5f") % group(setfill(' '), setw(8), y_vel));
-    ROS_INFO_STREAM("  z_vel: " << format("%1.5f") % group(setfill(' '), setw(8), z_vel));
-    ROS_INFO_STREAM(green << bold << italic << "time:" << reset);
-    ROS_INFO_STREAM("  delta_time: " << format("%1.2f") % group(setfill(' '), setw(5), delta_time));
-}
+auto odom_cb(const nav_msgs::Odometry::ConstPtr& msg) -> void { odom = *msg; }
 
 auto state_cb(const mavros_msgs::State::ConstPtr& msg) -> void { state = *msg; }
 
@@ -303,8 +170,10 @@ auto main(int argc, char** argv) -> int {
 
     //----------------------------------------------------------------------------------------------
     // pass in arguments
-    if (argc > 1) k_rho = stof(argv[1]);
-    if (argc > 2) k_alpha = stof(argv[2]);
+    if (argc > 1) k_rho_p = stof(argv[1]);
+    if (argc > 2) k_rho_i = stof(argv[2]);
+    if (argc > 3) k_rho_d = stof(argv[3]);
+    if (argc > 4) k_alpha = stof(argv[4]);
 
     //----------------------------------------------------------------------------------------------
     // spline preprocessing
@@ -347,31 +216,167 @@ auto main(int argc, char** argv) -> int {
         rate.sleep();
     }
     //----------------------------------------------------------------------------------------------
-    // arm the drone
-    if (!state.armed) {
-        mavros_msgs::CommandBool srv;
-        srv.request.value = true;
-        if (client_arm.call(srv)) {
-            ROS_INFO("throttle armed: success");
-        } else {
-            ROS_INFO("throttle armed: fail");
-        }
-    }
-    //----------------------------------------------------------------------------------------------
-    // set drone mode to OFFBOARD
-    if (state.mode != "OFFBOARD") {
-        mavros_msgs::SetMode mode_msg;
-        mode_msg.request.custom_mode = "OFFBOARD";
-
-        if (client_mode.call(mode_msg) && mode_msg.response.mode_sent) {
-            ROS_INFO("mode set: OFFBOARD");
-        } else {
-            ROS_INFO("mode set: fail");
-        }
-    }
-    //----------------------------------------------------------------------------------------------
     // ROS spin
     while (ros::ok()) {
+        //------------------------------------------------------------------------------------------
+        // control
+        // current position
+        auto pos = odom.pose.pose.position;
+        // current yaw
+        auto yaw = tf2::getYaw(odom.poss.pose.orientation);
+        // time diff
+        auto delta_time = (ros::Time::now() - start_time).toNSec() / pow(10, 9);
+
+        //----------------------------------------------------------------------------------------------
+        // heading error
+        auto desired_heading = atan2(subject_center(1) - pos.y, subject_center(0) - pos.x);
+        auto error_heading = desired_heading - yaw;
+        // correct for magnitude larger than π
+        if (error_heading > M_PI) {
+            error_heading - 2 * M_PI;
+        } else if (error_heading < -M_PI) {
+            error_heading + 2 * M_PI;
+        }
+
+        //----------------------------------------------------------------------------------------------
+        // lookup transform
+        geometry_msgs::TransformStamped transform;
+        try {
+            // transform from px4 drone odom to px4 world
+            transform = tf_buffer.lookupTransform(frame_body, frame_world, ros::Time(0));
+        } catch (tf2::TransformException& ex) {
+            ROS_INFO("%s", ex.what());
+            ros::Duration(1.0).sleep();
+        }
+        //----------------------------------------------------------------------------------------------
+        // get expected position
+        // auto expected_pos = circle_trajectory_3d(delta_time);
+        // moving along the spline and back again
+        auto distance_along_spline = delta_time * V_MAX;
+        auto spline_length = spline.get_length();
+        if (distance_along_spline >= spline_length) {
+            start_time = ros::Time::now();
+            forwards = !forwards;
+        }
+        if (forwards) {
+            distance_along_spline = spline_length - distance_along_spline;
+            if (distance_along_spline < 0) {
+                distance_along_spline = 0;
+            }
+        }
+
+        auto expected_pos = spline.get_point_at_distance(distance_along_spline);
+
+        //----------------------------------------------------------------------------------------------
+        // transform expected_pos to point_body_frame frame
+        //----------------------------------------------------------------------------------------------
+        // point in world frame "PX4"
+        auto point_world_frame = geometry_msgs::PointStamped();
+        // fill header
+        point_world_frame.header.seq = seq_point_world++;
+        point_world_frame.header.stamp = ros::Time::now();
+        point_world_frame.header.frame_id = frame_world;
+        // fill point data
+        point_world_frame.point.x = expected_pos.x();
+        point_world_frame.point.y = expected_pos.y();
+        point_world_frame.point.z = expected_pos.z() + altitude_offset;
+        //----------------------------------------------------------------------------------------------
+        // point in point_body_frame frame "PX4/odom_local_ned"
+        auto point_body_frame = geometry_msgs::PointStamped();
+        // fill header
+        point_body_frame.header.seq = seq_point_body++;
+        point_body_frame.header.stamp = ros::Time::now();
+        point_body_frame.header.frame_id = frame_body;
+        // apply transform outputting result to point_body_frame
+        tf2::doTransform(point_world_frame, point_body_frame, transform);
+        auto expected_pos_body =
+            Vector3f(point_body_frame.point.x, point_body_frame.point.y, point_body_frame.point.z);
+        //----------------------------------------------------------------------------------------------
+        // publish points
+        pub_point_world.publish(point_world_frame);
+        pub_point_body.publish(point_body_frame);
+        // pub_point_est.publish(point_est);
+
+        //----------------------------------------------------------------------------------------------
+        // position errors
+        auto error = Vector3f(expected_pos_body.y(), expected_pos_body.x(), expected_pos_body.z());
+        // only accumulate error if the drone is in the air
+        if (pos.z > 0.1) { error_integral += error; }
+        error_derivative = error - error_previous;
+
+        // auto error_x = expected_pos(0) - pos.x;
+        // auto error_y = expected_pos(1) - pos.y;
+        // auto error_z = expected_pos(2) + altitude_offset - pos.z;
+        // auto error_x = expected_pos_body(1);
+        // auto error_y = expected_pos_body(0);
+        // auto error_z = expected_pos_body(2);  //  -pos.z;
+
+        //----------------------------------------------------------------------------------------------
+        // controller
+        auto omega = k_alpha * error_heading;
+        auto control_vel = k_rho_p * error + k_rho_i * error_integral + k_rho_d * error_derivative;
+        // auto x_vel = k_rho * error_x;
+        // auto y_vel = k_rho * error_y;
+        // auto z_vel = k_rho * error_z;
+        // omega = 0;
+        // x_vel = 0;
+        // y_vel = 0;
+        // z_vel = 0;
+        //----------------------------------------------------------------------------------------------
+        // control command
+        geometry_msgs::TwistStamped command;
+        command.twist.angular.z = omega;
+        command.twist.linear.x = command_vel.x();
+        command.twist.linear.y = command_vel.y();
+        command.twist.linear.z = command_vel.z();
+        pub_velocity.publish(command);
+
+        //----------------------------------------------------------------------------------------------
+        // logging for debugging
+        // ROS_INFO_STREAM(magenta << "transform:\n" << transform << reset);
+        ROS_INFO_STREAM(magenta << "from pose:\n" << point_world_frame << reset);
+        ROS_INFO_STREAM(magenta << "to pose:\n" << point_body_frame << reset);
+        // standard state logging
+        ROS_INFO_STREAM(green << bold << italic << "position:" << reset);
+        ROS_INFO_STREAM("  x: " << format("%1.5f") % group(setfill(' '), setw(8), pos.x));
+        ROS_INFO_STREAM("  y: " << format("%1.5f") % group(setfill(' '), setw(8), pos.y));
+        ROS_INFO_STREAM("  z: " << format("%1.5f") % group(setfill(' '), setw(8), pos.z));
+        ROS_INFO_STREAM(green << bold << italic << "errors:" << reset);
+        ROS_INFO_STREAM("  heading: " << format("%1.5f") % group(setfill(' '), setw(8), error_heading));
+        ROS_INFO_STREAM("  x:       " << format("%1.5f") % group(setfill(' '), setw(8), error_x));
+        ROS_INFO_STREAM("  y:       " << format("%1.5f") % group(setfill(' '), setw(8), error_y));
+        ROS_INFO_STREAM("  z:       " << format("%1.5f") % group(setfill(' '), setw(8), error_z));
+        ROS_INFO_STREAM(green << bold << italic << "controller outputs:" << reset);
+        ROS_INFO_STREAM("  omega: " << format("%1.5f") % group(setfill(' '), setw(8), omega));
+        ROS_INFO_STREAM("  x_vel: " << format("%1.5f") % group(setfill(' '), setw(8), x_vel));
+        ROS_INFO_STREAM("  y_vel: " << format("%1.5f") % group(setfill(' '), setw(8), y_vel));
+        ROS_INFO_STREAM("  z_vel: " << format("%1.5f") % group(setfill(' '), setw(8), z_vel));
+        ROS_INFO_STREAM(green << bold << italic << "time:" << reset);
+        ROS_INFO_STREAM("  delta_time: " << format("%1.2f") % group(setfill(' '), setw(5), delta_time));
+
+        //------------------------------------------------------------------------------------------
+        // arm the drone
+        if (!state.armed) {
+            mavros_msgs::CommandBool srv;
+            srv.request.value = true;
+            if (client_arm.call(srv)) {
+                ROS_INFO("throttle armed: success");
+            } else {
+                ROS_INFO("throttle armed: fail");
+            }
+        }
+        //------------------------------------------------------------------------------------------
+        // set drone mode to OFFBOARD
+        if (state.mode != "OFFBOARD") {
+            mavros_msgs::SetMode mode_msg;
+            mode_msg.request.custom_mode = "OFFBOARD";
+
+            if (client_mode.call(mode_msg) && mode_msg.response.mode_sent) {
+                ROS_INFO("mode set: OFFBOARD");
+            } else {
+                ROS_INFO("mode set: fail");
+            }
+        }
         ros::spinOnce();
         rate.sleep();
     }
