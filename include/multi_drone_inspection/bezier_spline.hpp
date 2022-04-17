@@ -22,6 +22,7 @@ namespace mdi {
 // and a time resolution
 class BezierSpline {
    public:
+    BezierSpline() {}
     BezierSpline(vector<Vector3f> points, int resolution = 20);
     auto generate_spline(vector<Vector3f> points, int resolution = 20) -> void;
     auto get_point_at_time(float time) -> Vector3f;

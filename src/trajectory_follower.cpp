@@ -15,6 +15,7 @@
 #include <tuple>
 
 #include "boost/format.hpp"
+#include "multi_drone_inspection/bezier_spline.hpp"
 
 #define V_MAX 0.2
 #define A 0.4
@@ -29,6 +30,7 @@ using boost::format;
 using boost::io::group;
 using Eigen::Vector2f;
 using Eigen::Vector3f;
+using mdi::BezierSpline;
 
 // escape codes
 auto magenta = "\u001b[35m";
@@ -75,7 +77,42 @@ auto subject_center = Vector3f(0.0f, 0.0f, move(altitude_offset));
 
 // controller gains
 auto k_rho = 1.f;
+// auto k_rho_p = 1.f;
+// auto k_rho_i = 1.f;
+// auto k_rho_d = 1.f;
 auto k_alpha = 0.f;
+
+// errors for PID
+auto error_integral = Vector3f(0, 0, 0);
+auto error_derivative = Vector3f(0, 0, 0);
+
+// utility for PID
+// auto previous_velocity = Vector3f(0, 0, 0);
+// auto acceleration = Vector3f(0, 0, 0);
+// auto velocity = Vector3f(0, 0, 0);
+// auto acceleration_from_odom() -> Vector3f {
+//     acceleration =
+//         previous_velocity -
+//         Vector3f(odom.twist.twist.linear.x, odom.twist.twist.linear.y,
+//         odom.twist.twist.linear.z);
+//     return acceleration;
+// }
+// auto velocity_from_odom() -> Vector3f {
+//     velocity =
+//         Vector3f(odom.twist.twist.linear.x, odom.twist.twist.linear.y,
+//         odom.twist.twist.linear.z);
+//     return velocity;
+// }
+
+//--------------------------------------------------------------------------------------------------
+// Bezier spline
+//--------------------------------------------------------------------------------------------------
+
+BezierSpline spline;
+auto spline_input_points =
+    vector<Vector3f>{Vector3f(0.0, 0.0, 0.0),  Vector3f(3.0, 0.5, 1.0), Vector3f(-3.5, 1.5, 0.0),
+                     Vector3f(-2.8, 1.0, 0.7), Vector3f(1.2, 2.2, 1.5), Vector3f(1.0, 3.0, 1.0)};
+auto forwards = true;
 
 //--------------------------------------------------------------------------------------------------
 // Polynomial Functions
@@ -148,8 +185,25 @@ auto odom_cb(const nav_msgs::Odometry::ConstPtr& msg) -> void {
     }
     //----------------------------------------------------------------------------------------------
     // get expected position
-    auto expected_pos = circle_trajectory_3d(delta_time);
+    // auto expected_pos = circle_trajectory_3d(delta_time);
+    auto distance_along_spline = delta_time * V_MAX;
+    auto spline_length = spline.get_length();
+    if (distance_along_spline >= spline_length) {
+        start_time = ros::Time::now();
+        forwards = !forwards;
+    }
+    if (forwards) {
+        distance_along_spline = spline_length - distance_along_spline;
+        if (distance_along_spline < 0) {
+            distance_along_spline = 0;
+        }
+    }
+
+    auto expected_pos = spline.get_point_at_distance(distance_along_spline);
+
     // expected_pos = Vector3f(1, 1, 1);
+
+    //----------------------------------------------------------------------------------------------
     // transform expected_pos to point_body_frame frame
     //----------------------------------------------------------------------------------------------
     // point in world frame "PX4"
@@ -231,7 +285,6 @@ auto odom_cb(const nav_msgs::Odometry::ConstPtr& msg) -> void {
     ROS_INFO_STREAM("  delta_time: " << format("%1.2f") % group(setfill(' '), setw(5), delta_time));
 }
 
-
 auto state_cb(const mavros_msgs::State::ConstPtr& msg) -> void { state = *msg; }
 
 auto main(int argc, char** argv) -> int {
@@ -252,9 +305,20 @@ auto main(int argc, char** argv) -> int {
     if (argc > 2) k_alpha = stof(argv[2]);
 
     //----------------------------------------------------------------------------------------------
-    // state subsbricer
+    // spline preprocessing
+    auto spline_input_points = vector<Vector3f>{Vector3f(0.0, 0.0, 0.0),  Vector3f(3.0, 0.5, 1.0),
+                                                Vector3f(-3.5, 1.5, 0.0), Vector3f(-2.8, 1.0, 0.7),
+                                                Vector3f(1.2, 2.2, 1.5),  Vector3f(1.0, 3.0, 1.0)};
+    for (auto& point : spline_input_points) {
+        point *= 10;
+    }
+
+    spline = BezierSpline(spline_input_points);
+
+    //----------------------------------------------------------------------------------------------
+    // state subscriber
     sub_state = nh.subscribe<mavros_msgs::State>("/mavros/state", 10, state_cb);
-    // odom subsbricer
+    // odom subscriber
     sub_odom = nh.subscribe<nav_msgs::Odometry>("/mavros/local_position/odom", 10, odom_cb);
 
     //----------------------------------------------------------------------------------------------
