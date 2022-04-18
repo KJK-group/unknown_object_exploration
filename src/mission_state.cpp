@@ -130,7 +130,7 @@ auto main(int argc, char** argv) -> int {
 
     //----------------------------------------------------------------------------------------------
     // velocity publisher
-    pub_mission_state<multi_drone_inspection::MissionStateStamped>("/mdi/state", 10);
+    pub_mission_state = nh.advertise<multi_drone_inspection::MissionStateStamped>("/mdi/state", 10);
 
     //----------------------------------------------------------------------------------------------
     // arm service client
@@ -245,10 +245,10 @@ auto main(int argc, char** argv) -> int {
         }
 
         // state message content
-        geometry_msgs::Point p;
-        p.x = expected_pos.x();
-        p.y = expected_pos.y();
-        p.z = expected_pos.z();
+        geometry_msgs::Pose p;
+        p.position.x = expected_pos.x();
+        p.position.z = expected_pos.z();
+        p.position.y = expected_pos.y();
         mission_state_msg.Point = p;
 
         pub_mission_state.publish(mission_state_msg);
