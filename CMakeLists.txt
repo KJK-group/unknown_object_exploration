@@ -26,7 +26,7 @@ find_package(
 find_package(Eigen3 REQUIRED)
 find_package(xacro REQUIRED)
 
-add_subdirectory(deps/fmt)
+#add_subdirectory(deps/fmt)
 
 # System dependencies are found with CMake's conventions
 find_package(Boost REQUIRED COMPONENTS system)
@@ -44,7 +44,7 @@ add_message_files(
   DIRECTORY
   ${CMAKE_CURRENT_SOURCE_DIR}/msg
   FILES
-  PointNormStamped.msg
+  MissionStateStamped.msg
 )
 generate_messages(DEPENDENCIES geometry_msgs std_msgs)
 
