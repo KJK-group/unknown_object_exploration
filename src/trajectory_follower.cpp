@@ -223,7 +223,7 @@ auto main(int argc, char** argv) -> int {
         // current position
         auto pos = odom.pose.pose.position;
         // current yaw
-        auto yaw = tf2::getYaw(odom.poss.pose.orientation);
+        auto yaw = tf2::getYaw(odom.pose.pose.orientation);
         // time diff
         auto delta_time = (ros::Time::now() - start_time).toNSec() / pow(10, 9);
 
@@ -301,7 +301,9 @@ auto main(int argc, char** argv) -> int {
         // position errors
         auto error = Vector3f(expected_pos_body.y(), expected_pos_body.x(), expected_pos_body.z());
         // only accumulate error if the drone is in the air
-        if (pos.z > 0.1) { error_integral += error; }
+        if (pos.z > 0.1) {
+            error_integral += error;
+        }
         error_derivative = error - error_previous;
 
         // auto error_x = expected_pos(0) - pos.x;
@@ -326,9 +328,9 @@ auto main(int argc, char** argv) -> int {
         // control command
         geometry_msgs::TwistStamped command;
         command.twist.angular.z = omega;
-        command.twist.linear.x = command_vel.x();
-        command.twist.linear.y = command_vel.y();
-        command.twist.linear.z = command_vel.z();
+        command.twist.linear.x = control_vel.x();
+        command.twist.linear.y = control_vel.y();
+        command.twist.linear.z = control_vel.z();
         pub_velocity.publish(command);
 
         //----------------------------------------------------------------------------------------------
@@ -342,17 +344,22 @@ auto main(int argc, char** argv) -> int {
         ROS_INFO_STREAM("  y: " << format("%1.5f") % group(setfill(' '), setw(8), pos.y));
         ROS_INFO_STREAM("  z: " << format("%1.5f") % group(setfill(' '), setw(8), pos.z));
         ROS_INFO_STREAM(green << bold << italic << "errors:" << reset);
-        ROS_INFO_STREAM("  heading: " << format("%1.5f") % group(setfill(' '), setw(8), error_heading));
-        ROS_INFO_STREAM("  x:       " << format("%1.5f") % group(setfill(' '), setw(8), error_x));
-        ROS_INFO_STREAM("  y:       " << format("%1.5f") % group(setfill(' '), setw(8), error_y));
-        ROS_INFO_STREAM("  z:       " << format("%1.5f") % group(setfill(' '), setw(8), error_z));
+        ROS_INFO_STREAM("  heading: " << format("%1.5f") %
+                                             group(setfill(' '), setw(8), error_heading));
+        ROS_INFO_STREAM("  x:       " << format("%1.5f") % group(setfill(' '), setw(8), error.x()));
+        ROS_INFO_STREAM("  y:       " << format("%1.5f") % group(setfill(' '), setw(8), error.y()));
+        ROS_INFO_STREAM("  z:       " << format("%1.5f") % group(setfill(' '), setw(8), error.z()));
         ROS_INFO_STREAM(green << bold << italic << "controller outputs:" << reset);
         ROS_INFO_STREAM("  omega: " << format("%1.5f") % group(setfill(' '), setw(8), omega));
-        ROS_INFO_STREAM("  x_vel: " << format("%1.5f") % group(setfill(' '), setw(8), x_vel));
-        ROS_INFO_STREAM("  y_vel: " << format("%1.5f") % group(setfill(' '), setw(8), y_vel));
-        ROS_INFO_STREAM("  z_vel: " << format("%1.5f") % group(setfill(' '), setw(8), z_vel));
+        ROS_INFO_STREAM("  x_vel: " << format("%1.5f") %
+                                           group(setfill(' '), setw(8), control_vel.x()));
+        ROS_INFO_STREAM("  y_vel: " << format("%1.5f") %
+                                           group(setfill(' '), setw(8), control_vel.y()));
+        ROS_INFO_STREAM("  z_vel: " << format("%1.5f") %
+                                           group(setfill(' '), setw(8), control_vel.z()));
         ROS_INFO_STREAM(green << bold << italic << "time:" << reset);
-        ROS_INFO_STREAM("  delta_time: " << format("%1.2f") % group(setfill(' '), setw(5), delta_time));
+        ROS_INFO_STREAM("  delta_time: " << format("%1.2f") %
+                                                group(setfill(' '), setw(5), delta_time));
 
         //------------------------------------------------------------------------------------------
         // arm the drone
