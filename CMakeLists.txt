@@ -6,6 +6,9 @@ project(
   LANGUAGES CXX)
 
 add_compile_options(-std=c++17)
+# global configuration set(CMAKE_CXX_COMPILER "/usr/bin/clang++-12")
+# set(CMAKE_CXX_STANDARD 17) set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_EXPORT_COMPILE_COMMANDS 1)
 
 set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake" ${CMAKE_MODULE_PATH})
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -22,8 +25,8 @@ find_package(
              roscpp
              tf2
              tf2_ros
-             tf2_eigen
-             voxblox_ros)
+             tf2_eigen)
+# voxblox_ros)
 find_package(Eigen3 REQUIRED)
 find_package(xacro REQUIRED)
 
@@ -32,10 +35,12 @@ find_package(xacro REQUIRED)
 # System dependencies are found with CMake's conventions
 find_package(Boost REQUIRED COMPONENTS system)
 
-# Uncomment this if the package has a setup.py. This macro ensures modules and
-# global scripts declared therein get installed See
-# http://ros.org/doc/api/catkin/html/user_guide/setup_dot_py.html
-# catkin_python_setup()
+# dependencies
+find_package(Eigen3 REQUIRED)
+
+include_directories(${CMAKE_SOURCE_DIR}/include)
+
+add_subdirectory(libs/kdtree)
 
 # ##############################################################################
 # Declare ROS messages, services and actions ##
@@ -54,56 +59,47 @@ generate_messages(DEPENDENCIES geometry_msgs std_msgs)
 # Declare ROS dynamic reconfigure parameters ##
 # ##############################################################################
 
-# To declare and build dynamic reconfigure parameters within this package,
-# follow these steps: * In the file package.xml: * add a build_depend and a
-# exec_depend tag for "dynamic_reconfigure" * In this file (CMakeLists.txt): *
-# add "dynamic_reconfigure" to find_package(catkin REQUIRED COMPONENTS ...) *
-# uncomment the "generate_dynamic_reconfigure_options" section below and list
-# every .cfg file to be processed
-
-# Generate dynamic reconfigure parameters in the 'cfg' folder
-# generate_dynamic_reconfigure_options( cfg/DynReconf1.cfg cfg/DynReconf2.cfg )
-
-# ##############################################################################
-# catkin specific configuration ##
-# ##############################################################################
-# The catkin_package macro generates cmake config files for your package Declare
-# things to be passed to dependent projects INCLUDE_DIRS: uncomment this if your
-# package contains header files LIBRARIES: libraries you create in this project
-# that dependent projects also need CATKIN_DEPENDS: catkin_packages dependent
-# projects also need DEPENDS: system dependencies of this project that dependent
-# projects also need
-catkin_package(
-  # INCLUDE_DIRS include LIBRARIES multi_drone_inspection CATKIN_DEPENDS
-  # geometry_msgs nav_msgs roscpp DEPENDS system_lib
-)
+catkin_package()
 
 # ##############################################################################
 # Build ##
 # ##############################################################################
 
-# Specify additional locations of header files Your package locations should be
-# listed before other locations
 include_directories(include ${catkin_INCLUDE_DIRS} ${Eigen3_INCLUDE_DIRS})
 
-# Declare a C++ library add_library(${PROJECT_NAME}
-# src/${PROJECT_NAME}/multi_drone_inspection.cpp )
+function(add_ros_executable name main)
+  add_executable(${name} ${CMAKE_CURRENT_SOURCE_DIR}/${main})
+  add_dependencies(${name} ${${PROJECT_NAME}_EXPORTED_TARGETS}
+                   ${catkin_EXPORTED_TARGETS})
+  target_link_libraries(${name} ${catkin_LIBRARIES} fmt::fmt-header-only)
+  target_compile_options(${name} PRIVATE -O2)
+endfunction(add_ros_executable)
 
-# Add cmake target dependencies of the library as an example, code may need to
-# be generated before libraries either from message generation or dynamic
-# reconfigure add_dependencies(${PROJECT_NAME}
-# ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+# add_ros_executable(visualize_kdtree src/visualize_kdtree.cpp)
+# add_ros_executable(linear_search_vs_kdtree test/linear_search_vs_kdtree.cpp)
+# add_ros_executable(test_rrt test/rrt.test.cpp)
 
-# Declare a C++ executable With catkin_make all packages are built within a
-# single CMake context The recommended prefix ensures that target names across
-# packages don't collide
-file(GLOB src_files ./src/*.cpp)
+add_executable(test_rrt test/rrt.test.cpp)
+add_dependencies(test_rrt ${${PROJECT_NAME}_EXPORTED_TARGETS}
+                 ${catkin_EXPORTED_TARGETS})
+target_sources(test_rrt PUBLIC src/rrt/rrt.cpp)
+target_link_libraries(test_rrt ${catkin_LIBRARIES} fmt::fmt-header-only
+                      kdtree-header-only)
 
-add_executable(test_controller src/test_controller.cpp)
-add_executable(trajectory_follower src/trajectory_follower.cpp)
-add_executable(spline_tester src/spline_tester.cpp)
-add_executable(mission_state src/mission_state.cpp)
-add_executable(pid_controller src/pid_controller.cpp)
+target_compile_options(test_rrt PRIVATE -g -O0 -Wall -Wextra -Wpedantic)
+
+# target_compile_options(test_rrt PRIVATE -O3 -finline-functions-called-once)
+# target_compile_options(test_rrt PRIVATE -g -O0 -Wall -Wextra -Wpedantic)
+target_compile_definitions(test_rrt PUBLIC MEASURE_PERF)
+
+# target_sources(visualize_kdtree PUBLIC src/kdtree3/kdtree3.cpp)
+# target_compile_options(visualize_kdtree PRIVATE -g)
+
+add_ros_executable(test_controller src/test_controller.cpp)
+add_ros_executable(trajectory_follower src/trajectory_follower.cpp)
+add_ros_executable(spline_tester src/spline_tester.cpp)
+add_ros_executable(mission_state src/mission_state.cpp)
+add_ros_executable(pid_controller src/pid_controller.cpp)
 
 target_sources(spline_tester
                PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src/bezier_spline.cpp
@@ -120,86 +116,12 @@ target_sources(mission_state
 
 target_sources(pid_controller
                PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src/transformlistener.cpp)
-#target_compile_features(spline_tester "-g")
 
-# Rename C++ executable without prefix The above recommended prefix causes long
-# target names, the following renames the target back to the shorter version for
-# ease of user use e.g. "rosrun someones_pkg node" instead of "rosrun
-# someones_pkg someones_pkg_node" set_target_properties(${PROJECT_NAME}_node
-# PROPERTIES OUTPUT_NAME node PREFIX "")
-
-# Add cmake target dependencies of the executable same as for the library above
-add_dependencies(test_controller ${${PROJECT_NAME}_EXPORTED_TARGETS}
-                 ${catkin_EXPORTED_TARGETS})
-add_dependencies(trajectory_follower ${${PROJECT_NAME}_EXPORTED_TARGETS}
-                 ${catkin_EXPORTED_TARGETS})
-add_dependencies(spline_tester ${${PROJECT_NAME}_EXPORTED_TARGETS}
-                 ${catkin_EXPORTED_TARGETS})
-add_dependencies(mission_state ${${PROJECT_NAME}_EXPORTED_TARGETS}
-                 ${catkin_EXPORTED_TARGETS})
-add_dependencies(pid_controller ${${PROJECT_NAME}_EXPORTED_TARGETS}
-                 ${catkin_EXPORTED_TARGETS})
-
-# Specify libraries to link a library or executable target against
-target_link_libraries(test_controller ${catkin_LIBRARIES})
-target_link_libraries(trajectory_follower ${catkin_LIBRARIES})
-target_link_libraries(spline_tester ${catkin_LIBRARIES})
-target_link_libraries(mission_state ${catkin_LIBRARIES})
-target_link_libraries(pid_controller ${catkin_LIBRARIES})
-
-# target_link_libraries(test_boost fmt::fmt)
-
-# target_link_libraries(main PRIVATE FunctionalPlus::fplus)
-# add_executable(test_voxblox src/test_voxblox.cpp)
-# add_dependencies(test_voxblox ${${PROJECT_NAME}_EXPORTED_TARGETS}
-# ${catkin_EXPORTED_TARGETS}) target_link_libraries(test_voxblox
-# ${catkin_LIBRARIES}) target_include_directories(test_voxblox PUBLIC
-# ${CMAKE_CURRENT_SOURCE_DIR}/include) target_sources(test_voxblox PUBLIC
-# ${CMAKE_CURRENT_SOURCE_DIR}/src/voxblox_manager.cpp)
-# target_compile_options(test_voxblox PUBLIC "-std=c++17")
 # ##############################################################################
 # Install ##
 # ##############################################################################
-
-# all install targets should use catkin DESTINATION variables See
-# http://ros.org/doc/api/catkin/html/adv_user_guide/variables.html
 
 install(PROGRAMS scripts/make_px4_airsim.sh
         DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
 install(PROGRAMS scripts/make_px4_gazebo.sh
         DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
-
-# Mark executable scripts (Python etc.) for installation in contrast to
-# setup.py, you can choose the destination catkin_install_python(PROGRAMS
-# scripts/my_python_script DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION} )
-
-# Mark executables for installation See
-# http://docs.ros.org/melodic/api/catkin/html/howto/format1/building_executables.html
-# install(TARGETS ${PROJECT_NAME}_node RUNTIME DESTINATION
-# ${CATKIN_PACKAGE_BIN_DESTINATION} )
-
-# Mark libraries for installation See
-# http://docs.ros.org/melodic/api/catkin/html/howto/format1/building_libraries.html
-# install(TARGETS ${PROJECT_NAME} ARCHIVE DESTINATION
-# ${CATKIN_PACKAGE_LIB_DESTINATION} LIBRARY DESTINATION
-# ${CATKIN_PACKAGE_LIB_DESTINATION} RUNTIME DESTINATION
-# ${CATKIN_GLOBAL_BIN_DESTINATION} )
-
-# Mark cpp header files for installation install(DIRECTORY
-# include/${PROJECT_NAME}/ DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
-# FILES_MATCHING PATTERN "*.h" PATTERN ".svn" EXCLUDE )
-
-# Mark other files for installation (e.g. launch and bag files, etc.)
-# install(FILES # myfile1 # myfile2 DESTINATION
-# ${CATKIN_PACKAGE_SHARE_DESTINATION} )
-
-# ##############################################################################
-# Testing ##
-# ##############################################################################
-
-# Add gtest based cpp test target and link libraries
-# catkin_add_gtest(${PROJECT_NAME}-test test/test_multi_drone_inspection.cpp)
-# if(TARGET ${PROJECT_NAME}-test) target_link_libraries(${PROJECT_NAME}-test
-# ${PROJECT_NAME}) endif()
-
-# Add folders to be run by python nosetests catkin_add_nosetests(test)

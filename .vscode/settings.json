@@ -74,7 +74,9 @@
         "cinttypes": "cpp",
         "typeindex": "cpp",
         "typeinfo": "cpp",
-        "bit": "cpp"
+        "bit": "cpp",
+        "forward_list": "cpp",
+        "*.ipp": "cpp"
     },
     "cmake.configureOnOpen": false
 }
