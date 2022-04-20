@@ -56,18 +56,17 @@ auto main(int argc, char* argv[]) -> int {
         rrt.enable_perf_logging(measurement_file);
     }
 
-    std::size_t i = 0;
-    rrt.register_cb_for_event_on_new_node_created([&](const auto& p1, const auto& p2) {
-        // std::cout << "iteration: " << i << '\n';
-        ++i;
-    });
+    // std::size_t i = 0;
+    // rrt.register_cb_for_event_on_new_node_created([&](const auto& p1, const auto& p2) {
+    //     // std::cout << "iteration: " << i << '\n';
+    //     ++i;
+    // });
 
 #endif  // MEASURE_PERF
 
-    rrt.register_cb_for_event_on_trying_full_path(
-        [](const auto& p1, const auto& p2) { std::cout << "trying full path" << '\n'; });
-    // rrt.register_cb_for_event_on_new_node_created([&](const vec3& parent, const vec3&
-    // new_node) {
+    // rrt.register_cb_for_event_on_trying_full_path(
+    //     [](const auto& p1, const auto& p2) { std::cout << "trying full path" << '\n'; });
+    // rrt.register_cb_for_event_on_new_node_created([&](const vec3& parent, const vec3& new_node) {
     //     auto msg = arrow_msg_gen({parent, new_node});
     //     publish(msg);
     // });
@@ -210,19 +209,19 @@ auto main(int argc, char* argv[]) -> int {
         std::cout << "[DEBUG] " << __FILE__ << ":" << __LINE__ << " "
                   << " found a solution" << '\n';
 
-        // arrow_msg_gen.color.r = 1.0f;
-        // arrow_msg_gen.color.g = 0.0f;
-        // int i = 1;
-        // arrow_msg_gen.scale.x = 0.1f;
-        // arrow_msg_gen.scale.y = 0.1f;
-        // arrow_msg_gen.scale.z = 0.1f;
-        // while (ros::ok() && i < path.size()) {
-        // 	auto& p1 = path[i - 1];
-        // 	auto& p2 = path[i];
-        // 	auto arrow = arrow_msg_gen({p1, p2});
-        // 	publish(arrow);
-        // 	++i;
-        // }
+        arrow_msg_gen.color.r = 1.0f;
+        arrow_msg_gen.color.g = 0.0f;
+        int i = 1;
+        arrow_msg_gen.scale.x = 0.1f;
+        arrow_msg_gen.scale.y = 0.1f;
+        arrow_msg_gen.scale.z = 0.1f;
+        while (ros::ok() && i < path.size()) {
+            auto& p1 = path[i - 1];
+            auto& p2 = path[i];
+            auto arrow = arrow_msg_gen({p1, p2});
+            publish(arrow);
+            ++i;
+        }
     }
 
     // auto i = std::size_t{0};

@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <cassert>
 #include <chrono>
+#include <cmath>
 #include <cstddef>
 #include <filesystem>
 #include <fstream>
@@ -128,44 +129,38 @@ auto RRT::sample_random_point_() -> vec3 {
     return sampling_radius_ * random_pt + start_position_;
 }
 
-auto RRT::find_nearest_neighbor_(const vec3& point) -> RRT::node_t* {
-    using distance_t = double;
-    using index_t = std::size_t;
+auto RRT::find_nearest_neighbor_(const vec3& pt) -> RRT::node_t* {
     struct nearest_neighbor_candidate_t {
-        distance_t distance = std::numeric_limits<double>::max();
-        index_t index{};
+        double distance = std::numeric_limits<double>::max();
+        std::size_t index{};
     };
     using nearest_neighbor_candidates_t = std::vector<nearest_neighbor_candidate_t>;
     auto nearest_neighbor_candidates = nearest_neighbor_candidates_t();
 
+#ifdef USE_KDTREE
     // 1. find nearest neighbor in each kdtree, and store them in a list of candidates.
-    // auto nearest_neighbor_candidates_from_kdtrees = std::vector<vec3>();
-    // std::transform(kdtree3s_.begin(), kdtree3s_.end(),
-    //                std::back_inserter(nearest_neighbor_candidates),
-    //                [&](const auto& kdtree) { return kdtree->nearest(point); });
-
-    // nearest_neighbor_candidates.push_back([&]() {
-    //     auto begin = std::next(nodes_.begin(), linear_search_start_index_);
-    //     auto end = nodes_.end();
-    //     auto init = nearest_neighbor_candidate_t{};
-    // 	auto transform = [](const node_t& node) -> nearest_neighbor_candidate_t {
-    //  auto distance = (nodes_[i].position_ - point).norm();
-    //  return {
-
-    //  }
-    // 		; }
-    //     return std::transform_reduce(std::execution_policy::seq, begin, end, init, [&](const
-    //     auto& node) {
-
-    //     });
-    // }());
+    for (const auto& bucket : kdtree3s_) {
+        for (const auto& kdtree : bucket.forest) {
+            // TODO: would be better not to expose the underlying array here.
+            if (kdtree != nullptr) {
+                if (const auto opt = kdtree->nearest(kdtree3::point_t{pt.x(), pt.y(), pt.z()})) {
+                    // TODO: change nearest to also return distance
+                    const auto [_, index] = opt.value();
+                    const auto distance = kdtree->distance();
+                    nearest_neighbor_candidates.push_back(
+                        nearest_neighbor_candidate_t{distance, index});
+                }
+            }
+        }
+    }
+#endif // USE_KDTREE
 
     // 2. find nearest neighbor in the linear search segment.
     nearest_neighbor_candidates.push_back([&]() {
         std::size_t index{0};
         auto shortest_distance = std::numeric_limits<double>::max();
         for (std::size_t i = linear_search_start_index_; i < nodes_.size(); ++i) {
-            auto distance = (nodes_[i].position_ - point).norm();
+            auto distance = (nodes_[i].position_ - pt).norm();
             if (distance < shortest_distance) {
                 shortest_distance = distance;
                 index = i;
@@ -179,6 +174,7 @@ auto RRT::find_nearest_neighbor_(const vec3& point) -> RRT::node_t* {
         const auto smaller_distance = [](const auto& c1, const auto& c2) {
             return c1.distance < c2.distance;
         };
+        // std::less
         std::sort(nearest_neighbor_candidates.begin(), nearest_neighbor_candidates.end(),
                   smaller_distance);
 
@@ -224,63 +220,253 @@ auto RRT::insert_node_(const vec3& pos, node_t* parent) -> node_t& {
     auto& node = nodes_.emplace_back(pos, parent);
     parent->children.push_back(&node);
 
+#ifdef USE_KDTREE
+
     {
         // update kdtrees
-        const auto k = kdtree3s_.size();  // number of kdtrees
-        const auto n = nodes_.size();     // number of nodes
-        const auto number_of_nodes_not_in_kdtrees = (int)n - (int)k * kdtree_size_;
+        // const auto k = static_cast<int>(kdtree3s_.size());  // number of kdtrees
+        const auto n = static_cast<int>(nodes_.size());  // number of nodes
+
+        // TODO: cache
+        const auto n_kdtree_nodes = std::transform_reduce(
+            kdtree3s_.begin(), kdtree3s_.end(), 0, std::plus<>(),
+            [](const auto& bucket) { return bucket.number_of_nodes_in_bucket(); });
+
+        const auto number_of_nodes_not_in_kdtrees = n - n_kdtree_nodes;
         assert(number_of_nodes_not_in_kdtrees >= 0);
 
         // ROS_INFO("number of nodes not in kdtrees: %d", number_of_nodes_not_in_kdtrees);
-        const auto create_kdtree =
+        const auto update_kdtrees =
             number_of_nodes_not_in_kdtrees == max_number_of_nodes_to_do_linear_search_on_;
 
-        if (create_kdtree) {
-            std::cerr << "[DEBUG] " << __FILE__ << ":" << __LINE__ << ": "
-                      << " creating kdtre" << '\n';
+        if (update_kdtrees) {
+            auto bucket_sizes = std::vector<int>();
+            std::transform(kdtree3s_.begin(), kdtree3s_.end(), std::back_inserter(bucket_sizes),
+                           [](const auto& bucket) { return bucket.number_of_trees(); });
 
-            auto offset = [this, k]() -> std::size_t {
-                const auto merge_existing_kdtrees_into_one = k == max_number_of_kdtrees_;
-                if (merge_existing_kdtrees_into_one) {
-                    std::cerr << "[DEBUG] " << __FILE__ << ":" << __LINE__ << ": "
-                              << " merge_existing_kdtrees_into_one" << '\n';
+            auto bucket_sizes_before = bucket_sizes;
 
-                    std::for_each(kdtree3s_.begin(), kdtree3s_.end(),
-                                  [&](const auto& tree) { delete tree; });
-                    kdtree3s_.clear();
-                    std::cerr << "[DEBUG] " << __FILE__ << ":" << __LINE__ << ": "
-                              << " kdtree3s_.size()" << kdtree3s_.size() << '\n';
+            const auto bucket_is_full = [](int bucket_size) {
+                // TODO: remove constant
+                const auto max_bucket_size = 5;
+                return bucket_size == max_bucket_size;
+            };
+            const auto any_bucket_is_full = [&]() {
+                return std::any_of(bucket_sizes.begin(), bucket_sizes.end(), bucket_is_full);
+            };
 
-                    // update size of kdtrees. 1000 -> 5000 -> 25000
-                    kdtree_size_ = kdtree_size_ * (max_number_of_kdtrees_ + 1);
-                    // TODO: not correct for policy 2
-                    return 0;
-                } else {
-                    return linear_search_start_index_;
+            // always add 1 to the smallest bucket
+            bucket_sizes.front() += 1;
+
+            // compute the bucket sizes after updating the kdtrees
+            // example: (5 is max bucket size)
+            // [3, 0, 0, 0] -> [4, 0, 0, 0]
+            // [4, 0, 0, 0] -> [0, 1, 0, 0]
+            // [4, 4, 0, 0] -> [0, 0, 1, 0]
+            while (any_bucket_is_full()) {
+                for (auto i = 0; i < bucket_sizes.size() - 1; ++i) {
+                    const auto bucket_size = bucket_sizes[i];
+                    if (bucket_is_full(bucket_size)) {
+                        bucket_sizes[i] = 0;
+                        bucket_sizes[i + 1] += 1;
+                    }
                 }
+
+                // edge case when the last i.e. largest bucket overflows, then
+                // a new bucket has to be created.
+                auto& last_bucket_size = bucket_sizes.back();
+                if (bucket_is_full(last_bucket_size)) {
+                    last_bucket_size = 0;
+                    bucket_sizes.emplace_back(1);
+                }
+            }
+
+            // compute diff
+            const auto diff = [&]() {
+                const auto a_new_bucket_has_been_added =
+                    bucket_sizes_before.size() < bucket_sizes.size();
+                // append 0, to make difference easier to calculate.
+                if (a_new_bucket_has_been_added) {
+                    bucket_sizes_before.push_back(0);
+                }
+
+                auto result = std::vector<int>(bucket_sizes.size());
+                // subtract each bucket element wise
+                for (auto i = 0; i < result.size(); ++i) {
+                    result[i] = bucket_sizes[i] - bucket_sizes_before[i];
+                }
+                return result;
             }();
 
-            auto generator = [this, offset] {
-                auto it = std::next(nodes_.begin(), offset);
-                std::size_t index = std::distance(nodes_.begin(), it);
-                assert(index < kdtree_size_);
-                return [it, index]() mutable -> std::pair<kdtree3::point_t, std::size_t> {
-                    const auto& pos = (*it).position_;
-                    const auto pt = kdtree3::point_t{pos.x(), pos.y(), pos.z()};
-                    std::next(it);
-                    return {pt, index++};
-                };
-            }();
+            // apply the diff
+            assert(kdtree3s_.size() == diff.size());
+            for (auto i = 0; i < diff.size(); ++i) {
+                const auto d = diff[i];
+                auto& bucket = kdtree3s_[i];
+                if (d < 0) {
+                    // deallocate trees
+                    bucket.delete_trees();
+                    // TODO: somehow set a flag indicating the bucket that overspilled
+                } else if (d > 0) {
+                    // create tree
 
-            // kdtree3s_.emplace_back(generator, kdtree_size_);
-            kdtree3s_.push_back(new kdtree3(generator, kdtree_size_));
-            // kdtree3s_.push_back(std::make_unique<kdtree3>(generator, kdtree_size_));
-            // kdtree3s_.emplace_front(generator, kdtree_size_);
-            // kdtree3s_.push_front(std::move(std::make_unique<kdtree3>(generator, kdtree_size_)));
-            // advance starting index for linear search
-            linear_search_start_index_ = n;
+                    // compute interval [start, end)
+                    const auto start = [&]() {
+                        auto sum = 0;
+                        for (int i = 0; i < bucket_sizes.size(); ++i) {
+                            auto trees_in_bucket = bucket_sizes[i];
+                            const auto& b = kdtree3s_[i];
+                            std::cerr << "[DEBUG] " << __FILE__ << ":" << __LINE__ << ": "
+                                      << " trees_in_bucket " << trees_in_bucket << " sum " << sum
+                                      << '\n';
+
+                            sum += trees_in_bucket * b.size_of_a_tree;
+                        }
+                        // this is necessary because ...
+                        sum -= bucket.size_of_a_tree;
+                        return sum;
+                    }();
+
+                    std::cerr << "[DEBUG] " << __FILE__ << ":" << __LINE__ << ": "
+                              << " bucket to insert a tree into " << i << '\n';
+
+                    std::cout << "before\tafter\tdiff" << '\n';
+                    for (auto i = 0; i < diff.size(); ++i) {
+                        std::cout << bucket_sizes_before[i] << '\t' << bucket_sizes[i] << '\t'
+                                  << diff[i] << '\n';
+                    }
+
+                    // exclusive
+                    const auto end = start + bucket.size_of_a_tree;
+                    assert(start < end);
+                    std::cerr << "[DEBUG] " << __FILE__ << ":" << __LINE__ << ": "
+                              << " start: " << start << " end: " << end << '\n';
+                    // create generator object, that transform existing nodes in
+                    // the interval, into the format used by a kdtree.
+                    auto generator = [this, start, end] {
+                        assert(0 <= start && start < nodes_.size());
+                        assert(0 <= end && end < nodes_.size());
+                        auto it = std::next(nodes_.begin(), start);
+                        auto index = start;
+
+                        return [it, index]() mutable -> std::pair<kdtree3::point_t, std::size_t> {
+                            const auto& pos = (*it).position_;
+                            const auto pt = kdtree3::point_t{pos.x(), pos.y(), pos.z()};
+                            std::next(it);
+                            // TODO: is index the same for all ???
+                            std::cerr << "[DEBUG] " << __FILE__ << ":" << __LINE__ << ": "
+                                      << " index " << index << '\n';
+
+                            return {pt, index++};
+                        };
+                    }();
+
+                    bucket.add_kdtree(generator, end - start);
+                    // TODO: assure this is correct
+                    linear_search_start_index_ = end;
+                }
+            }
+
+            //     auto result = std::vector<int>(bucket_sizes.size());
+            //     // a new bucket is created
+            //     const auto n = [&]() {
+            //         if (copy.size() < bucket_sizes.size()) {
+            //             result.back() = 1;
+            //             return bucket_sizes.size() - 1;
+            //         } else {
+            //             return bucket_sizes.size();
+            //         }
+            //     }();
+
+            //     for (auto i = 0; i < n; ++i) {
+            //         d[i] = bucket_sizes[i].instances - copy[i].instances;
+            //     }
+            //     return result;
+            // }
+            // ();
+            // const auto diff =
+            //     // const auto& last_bucket = kdtree3s_.back();
+            //     // if (last_bucket.bucket_is_full()) {
+            //     //     const auto idx_of_last_bucket = kdtree3s_.size() - 1;
+            //     //     // FIXME: remove constants
+            //     //     kdtree3s_.emplace_back(1000 *
+            //     //                            static_cast<int>(std::pow(5, idx_of_last_bucket)));
+            //     // }
+            //     kdtree3s_.front().forest
+
+            //     for (const auto& bucket : kdtree3s_) {}
+
+            // // apply diff
+
+            // for (const auto bucket_size : bucket_sizes) {
+            // }
+
+            // auto copy = kdtree_size_counts_;
+
+            // kdtree_size_counts_[0].instances += 1;
+            // for (auto i = 0; i < kdtree_size_counts_.size(); ++i) {
+            //     auto& [size, instances] = kdtree_size_counts_[i];
+            //     if (instances == max_number_of_kdtrees_per_bucket_) {
+            //         // - 4
+            //         // + 1
+            //         if (size == kdtree_size_counts_.size() - 1) {
+            //             kdtree_size_counts_.emplace_back(size *
+            //             max_number_of_kdtrees_per_bucket_, 1); instances = 0;
+            //         }
+            //     }
+            // }
+
+            // // apply diff
+            // for (auto i = 0; i < diff.size(); ++i) {
+            //     const auto d = diff[i];
+            //     if (d < 0) {
+            //         // deallocate trees
+            //         auto it = kdtree3s_.begin() + (kdtree3s_.size() - d);
+            //         std::for_each(it, kdtree3s_.end(), [&](const auto& tree) { delete tree; });
+            //         kdtree3s_.erase()
+            //     } else if (d > 0) {
+            //         // create trees
+            //         const auto size = max_number_of_nodes_to_do_linear_search_on_ *
+            //                           std::pow(max_number_of_kdtrees_per_bucket_, i);
+            //     }
+            // }
+
+            // std::cerr << "[DEBUG] " << __FILE__ << ":" << __LINE__ << ": "
+            //           << " updating kdtree" << '\n';
+
+            // auto offset = [this, k]() -> std::size_t {
+            //     const auto merge_existing_kdtrees_into_one = k == max_number_of_kdtrees_;
+            //     if (merge_existing_kdtrees_into_one) {
+            //         std::cerr << "[DEBUG] " << __FILE__ << ":" << __LINE__ << ": "
+            //                   << " merge_existing_kdtrees_into_one" << '\n';
+
+            //         std::for_each(kdtree3s_.begin(), kdtree3s_.end(),
+            //                       [&](const auto& tree) { delete tree; });
+            //         kdtree3s_.clear();
+            //         std::cerr << "[DEBUG] " << __FILE__ << ":" << __LINE__ << ": "
+            //                   << " kdtree3s_.size()" << kdtree3s_.size() << '\n';
+
+            //         // update size of kdtrees. 1000 -> 5000 -> 25000
+            //         kdtree_size_ = kdtree_size_ * (max_number_of_kdtrees_per_bucket_ + 1);
+            //         // TODO: not correct for policy 2
+            //         return 0;
+            //     } else {
+            //         return linear_search_start_index_;
+            //     }
+            // }();
+
+            // // kdtree3s_.emplace_back(generator, kdtree_size_);
+            // kdtree3s_.push_back(new kdtree3(generator, kdtree_size_));
+            // // kdtree3s_.push_back(std::make_unique<kdtree3>(generator, kdtree_size_));
+            // // kdtree3s_.emplace_front(generator, kdtree_size_);
+            // // kdtree3s_.push_front(std::move(std::make_unique<kdtree3>(generator,
+            // kdtree_size_)));
+            // // advance starting index for linear search
+            // linear_search_start_index_ = n;
         }
     }
+
+#endif  // USE_KDTREE
 
     return node;
 }
@@ -297,7 +483,7 @@ auto RRT::grow_() -> bool {
     const auto random_pt = sample_random_point_();
     auto nearest_neighbor = find_nearest_neighbor_(random_pt);
 
-    // this horrow is needed to avoid a race condition with Eigen that
+    // this horror is needed to avoid a race condition with Eigen that
     // causes the vector to be overwritten with garbage value.
     const auto [x, y, z] = [=, &nearest_neighbor]() {
         const auto& pt = nearest_neighbor->position_;
@@ -310,8 +496,6 @@ auto RRT::grow_() -> bool {
     v << x, y, z;
 
     auto& inserted_node = insert_node_(v, nearest_neighbor);
-    // std::cerr << "[DEBUG] " << __FILE__ << ":" << __LINE__ << ": "
-    //   << " INSERTED NODE" << '\n';
 
     // TODO: use voxblox to check for valid raycast
     const auto line_between_random_point_and_its_nearest_neighbor_is_free_space = true;

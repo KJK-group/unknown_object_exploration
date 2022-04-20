@@ -52,9 +52,13 @@ class kdtree {
     // template <typename fn>
     // kdtree(fn&& f, std::size_t n) {
     using fn = std::function<std::pair<point_t, value_t>()>;
-    kdtree(fn&& f, std::size_t n) {
+    kdtree(fn&& f, int n) {
         // static_assert(std::is_function_v<fn> || std::is_invocable_v<fn>,
         //   "fn must be a callable object");
+        if (n < 0) {
+            throw std::invalid_argument("n must be positive");
+        }
+
         nodes_.reserve(n);
         for (size_t i = 0; i < n; ++i) {
             const auto&& [point, value] = f();
