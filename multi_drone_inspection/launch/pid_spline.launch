@@ -10,7 +10,12 @@
     <arg name="kai" default="0"/>
     <arg name="kad" default="0"/>
 
-    <node pkg="$(arg package)" type="mission_state" name="mission_state" />
-    <node pkg="$(arg package)" type="pid_controller" name="pid_controller" args="$(arg krp) $(arg kri) $(arg krd) $(arg kap) $(arg kai) $(arg kad)" output="screen" />
+    <node pkg="$(arg package)" type="mission_state" name="mission_state" output="screen" />
+    <node
+        pkg="$(arg package)"
+        type="pid_controller"
+        name="pid_controller"
+        args="$(arg krp) $(arg kri) $(arg krd) $(arg kap) $(arg kai) $(arg kad)"
+        output="screen" />
     <node pkg="$(arg package)" type="publish_traversed_path" name="publish_traversed_path" />
 </launch>

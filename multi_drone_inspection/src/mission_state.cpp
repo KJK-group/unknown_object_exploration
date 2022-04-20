@@ -176,7 +176,6 @@ auto main(int argc, char** argv) -> int {
 
     //----------------------------------------------------------------------------------------------
     // control loop
-    auto error_vec = Eigen::Vector3f(0, 0, 0);
     while (ros::ok()) {
         //------------------------------------------------------------------------------------------
         // request to set drone mode to OFFBOARD every 5 seconds until successful
@@ -223,7 +222,8 @@ auto main(int argc, char** argv) -> int {
                 // 2. if it's the second time we're here, go to LAND
                 expected_pos = home;
                 ros::Duration(1.0).sleep();
-                if (error.norm < TOLERANCE_DISTANCE) {
+                std::cout << MAGENTA << error << RESET << std::endl;
+                if (error.norm < TOLERANCE_DISTANCE && delta_time.toSec() > 5) {
                     if (inspection_complete) {
                         mission_state_msg.state = LAND;
                     } else {
