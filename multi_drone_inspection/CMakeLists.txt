@@ -71,7 +71,7 @@ function(add_ros_executable name main)
   add_dependencies(${name} ${${PROJECT_NAME}_EXPORTED_TARGETS}
                    ${catkin_EXPORTED_TARGETS})
   target_link_libraries(${name} ${catkin_LIBRARIES} fmt::fmt-header-only)
-  target_compile_options(${name} PRIVATE -O2 -Wall -Wextra -Wpedantic)
+  target_compile_options(${name} PRIVATE -O2)
 endfunction(add_ros_executable)
 
 # add_ros_executable(visualize_kdtree src/visualize_kdtree.cpp)
@@ -99,6 +99,7 @@ add_ros_executable(trajectory_follower src/trajectory_follower.cpp)
 add_ros_executable(spline_tester src/spline_tester.cpp)
 add_ros_executable(mission_state src/mission_state.cpp)
 add_ros_executable(pid_controller src/pid_controller.cpp)
+add_ros_executable(publish_traversed_path src/publish_traversed_path.cpp)
 
 target_sources(spline_tester
                PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src/bezier_spline.cpp

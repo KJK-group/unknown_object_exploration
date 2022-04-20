@@ -20,7 +20,7 @@
 #define TARGET_VELOCITY 1.f              // move drone at 5m/s
 #define FRAME_WORLD "world_enu"          // world/global frame
 #define FRAME_BODY "PX4/odom_local_ned"  // drone body frame
-#define SPLINE_Z_OFFSET 15
+#define SPLINE_Z_OFFSET 5
 
 // escape codes
 constexpr auto MAGENTA = "\u001b[35m";
@@ -227,6 +227,7 @@ auto main(int argc, char** argv) -> int {
                     if (inspection_complete) {
                         mission_state_msg.state = LAND;
                     } else {
+                        start_time = ros::Time::now();
                         mission_state_msg.state = EXPLORATION;
                     }
                 }

@@ -2,6 +2,15 @@
 <launch>
     <arg name="package" value="multi_drone_inspection"/>
     <arg name="package_path" value="$(find multi_drone_inspection)"/>
+    <!-- Controller Arguments -->
+    <arg name="krp" default="0.5"/>
+    <arg name="kri" default="0"/>
+    <arg name="krd" default="0"/>
+    <arg name="kap" default="0.5"/>
+    <arg name="kai" default="0"/>
+    <arg name="kad" default="0"/>
 
-    <node pkg="$(arg package)" type="" name="" />
+    <node pkg="$(arg package)" type="mission_state" name="mission_state" />
+    <node pkg="$(arg package)" type="pid_controller" name="pid_controller" args="$(arg krp) $(arg kri) $(arg krd) $(arg kap) $(arg kai) $(arg kad)" output="screen" />
+    <node pkg="$(arg package)" type="publish_traversed_path" name="publish_traversed_path" />
 </launch>
