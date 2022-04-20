@@ -63,6 +63,7 @@ mavros_msgs::State drone_state;
 nav_msgs::Odometry odom;
 mdi_msgs::MissionStateStamped mission_state_msg;
 mdi_msgs::PointNormStamped error;
+auto velocity_target = TARGET_VELOCITY;
 // mission_state_msg.state = PASSIVE;
 auto seq_state = 0;
 auto exploration_complete = false;
@@ -125,16 +126,21 @@ auto main(int argc, char** argv) -> int {
     ros::Rate rate(20.0);
     // save start_time
     start_time = ros::Time::now();
+
     //----------------------------------------------------------------------------------------------
     // transform utilities
     auto tf_listener = mdi::utils::transform::TransformListener{};
-    // tf2_ros::TransformListener tf_listener(tf_buffer);
+
+    //----------------------------------------------------------------------------------------------
+    // pass in arguments
+    if (argc > 1) velocity_target = std::stof(argv[1]);
 
     //----------------------------------------------------------------------------------------------
     // spline preprocessing
-    auto spline_input_points = vector<Vector3f>{Vector3f(0.0, 0.0, 0.0),  Vector3f(3.0, 0.5, 1.0),
-                                                Vector3f(-3.5, 1.5, 0.0), Vector3f(-2.8, 1.0, 0.7),
-                                                Vector3f(1.2, 2.2, 1.5),  Vector3f(1.0, 3.0, 1.0)};
+    auto spline_input_points = vector<Vector3f>{Vector3f(0.0, 0.0, 0.0),   Vector3f(3.0, 0.5, 1.0),
+                                                Vector3f(-3.5, 1.5, 0.0),  Vector3f(-2.8, 1.0, 0.7),
+                                                Vector3f(1.2, 2.2, 1.5),   Vector3f(1.0, 3.0, 1.0),
+                                                Vector3f(-0.2, -0.5, -0.2)};
     for (auto& point : spline_input_points) {
         point *= 10;
     }
@@ -235,7 +241,7 @@ auto main(int argc, char** argv) -> int {
             case EXPLORATION:
                 // when object is matched, go to INSPECTION
                 // go through spline here, getting spline from BezierSpline getting input from RRT*
-                expected_pos = spline.get_point_at_distance(delta_time.toSec() * TARGET_VELOCITY);
+                expected_pos = spline.get_point_at_distance(delta_time.toSec() * velocity_target);
                 expected_pos(2) = expected_pos.z() + SPLINE_Z_OFFSET;
                 if (exploration_complete) {
                     mission_state_msg.state = INSPECTION;

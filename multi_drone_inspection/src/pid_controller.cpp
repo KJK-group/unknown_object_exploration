@@ -62,7 +62,7 @@ auto pid_command_from_error(Eigen::Vector3f error) -> geometry_msgs::TwistStampe
     auto error_derivative = error - error_previous;
 
     // linear velocity controller output
-    auto c = k_rho_p * error;  // + k_rho_p * error_integral + k_rho_p * error_derivative;
+    auto c = k_rho_p * error + k_rho_i * error_integral + k_rho_d * error_derivative;
     // TODO: angular velocity controller output
     // std::cout << c << std::endl;
 
