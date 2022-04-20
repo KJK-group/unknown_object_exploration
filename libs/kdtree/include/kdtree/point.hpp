@@ -14,10 +14,11 @@ namespace kdtree {
 template <typename coordinate_t, size_t dimensions>
 class point {
     static_assert(std::is_floating_point_v<coordinate_t> || std::is_integral_v<coordinate_t>,
-                  "coordinate_t must be an integer of floating point");
+                  "coordinate_t must be an integer or floating point");
 
    public:
     point(std::array<coordinate_t, dimensions> c) : coordinates_(c) {}
+
     point(std::initializer_list<coordinate_t> list) {
         size_t n = std::min(dimensions, list.size());
         std::copy_n(list.begin(), n, coordinates_.begin());
@@ -28,7 +29,9 @@ class point {
      * @param index dimension index (zero based)
      * @return coordinate in the given dimension
      */
-    coordinate_t get_element_in_dimension(size_t index) const { return coordinates_[index]; }
+    auto get_element_in_dimension(size_t index) const -> coordinate_t {
+        return coordinates_[index];
+    }
     /**
      * Returns the distance squared from this point to another
      * point.

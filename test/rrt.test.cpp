@@ -42,6 +42,9 @@ auto main(int argc, char* argv[]) -> int {
                              .build();
     ROS_INFO("creating rrt");
     auto rrt = mdi::rrt::RRT::from_rosparam("/rrt");
+
+#ifdef MEASURE_PERF
+
     if (const auto opt = [=]() -> std::optional<std::filesystem::path> {
             if (argc >= 2) {
                 return std::make_optional(std::filesystem::path(argv[1]));
@@ -55,10 +58,14 @@ auto main(int argc, char* argv[]) -> int {
 
     std::size_t i = 0;
     rrt.register_cb_for_event_on_new_node_created([&](const auto& p1, const auto& p2) {
-        std::cout << "iteration: " << i << '\n';
+        // std::cout << "iteration: " << i << '\n';
         ++i;
     });
 
+#endif  // MEASURE_PERF
+
+    rrt.register_cb_for_event_on_trying_full_path(
+        [](const auto& p1, const auto& p2) { std::cout << "trying full path" << '\n'; });
     // rrt.register_cb_for_event_on_new_node_created([&](const vec3& parent, const vec3&
     // new_node) {
     //     auto msg = arrow_msg_gen({parent, new_node});

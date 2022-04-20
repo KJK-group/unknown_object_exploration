@@ -3,8 +3,10 @@
 	<arg name="node" value="test_rrt"/>
 	<arg name="package" value="multi_drone_inspection"/>
 	<!-- <arg name="launch-prefix" default="valgrind \-\-leak-check=full"/> -->
-	<!-- <arg name="launch-prefix" default="kitty lldb"/> -->
-	<arg name="launch-prefix" default=""/>
+	<arg name="launch-prefix" default="kitty lldb"/>
+	<!-- <arg name="launch-prefix" default="perf record \-\-call-graph dwarf "/> -->
+	<!-- <arg name="launch-prefix" value=""/> -->
+
 
 	<!-- <node pkg="rviz" type="rviz" name="rviz" args="-d $(dirname)/../rviz/$(arg node).rviz"/> -->
 	<rosparam command="load" file="$(dirname)/../rosparam/$(arg node).yaml"/>

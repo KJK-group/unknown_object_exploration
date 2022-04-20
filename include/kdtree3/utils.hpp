@@ -14,8 +14,10 @@ namespace kdtree::utils {
  * @param numbers
  * @return float
  */
+
+// template <typename iterator>
 auto median(std::vector<float> numbers) -> float {
-    assert(!numbers.empty());
+    assert(! numbers.empty());
     const auto middle_itr = numbers.begin() + numbers.size() / 2;
     std::nth_element(numbers.begin(), middle_itr, numbers.end());
     if (numbers.size() % 2 == 0) {

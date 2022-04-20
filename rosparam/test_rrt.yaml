@@ -12,4 +12,4 @@ rrt:
   goal_bias: 0.5
   max_dist_goal_tolerance: 2
   step_size: 1.5
-  probability_of_testing_full_path_from_new_node_to_goal: 0.05
+  probability_of_testing_full_path_from_new_node_to_goal: 0.000

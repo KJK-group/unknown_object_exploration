@@ -6,13 +6,16 @@
 #include <algorithm>
 #include <chrono>
 #include <cstddef>
+#include <cstdint>
 #include <cstdlib>
 #include <eigen3/Eigen/Dense>
 #include <filesystem>
+#include <forward_list>
 #include <fstream>
 #include <functional>
 #include <iostream>
 #include <limits>
+#include <memory>
 #include <optional>
 #include <ratio>
 #include <string_view>
@@ -31,10 +34,10 @@ class RRTBuilder;  // forward declare builder class
 class RRT {
    public:
     friend class RRTBuilder;
-    static RRTBuilder builder();
-
+    static auto from_builder() -> RRTBuilder;
     static auto from_rosparam(std::string_view prefix) -> RRT;
 
+#ifdef MEASURE_PERF
     ~RRT() {
         if (log_perf_measurements_enabled_) {
             // std::filesystem::is_regular_file(file_path_csv_);
@@ -45,13 +48,15 @@ class RRT {
             auto file = std::ofstream(file_path_csv_);
             if (file.is_open()) {
                 file << "t,nodes\n";
-                const auto microseconds_to_seconds = [](double microseconds) {
-                    return microseconds / 1e6;
+                const auto nanoseconds_to_seconds = [](double nanoseconds) {
+                    return nanoseconds / 1e9;
                 };
+
                 for (std::size_t i = 0; i < timimg_measurements_.size(); ++i) {
+                    // std::nth_element(timimg_measurements_.cb)
                     const auto& measurement = timimg_measurements_[i];
                     file << i << ","
-                         << microseconds_to_seconds(static_cast<double>(measurement.count()))
+                         << nanoseconds_to_seconds(static_cast<double>(measurement.count()))
                          << '\n';
                 }
                 file.close();
@@ -63,17 +68,18 @@ class RRT {
         log_perf_measurements_enabled_ = true;
         file_path_csv_ = p;
     }
-
     auto disable_perf_logging() -> void { log_perf_measurements_enabled_ = false; }
+#endif  // MEASURE_PERF
 
+    // FIXME: remove this
     auto print_each_node() const -> void {
         for (const auto& n : nodes_) {
             std::cout << n << '\n';
         }
     }
-
+    // FIXME: remove this
     auto print_number_of_root_nodes() -> void {
-        const auto is_root = [](const node& n) { return n.is_root(); };
+        const auto is_root = [](const node_t& n) { return n.is_root(); };
         const auto count = std::count_if(nodes_.cbegin(), nodes_.cend(), is_root);
         std::cout << "number of root nodes" << count << '\n';
     }
@@ -88,10 +94,9 @@ class RRT {
                                                 */
     auto clear() -> void {
         nodes_.clear();
-        call_cbs_for_event_on_clearing_nodes_in_tree();
+        call_cbs_for_event_on_clearing_nodes_in_tree_();
     }
 
-    [[nodiscard]] auto size() const -> std::size_t { return nodes_.size(); };
     auto get_waypoints() -> std::optional<std::vector<vec3>> {
         if (waypoints_.empty()) {
             return std::nullopt;
@@ -145,11 +150,11 @@ class RRT {
         unregister_cbs_for_event_on_trying_full_path();
         unregister_cbs_for_event_on_clearing_nodes_in_tree();
     }
-
-    [[nodiscard]] auto get_number_of_nodes() const noexcept -> std::size_t { return nodes_.size(); }
-    [[nodiscard]] int remaining_iterations() const noexcept { return remaining_iterations_; }
-    [[nodiscard]] std::size_t max_iterations() const { return max_iterations_; }
-    [[nodiscard]] float sampling_radius() const { return sampling_radius_; }
+    [[nodiscard]] auto empty() const -> bool { return nodes_.empty(); }
+    [[nodiscard]] auto size() const -> std::size_t { return nodes_.size(); };
+    [[nodiscard]] auto remaining_iterations() const -> int { return remaining_iterations_; }
+    [[nodiscard]] auto max_iterations() const -> std::size_t { return max_iterations_; }
+    [[nodiscard]] auto sampling_radius() const -> float { return sampling_radius_; }
     [[nodiscard]] auto start_position() const -> vec3 { return start_position_; }
     [[nodiscard]] auto goal_position() const -> vec3 { return goal_position_; }
 
@@ -159,51 +164,40 @@ class RRT {
         std::size_t max_iterations, float max_dist_goal_tolerance,
         float probability_of_testing_full_path_from_new_node_to_goal);
 
-    struct node {
+    struct node_t {
        public:
-        node(vec3 pos, node* parent_ = nullptr)
+        node_t(vec3 pos, node_t* parent_ = nullptr)
             : parent(parent_), children{}, position_(std::move(pos)) {}
 
-        node* parent = nullptr;
-        std::vector<node*> children{};
+        node_t* parent = nullptr;
+        std::vector<node_t*> children{};
         vec3 position_{};
 
         [[nodiscard]] auto is_leaf() const -> bool { return children.empty(); }
         [[nodiscard]] auto is_root() const -> bool { return parent == nullptr; }
-        [[nodiscard]] auto get_number_of_children() const -> std::size_t { return children.size(); }
-        friend std::ostream& operator<<(std::ostream& os, const node& n) {
-            os << "RRT::node:\n";
-            os << "  root: " << (n.is_root() ? "true" : "false") << '\n';
-            os << "  leaf: " << (n.is_leaf() ? "true" : "false") << '\n';
-            os << "  position:\n";
-            os << "    x: " << n.position_.x() << '\n';
-            os << "    y: " << n.position_.y() << '\n';
-            os << "    z: " << n.position_.z() << '\n';
-            os << "  number_of_children: " << n.get_number_of_children() << '\n';
-            return os;
+        [[nodiscard]] auto number_of_children() const -> std::size_t { return children.size(); }
+
+        friend std::ostream& operator<<(std::ostream& ostream, const node_t& n) {
+            ostream << "RRT::node:\n";
+            ostream << "  root: " << (n.is_root() ? "true" : "false") << '\n';
+            ostream << "  leaf: " << (n.is_leaf() ? "true" : "false") << '\n';
+            ostream << "  position:\n";
+            ostream << "    x: " << n.position_.x() << '\n';
+            ostream << "    y: " << n.position_.y() << '\n';
+            ostream << "    z: " << n.position_.z() << '\n';
+            ostream << "  number_of_children: " << n.number_of_children() << '\n';
+            return ostream;
         }
     };
 
-    using kdtree3 = kdtree::kdtree<float, 3>;
-    kdtree3* kdtree3_;
-
-    // todo: merge kdtree and list with by using the address of a leaf in kdtree,
-    // as the parent of the "root" node in the linear list.
-    // class backing_collection {
-    //    public:
-    //     backing_collection() = default;
-    //     // virtual ~backing_collection() {}
-    // 	insert
-
-    //    private:
-    //     std::vector<node> nodes_{};
-    //     std::vector<kdtree3> kdtrees_{};
-    // };
-
-    auto sample_random_point() -> vec3;
-    auto find_nearest_neighbor(const vec3& point) -> node*;
+    auto sample_random_point_() -> vec3;
+    // TODO: make kdtree or list transparent to the caller
+    auto find_nearest_neighbor_(const vec3& point) -> node_t*;
     auto bft_(const std::function<void(const vec3& pt, const vec3& parent_pt)>& f) const -> void;
     [[nodiscard]] auto grow_() -> bool;
+    auto insert_node_(const vec3& pos, node_t* parent) -> node_t&;
+
+    auto backtrack_and_set_waypoints_(node_t* start_node) -> bool;
 
     float step_size_{};
     // float max_step_size_;
@@ -233,6 +227,17 @@ class RRT {
      */
     // TODO: implement
     // VoxelGrid voxelgrid_;
+    std::vector<vec3> waypoints_{};
+    std::vector<node_t> nodes_{};
+
+    std::size_t linear_search_start_index_{0};
+    std::int32_t kdtree_size_ = 1000;
+    static constexpr std::int32_t max_number_of_kdtrees_{4};
+    static constexpr std::int32_t max_number_of_nodes_to_do_linear_search_on_ = 1000;
+    using kdtree3 = kdtree::kdtree<float, std::size_t, 3>;
+    std::vector<kdtree3*> kdtree3s_;
+    // std::vector<std::unique_ptr<kdtree3>> kdtree3s_;
+    // std::forward_list<std::unique_ptr<kdtree3>> kdtree3s_;
 
     mdi::utils::random::random_point_generator rng_{0.0, 1.0};
 
@@ -241,24 +246,24 @@ class RRT {
     // template <typename... Ts>
     // using callbacks = std::vector<action>;
 
-    auto call_cbs_for_event_on_new_node_created(const vec3&, const vec3&) const -> void;
-    auto call_cbs_for_event_on_goal_reached(const vec3&) const -> void;
-    auto call_cbs_for_event_on_trying_full_path() const -> void;
-    auto call_cbs_for_event_on_clearing_nodes_in_tree() const -> void;
+    auto call_cbs_for_event_on_new_node_created_(const vec3&, const vec3&) const -> void;
+    auto call_cbs_for_event_on_goal_reached_(const vec3&) const -> void;
+    auto call_cbs_for_event_on_trying_full_path_(const vec3&, const vec3&) const -> void;
+    auto call_cbs_for_event_on_clearing_nodes_in_tree_() const -> void;
 
     std::vector<std::function<void(const vec3&, const vec3&)>> on_new_node_created_cb_list{};
     std::vector<std::function<void(const vec3&, size_t)>> on_goal_reached_cb_list{};
     std::vector<std::function<void(const vec3&, const vec3&)>> on_trying_full_path_cb_list{};
     std::vector<std::function<void()>> on_clearing_nodes_in_tree_cb_list{};
 
-    std::vector<vec3> waypoints_{};
-    std::vector<node> nodes_{};
-
+#ifdef MEASURE_PERF
     bool log_perf_measurements_enabled_ = false;
     std::filesystem::path file_path_csv_;
-    using microseconds_t = std::chrono::duration<double, std::micro>;
-    std::vector<std::chrono::microseconds> timimg_measurements_{};
-};  // namespace mdi::rrt
+    using microseconds_t = std::chrono::duration<double, std::nano>;
+    std::vector<std::chrono::nanoseconds> timimg_measurements_{};
+#endif  // MEASURE_PERF
+
+};  // class RRT
 
 }  // namespace mdi::rrt
 

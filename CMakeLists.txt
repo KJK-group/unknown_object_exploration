@@ -36,6 +36,9 @@ find_package(Boost REQUIRED COMPONENTS system)
 find_package(Eigen3 REQUIRED)
 
 include_directories(${CMAKE_SOURCE_DIR}/include)
+
+add_subdirectory(libs/kdtree)
+
 # file(GLOB src_files ${CMAKE_SOURCE_DIR}/src/*.cpp) file(GLOB header_files
 # ${CMAKE_SOURCE_DIR}/include/**/*.hpp) file(GLOB kdtree3_header_files
 # ${CMAKE_SOURCE_DIR}/include/kdtree3/*.hpp)
@@ -142,13 +145,19 @@ endfunction(add_ros_executable)
 
 # add_ros_executable(linear_search_vs_kdtree test/linear_search_vs_kdtree.cpp)
 
-add_ros_executable(test_rrt test/rrt.test.cpp)
+# add_ros_executable(test_rrt test/rrt.test.cpp)
+add_executable(test_rrt test/rrt.test.cpp)
+add_dependencies(test_rrt ${${PROJECT_NAME}_EXPORTED_TARGETS}
+                 ${catkin_EXPORTED_TARGETS})
 target_sources(test_rrt PUBLIC src/rrt/rrt.cpp)
+target_link_libraries(test_rrt ${catkin_LIBRARIES} fmt::fmt-header-only
+                      kdtree-header-only)
 
-# target_link_libraries(test_rrt PRIVATE ) target_compile_options(test_rrt
-# PRIVATE -g -O0 -Wall -Wextra -Wpedantic)
-target_compile_options(test_rrt PRIVATE -O2 -Wall -Wextra -Wpedantic)
+target_compile_options(test_rrt PRIVATE -g -O0 -Wall -Wextra -Wpedantic)
+
+# target_compile_options(test_rrt PRIVATE -O3 -finline-functions-called-once)
 # target_compile_options(test_rrt PRIVATE -g -O0 -Wall -Wextra -Wpedantic)
+target_compile_definitions(test_rrt PUBLIC MEASURE_PERF)
 
 # target_sources(visualize_kdtree PUBLIC src/kdtree3/kdtree3.cpp)
 # target_compile_options(visualize_kdtree PRIVATE -g)
@@ -187,16 +196,6 @@ target_link_libraries(spline_tester ${catkin_LIBRARIES})
 # ${catkin_EXPORTED_TARGETS}) target_link_libraries(visualize_kdtree kdtree3)
 # target_include_directories(visualize_kdtree PRIVATE kdtree3)
 
-# target_link_libraries(test_boost fmt::fmt)
-
-# target_link_libraries(main PRIVATE FunctionalPlus::fplus)
-# add_executable(test_voxblox src/test_voxblox.cpp)
-# add_dependencies(test_voxblox ${${PROJECT_NAME}_EXPORTED_TARGETS}
-# ${catkin_EXPORTED_TARGETS}) target_link_libraries(test_voxblox
-# ${catkin_LIBRARIES}) target_include_directories(test_voxblox PUBLIC
-# ${CMAKE_CURRENT_SOURCE_DIR}/include) target_sources(test_voxblox PUBLIC
-# ${CMAKE_CURRENT_SOURCE_DIR}/src/voxblox_manager.cpp)
-# target_compile_options(test_voxblox PUBLIC "-std=c++17")
 # ##############################################################################
 # Install ##
 # ##############################################################################
