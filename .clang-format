@@ -2,10 +2,21 @@ BasedOnStyle: Google
 IndentWidth: 4
 ColumnLimit: 100
 PointerAlignment: Left
+Standard: c++20
 
 DerivePointerAlignment: false
 # AlignConsecutiveAssignments: Consecutive
 AlignTrailingComments: true
 
+# AlignConsecutiveAssignments: Consecutive
+AlignOperands: true
+# AllowShortLambdasOnASingleLine: SLS_All
+BreakBeforeTernaryOperators: true
+# BreakConstructorInitializers: BCIS_AfterColon
+Cpp11BracedListStyle: true
+# IndentPPDirectives: PPDIS_AfterHash
+# ReferenceAlignment: Left
+SpaceAfterLogicalNot: true
+SpaceBeforeAssignmentOperators: true
 # AlignOperands:  AlignAfterOperator
 # AllowShortEnumsOnASingleLine: false
