@@ -24,5 +24,16 @@
 			"#endif // $1"
 		],
 		"description": "create a header guard in a idiomatic way"
-	}
+	},
+	"debug print": {
+		"prefix": [
+			"dbg",
+			"debug"
+		],
+		"description": "",
+		"body": [
+			"std::cerr << \"[DEBUG] \" << __FILE__ << \":\" << __LINE__ << \": \" << \" $1\" << '\\n';",
+			"$0"
+		],
+	},
 }
