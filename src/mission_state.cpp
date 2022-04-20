@@ -12,13 +12,23 @@
 
 #include "boost/format.hpp"
 #include "multi_drone_inspection/MissionStateStamped.h"
+#include "multi_drone_inspection/PointNormStamped.h"
 #include "multi_drone_inspection/bezier_spline.hpp"
-#include "utils/transformlistener.hpp"
+#include "multi_drone_inspection/utils/transformlistener.hpp"
 
-#define TOLERANCE_DIST 0.1
-#define TARGET_VELOCITY 5f                // move drone at 5m/s
-#define FRAME_WORLD "PX4";                // world/global frame
-#define FRAME_BODY "PX4/odom_local_ned";  // drone body frame
+#define TOLERANCE_DISTANCE 0.1
+#define TARGET_VELOCITY 1.f              // move drone at 5m/s
+#define FRAME_WORLD "world_enu"          // world/global frame
+#define FRAME_BODY "PX4/odom_local_ned"  // drone body frame
+#define SPLINE_Z_OFFSET 15
+
+// escape codes
+constexpr auto MAGENTA = "\u001b[35m";
+constexpr auto GREEN = "\u001b[32m";
+constexpr auto RESET = "\u001b[0m";
+constexpr auto BOLD = "\u001b[1m";
+constexpr auto ITALIC = "\u001b[3m";
+constexpr auto UNDERLINE = "\u001b[4m";
 
 //--------------------------------------------------------------------------------------------------
 // State Utilities
@@ -49,15 +59,18 @@ auto state_to_string(state s) -> std::string {
 }
 
 // state variables
+mavros_msgs::State drone_state;
+nav_msgs::Odometry odom;
 multi_drone_inspection::MissionStateStamped mission_state_msg;
-mission_state_msg.state = PASSIVE;
+multi_drone_inspection::PointNormStamped error;
+// mission_state_msg.state = PASSIVE;
 auto seq_state = 0;
 auto exploration_complete = false;
 auto inspection_complete = false;
 
 // home pose
-auto home = eigen::Vector3f(0, 0, 5);
-auto expected_pos = move(home);
+auto home = Eigen::Vector3f(0, 0, SPLINE_Z_OFFSET);
+auto expected_pos = Eigen::Vector3f(0, 0, SPLINE_Z_OFFSET);
 
 //--------------------------------------------------------------------------------------------------
 // ROS
@@ -65,6 +78,10 @@ auto expected_pos = move(home);
 
 // publishers
 ros::Publisher pub_mission_state;
+
+// subscribers
+ros::Subscriber sub_state;
+ros::Subscriber sub_error;
 
 // services
 ros::ServiceClient client_arm;
@@ -77,24 +94,26 @@ ros::Time start_time;
 // transform utilities
 tf2_ros::Buffer tf_buffer;
 
-// state variables
-mavros_msgs::State state;
-
 //--------------------------------------------------------------------------------------------------
 // Bezier Spline
 //--------------------------------------------------------------------------------------------------
 
-BezierSpline spline;
+mdi::BezierSpline spline;
 auto spline_input_points =
-    vector<Vector3f>{Vector3f(0.0, 0.0, 0.0),  Vector3f(3.0, 0.5, 1.0), Vector3f(-3.5, 1.5, 0.0),
-                     Vector3f(-2.8, 1.0, 0.7), Vector3f(1.2, 2.2, 1.5), Vector3f(1.0, 3.0, 1.0)};
+    vector<Eigen::Vector3f>{Eigen::Vector3f(0.0, 0.0, 0.0),  Eigen::Vector3f(3.0, 0.5, 1.0),
+                            Eigen::Vector3f(-3.5, 1.5, 0.0), Eigen::Vector3f(-2.8, 1.0, 0.7),
+                            Eigen::Vector3f(1.2, 2.2, 1.5),  Eigen::Vector3f(1.0, 3.0, 1.0)};
 auto forwards = true;
 
 //--------------------------------------------------------------------------------------------------
 // Callback Functions
 //--------------------------------------------------------------------------------------------------
 
-auto state_cb(const mavros_msgs::State::ConstPtr& msg) -> void { state = *msg; }
+auto state_cb(const mavros_msgs::State::ConstPtr& msg) -> void { drone_state = *msg; }
+auto error_cb(const multi_drone_inspection::PointNormStamped::ConstPtr& msg) -> void {
+    error = *msg;
+}
+// auto odom_cb(const nav_msgs::Odometry::ConstPtr& msg) -> void { odom = *msg; }
 
 //--------------------------------------------------------------------------------------------------
 // Main
@@ -103,7 +122,7 @@ auto state_cb(const mavros_msgs::State::ConstPtr& msg) -> void { state = *msg; }
 auto main(int argc, char** argv) -> int {
     //----------------------------------------------------------------------------------------------
     // ROS initialisations
-    ros::init(argc, argv, "mdi_mission_state_msg");
+    ros::init(argc, argv, "mdi_mission_state");
     auto nh = ros::NodeHandle();
     ros::Rate rate(20.0);
     // save start_time
@@ -127,6 +146,8 @@ auto main(int argc, char** argv) -> int {
     //----------------------------------------------------------------------------------------------
     // state subscriber
     sub_state = nh.subscribe<mavros_msgs::State>("/mavros/state", 10, state_cb);
+    // error subscriber
+    sub_error = nh.subscribe<multi_drone_inspection::PointNormStamped>("/mdi/error", 10, error_cb);
 
     //----------------------------------------------------------------------------------------------
     // velocity publisher
@@ -142,7 +163,7 @@ auto main(int argc, char** argv) -> int {
 
     //----------------------------------------------------------------------------------------------
     // wait for FCU connection
-    while (ros::ok() && !state.connected) {
+    while (ros::ok() && !drone_state.connected) {
         ros::spinOnce();
         rate.sleep();
     }
@@ -157,7 +178,7 @@ auto main(int argc, char** argv) -> int {
 
     //----------------------------------------------------------------------------------------------
     // control loop
-    auto error = eigen::Vecor3f(0, 0, 0);
+    auto error_vec = Eigen::Vector3f(0, 0, 0);
     while (ros::ok()) {
         //------------------------------------------------------------------------------------------
         // request to set drone mode to OFFBOARD every 5 seconds until successful
@@ -188,7 +209,10 @@ auto main(int argc, char** argv) -> int {
         mission_state_msg.header.frame_id = FRAME_WORLD;
 
         // transform to get error
-        error = tf_listener.transform_vec3(FRAME_BODY, FRAME_WORLD, expected_pos);
+        // TODO: publish error from controller, subscribe to it here, and use that
+        // if (auto opt = tf_listener.transform_vec3(FRAME_BODY, FRAME_WORLD, expected_pos)) {
+        //     error = opt.value();
+        // }
         auto delta_time = ros::Time::now() - start_time;
 
         switch (mission_state_msg.state) {
@@ -199,7 +223,8 @@ auto main(int argc, char** argv) -> int {
                 // 1. if within tolerance, go to EXPLORATION
                 // 2. if it's the second time we're here, go to LAND
                 expected_pos = home;
-                if (error.norm() < TOLERANCE_DISTANCE) {
+                ros::Duration(1.0).sleep();
+                if (error.norm < TOLERANCE_DISTANCE) {
                     if (inspection_complete) {
                         mission_state_msg.state = LAND;
                     } else {
@@ -211,6 +236,7 @@ auto main(int argc, char** argv) -> int {
                 // when object is matched, go to INSPECTION
                 // go through spline here, getting spline from BezierSpline getting input from RRT*
                 expected_pos = spline.get_point_at_distance(delta_time.toSec() * TARGET_VELOCITY);
+                expected_pos(2) = expected_pos.z() + SPLINE_Z_OFFSET;
                 if (exploration_complete) {
                     mission_state_msg.state = INSPECTION;
                 }
@@ -249,8 +275,119 @@ auto main(int argc, char** argv) -> int {
         p.position.x = expected_pos.x();
         p.position.z = expected_pos.z();
         p.position.y = expected_pos.y();
-        mission_state_msg.Point = p;
+        mission_state_msg.target = p;
 
         pub_mission_state.publish(mission_state_msg);
+
+        int w;
+        int time = delta_time.toSec();
+        for (w = 0; time > 0; w++) {
+            time /= 10;
+        }
+        //------------------------------------------------------------------------------------------
+        // ROS logging
+        //------------------------------------------------------------------------------------------
+        // mission state
+        ROS_INFO_STREAM(GREEN << BOLD << ITALIC << "mission:" << RESET);
+        ROS_INFO_STREAM("  time:   " << boost::format("%1.2f") %
+                                            boost::io::group(std::setfill(' '), std::setw(w + 2),
+                                                             delta_time.toSec()));
+        ROS_INFO_STREAM("  dstate: " << boost::format("%s") % boost::io::group(std::setfill(' '),
+                                                                               std::setw(w),
+                                                                               drone_state.mode));
+        ROS_INFO_STREAM(
+            "  mstate: " << boost::format("%d") %
+                                boost::io::group(std::setfill(' '), std::setw(w),
+                                                 state_to_string((state)mission_state_msg.state)));
+        ROS_INFO_STREAM("  target:");
+        ROS_INFO_STREAM("    x: " << boost::format("%1.5f") %
+                                         boost::io::group(std::setfill(' '), std::setw(8),
+                                                          mission_state_msg.target.position.x));
+        ROS_INFO_STREAM("    y: " << boost::format("%1.5f") %
+                                         boost::io::group(std::setfill(' '), std::setw(8),
+                                                          mission_state_msg.target.position.y));
+        ROS_INFO_STREAM("    z: " << boost::format("%1.5f") %
+                                         boost::io::group(std::setfill(' '), std::setw(8),
+                                                          mission_state_msg.target.position.z));
+        // //------------------------------------------------------------------------------------------
+        // // drone position
+        // ROS_INFO_STREAM(GREEN << BOLD << ITALIC << "position:" << RESET);
+        // ROS_INFO_STREAM("  x:    " << boost::format("%1.5f") %
+        //                                   boost::io::group(std::setfill(' '), std::setw(8),
+        //                                                    odom.pose.pose.position.x));
+        // ROS_INFO_STREAM("  y:    " << boost::format("%1.5f") %
+        //                                   boost::io::group(std::setfill(' '), std::setw(8),
+        //                                                    odom.pose.pose.position.y));
+        // ROS_INFO_STREAM("  z:    " << boost::format("%1.5f") %
+        //                                   boost::io::group(std::setfill(' '), std::setw(8),
+        //                                                    odom.pose.pose.position.z));
+        // ROS_INFO_STREAM("  norm: " << boost::format("%1.5f") %
+        //                                   boost::io::group(std::setfill(' '), std::setw(8),
+        //                                                    Vector3f(odom.pose.pose.position.x,
+        //                                                             odom.pose.pose.position.y,
+        //                                                             odom.pose.pose.position.z)
+        //                                                        .norm()));
+        // //------------------------------------------------------------------------------------------
+        // // position errors
+        // ROS_INFO_STREAM(GREEN << BOLD << ITALIC << "errors:" << RESET);
+        // ROS_INFO_STREAM("  x:    " << boost::format("%1.5f") %
+        //                                   boost::io::group(std::setfill(' '), std::setw(8),
+        //                                   error_previous.x()));
+        // ROS_INFO_STREAM("  y:    " << boost::format("%1.5f") %
+        //                                   boost::io::group(std::setfill(' '), std::setw(8),
+        //                                   error_previous.y()));
+        // ROS_INFO_STREAM("  z:    " << boost::format("%1.5f") %
+        //                                   boost::io::group(std::setfill(' '), std::setw(8),
+        //                                   error_previous.z()));
+        // ROS_INFO_STREAM("  norm: " << boost::format("%1.5f") %
+        //                                   boost::io::group(std::setfill(' '), std::setw(8),
+        //                                   error_previous.norm()));
+        // //------------------------------------------------------------------------------------------
+        // // controller outputs
+        // ROS_INFO_STREAM(GREEN << BOLD << ITALIC << "controller outputs:" << RESET);
+        // ROS_INFO_STREAM("  x_vel: " << boost::format("%1.5f") % boost::io::group(std::setfill('
+        // '), std::setw(8),
+        //                                                        command_previous.twist.linear.x));
+        // ROS_INFO_STREAM("  y_vel: " << boost::format("%1.5f") % boost::io::group(std::setfill('
+        // '), std::setw(8),
+        //                                                        command_previous.twist.linear.y));
+        // ROS_INFO_STREAM("  z_vel: " << boost::format("%1.5f") % boost::io::group(std::setfill('
+        // '), std::setw(8),
+        //                                                        command_previous.twist.linear.z));
+        // ROS_INFO_STREAM("  norm:  " << boost::format("%1.5f") %
+        //                                    boost::io::group(std::setfill(' '), std::setw(8),
+        //                                          Vector3f(command_previous.twist.linear.x,
+        //                                                   command_previous.twist.linear.y,
+        //                                                   command_previous.twist.linear.z)
+        //                                              .norm()));
+        // //------------------------------------------------------------------------------------------
+        // // acceleration
+        // ROS_INFO_STREAM(GREEN << BOLD << ITALIC << "acceleration:" << RESET);
+        // ROS_INFO_STREAM("  x:    " << boost::format("%1.5f") %
+        //                                   boost::io::group(std::setfill(' '), std::setw(8),
+        //                                   acceleration.x()));
+        // ROS_INFO_STREAM("  y:    " << boost::format("%1.5f") %
+        //                                   boost::io::group(std::setfill(' '), std::setw(8),
+        //                                   acceleration.y()));
+        // ROS_INFO_STREAM("  z:    " << boost::format("%1.5f") %
+        //                                   boost::io::group(std::setfill(' '), std::setw(8),
+        //                                   acceleration.z()));
+        // ROS_INFO_STREAM("  norm: " << boost::format("%1.5f") %
+        //                                   boost::io::group(std::setfill(' '), std::setw(8),
+        //                                   acceleration.norm()));
+        // //------------------------------------------------------------------------------------------
+        // // velocity
+        // ROS_INFO_STREAM(GREEN << BOLD << ITALIC << "velocity:" << RESET);
+        // ROS_INFO_STREAM("  x:    " << boost::format("%1.5f") % boost::io::group(std::setfill('
+        // '), std::setw(8), velocity.x())); ROS_INFO_STREAM("  y:    " << boost::format("%1.5f") %
+        // boost::io::group(std::setfill(' '), std::setw(8), velocity.y())); ROS_INFO_STREAM("  z: "
+        // << boost::format("%1.5f") % boost::io::group(std::setfill('
+        // '), std::setw(8), velocity.z())); ROS_INFO_STREAM("  norm: " << boost::format("%1.5f") %
+        //                                   boost::io::group(std::setfill(' '), std::setw(8),
+        //                                   velocity.norm()));
+
+        ros::spinOnce();
+        rate.sleep();
     }
+    return 0;
 }

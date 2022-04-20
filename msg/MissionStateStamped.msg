@@ -1,3 +1,3 @@
 std_msgs/Header header
-geometry_msgs/Point target
+geometry_msgs/Pose target
 int8 state
