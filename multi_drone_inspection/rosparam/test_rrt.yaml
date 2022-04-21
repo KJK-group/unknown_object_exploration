@@ -4,12 +4,12 @@ rrt:
     - -2
     - 0
   goal_position:
+    - 30
     - 50
-    - 27
-    - 10
+    - 100
 
-  max_iterations: 20000
+  max_iterations: 100000
   goal_bias: 0.5
-  max_dist_goal_tolerance: 2
-  step_size: 1.5
+  max_dist_goal_tolerance: 4
+  step_size: 2
   probability_of_testing_full_path_from_new_node_to_goal: 0.000

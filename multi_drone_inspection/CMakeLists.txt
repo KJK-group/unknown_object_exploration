@@ -45,14 +45,9 @@ add_subdirectory(libs/kdtree)
 # Declare ROS messages, services and actions ##
 # ##############################################################################
 
-# add_message_files(
-#   DIRECTORY
-#   ${CMAKE_CURRENT_SOURCE_DIR}/msg
-#   FILES
-#   MissionStateStamped.msg
-#   PointNormStamped.msg
-# )
-# generate_messages(DEPENDENCIES geometry_msgs std_msgs)
+# add_message_files( DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/msg FILES
+# MissionStateStamped.msg PointNormStamped.msg ) generate_messages(DEPENDENCIES
+# geometry_msgs std_msgs)
 
 # ##############################################################################
 # Declare ROS dynamic reconfigure parameters ##
@@ -71,7 +66,15 @@ function(add_ros_executable name main)
   add_dependencies(${name} ${${PROJECT_NAME}_EXPORTED_TARGETS}
                    ${catkin_EXPORTED_TARGETS})
   target_link_libraries(${name} ${catkin_LIBRARIES} fmt::fmt-header-only)
-  target_compile_options(${name} PRIVATE -O2)
+  target_compile_options(
+    ${name}
+    PRIVATE -O2
+            -Wall
+            # -Werror
+            -Wextra
+            -Wpedantic
+            # -Weffc++
+            -Wsign-conversion)
 endfunction(add_ros_executable)
 
 # add_ros_executable(visualize_kdtree src/visualize_kdtree.cpp)
@@ -85,12 +88,12 @@ target_sources(test_rrt PUBLIC src/rrt/rrt.cpp)
 target_link_libraries(test_rrt ${catkin_LIBRARIES} fmt::fmt-header-only
                       kdtree-header-only)
 
-target_compile_options(test_rrt PRIVATE -g -O0 -Wall -Wextra -Wpedantic)
+# target_compile_options(test_rrt PRIVATE -g -O0 -Wall -Wextra -Wpedantic)
 
-# target_compile_options(test_rrt PRIVATE -O3 -finline-functions-called-once)
+target_compile_options(test_rrt PRIVATE -O3 -finline-functions-called-once)
 # target_compile_options(test_rrt PRIVATE -g -O0 -Wall -Wextra -Wpedantic)
 target_compile_definitions(test_rrt PUBLIC MEASURE_PERF)
-
+# target_compile_definitions(test_rrt PUBLIC USE_KDTREE)
 # target_sources(visualize_kdtree PUBLIC src/kdtree3/kdtree3.cpp)
 # target_compile_options(visualize_kdtree PRIVATE -g)
 
@@ -101,18 +104,21 @@ add_ros_executable(mission_state src/mission_state.cpp)
 add_ros_executable(pid_controller src/pid_controller.cpp)
 add_ros_executable(publish_traversed_path src/publish_traversed_path.cpp)
 
-target_sources(spline_tester
-               PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src/bezier_spline.cpp
-               PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src/math.cpp)
+target_sources(
+  spline_tester
+  PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src/bezier_spline.cpp
+  PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src/math.cpp)
 
-target_sources(trajectory_follower
-               PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src/bezier_spline.cpp
-               PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src/math.cpp)
+target_sources(
+  trajectory_follower
+  PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src/bezier_spline.cpp
+  PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src/math.cpp)
 
-target_sources(mission_state
-               PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src/bezier_spline.cpp
-               PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src/transformlistener.cpp
-               PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src/math.cpp)
+target_sources(
+  mission_state
+  PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src/bezier_spline.cpp
+  PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src/transformlistener.cpp
+  PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src/math.cpp)
 
 target_sources(pid_controller
                PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src/transformlistener.cpp)

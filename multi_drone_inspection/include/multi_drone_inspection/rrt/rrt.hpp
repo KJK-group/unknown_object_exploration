@@ -18,6 +18,7 @@
 #include <memory>
 #include <optional>
 #include <ratio>
+#include <stdexcept>
 #include <string_view>
 #include <utility>
 #include <vector>
@@ -231,11 +232,74 @@ class RRT {
     std::vector<node_t> nodes_{};
 
     std::size_t linear_search_start_index_{0};
+
+#ifdef USE_KDTREE
+
+    // TODO: use this variable
     std::int32_t kdtree_size_ = 1000;
-    static constexpr std::int32_t max_number_of_kdtrees_{4};
+    static constexpr std::int32_t max_number_of_kdtrees_per_bucket_ = 5;
     static constexpr std::int32_t max_number_of_nodes_to_do_linear_search_on_ = 1000;
     using kdtree3 = kdtree::kdtree<float, std::size_t, 3>;
-    std::vector<kdtree3*> kdtree3s_;
+    // std::vector<kdtree3*> kdtree3s_;
+
+    struct kdtree3_bucket_t {
+        int size_of_a_tree;
+        // TODO: use std::unique_ptr
+        std::array<kdtree3*, max_number_of_kdtrees_per_bucket_> forest;
+        kdtree3_bucket_t(int size_of_a_tree_) : size_of_a_tree(size_of_a_tree_), forest{} {}
+
+        [[nodiscard]] auto number_of_trees() const {
+            return std::count_if(forest.begin(), forest.end(),
+                                 [](const auto& tree) { return tree != nullptr; });
+        }
+        [[nodiscard]] auto bucket_is_full() const -> bool {
+            return number_of_trees() == max_number_of_kdtrees_per_bucket_;
+        }
+        [[nodiscard]] auto empty() const { return number_of_trees() == 0; }
+
+        [[nodiscard]] auto number_of_nodes_in_bucket() const {
+            return number_of_trees() * size_of_a_tree;
+        }
+        auto delete_trees() {
+            std::for_each(forest.begin(), forest.end(), [&](auto& tree) {
+                if (tree != nullptr) {
+                    delete tree;
+                    tree = nullptr;
+                }
+            });
+        }
+
+        auto add_kdtree(kdtree3::fn&& fn, int size) {
+            if (bucket_is_full()) {
+                throw std::runtime_error("bucket is full");
+            }
+
+            if (size != size_of_a_tree) {
+                // should never happen
+                std::exit(EXIT_FAILURE);
+            }
+
+            if (size < 0) {
+                throw std::runtime_error("size cannot be negative");
+            }
+
+            auto index = number_of_trees();
+            index -= index > 0 ? -1 : 0;  // handle index
+            forest[index] = new kdtree3(std::move(fn), size);
+        }
+
+    };  // kdtree3_forest_t
+
+    // precompute
+    std::vector<kdtree3_bucket_t> kdtree3s_{
+        {max_number_of_nodes_to_do_linear_search_on_},
+        {max_number_of_nodes_to_do_linear_search_on_ * max_number_of_kdtrees_per_bucket_},
+        {static_cast<int>(max_number_of_nodes_to_do_linear_search_on_ *
+                          std::pow(max_number_of_kdtrees_per_bucket_, 2))},
+        {static_cast<int>(max_number_of_nodes_to_do_linear_search_on_ *
+                          std::pow(max_number_of_kdtrees_per_bucket_, 3))}};
+#endif  // USE_KDTREE
+
     // std::vector<std::unique_ptr<kdtree3>> kdtree3s_;
     // std::forward_list<std::unique_ptr<kdtree3>> kdtree3s_;
 
