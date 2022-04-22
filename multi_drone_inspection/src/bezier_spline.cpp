@@ -20,10 +20,22 @@ auto BezierSpline::generate_spline(vector<Vector3f> points, int resolution) -> v
     this->input_points = points;
     this->resolution = resolution;
     this->size = points.size();
+    std::cerr << "[DEBUG] " << __FILE__ << ":" << __LINE__ << ": "
+              << " before binomial LUT generation" << '\n';
+
     // in case the binomial lookup table isn't big enough, generate a new one
     if (binomial_lut.size() != this->size) {
+        std::cerr << "[DEBUG] " << __FILE__ << ":" << __LINE__ << ": "
+                  << " inside if" << '\n';
         this->generate_binomial_lut();
+        std::cerr << "[DEBUG] " << __FILE__ << ":" << __LINE__ << ": "
+                  << " inside if after generation" << '\n';
     }
+    std::cerr << "[DEBUG] " << __FILE__ << ":" << __LINE__ << ": "
+              << " binomial: " << this->binomial_lut.size() << '\n';
+    std::cerr << "[DEBUG] " << __FILE__ << ":" << __LINE__ << ": "
+              << " binomial: " << points.size() << '\n';
+
     assert(points.size() == binomial_lut.size());
 
     // let t run through [0;resolution] with steps defined by the resolution
@@ -35,6 +47,37 @@ auto BezierSpline::generate_spline(vector<Vector3f> points, int resolution) -> v
 
     this->generate_distance_lut();
 }
+
+//--------------------------------------------------------------------------------------------------
+// Generates the spline from the input points given in the vector `points`,
+// at a time resolution of `resolution`
+
+// using iterator = std::vector<Vector3f>::iterator;
+
+// auto BezierSpline::generate_spline(iterator begin, iterator end, int resolution) -> void {
+//     std::cout << "Inside spline generator" << std::endl;
+//     this->input_points = points;
+//     this->resolution = resolution;
+//     this->size = std::distance(begin, end);
+//     // in case the binomial lookup table isn't big enough, generate a new one
+//     if (binomial_lut.size() != this->size) {
+//         this->generate_binomial_lut();
+//     }
+//     //assert(points.size() == binomial_lut.size());
+
+//     for (; begin != end; ++begin) {
+
+//     }
+
+//     // let t run through [0;resolution] with steps defined by the resolution
+//     for (int t_idx = 0; t_idx < this->resolution; t_idx += 1) {
+//         auto time = (float)t_idx / (float)resolution;
+//         auto spline_point = f(time);
+//         this->spline_points.push_back(spline_point);
+//     }
+
+//     this->generate_distance_lut();
+// }
 
 //--------------------------------------------------------------------------------------------------
 // Returns the point along the spline at time `t`
@@ -86,9 +129,17 @@ auto BezierSpline::generate_distance_lut() -> void {
 // Generates the binomial LUT for a Bezier pline with `n` points
 // This will be used to generate the spline
 auto BezierSpline::generate_binomial_lut() -> void {
+    std::cerr << "[DEBUG] " << __FILE__ << ":" << __LINE__ << ": "
+              << " before for loop" << '\n';
+    std::cerr << "[DEBUG] " << __FILE__ << ":" << __LINE__ << ": "
+              << " size: " << this->size << '\n';
+
     for (int i = 0; i < this->size; i++) {
+        std::cout << "idx: " << i << std::endl;
         binomial_lut.push_back(mdi::utils::binomial_coefficient(this->size, i));
     }
+    std::cerr << "[DEBUG] " << __FILE__ << ":" << __LINE__ << ": "
+              << " after for loop" << '\n';
 }
 
 //--------------------------------------------------------------------------------------------------

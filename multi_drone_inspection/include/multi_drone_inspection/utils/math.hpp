@@ -8,7 +8,7 @@ using Eigen::Vector3f;
 
 //--------------------------------------------------------------------------------------------------
 // Return the factorial of `i`
-auto factorial(unsigned int i) -> unsigned int;
+auto factorial(unsigned int i) -> unsigned long long int;
 
 //--------------------------------------------------------------------------------------------------
 // Returns the binomial coefficient for `n` choose `i`,

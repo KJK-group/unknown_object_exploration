@@ -22,8 +22,9 @@
 #include <string_view>
 #include <utility>
 #include <vector>
-
+#ifdef USE_KDTREE
 #include "kdtree/kdtree.hpp"
+#endif
 #include "multi_drone_inspection/utils/random.hpp"
 
 namespace mdi::rrt {

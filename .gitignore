@@ -56,4 +56,7 @@ CATKIN_IGNORE
 !.vscode/settings.json
 !.vscode/cpp.json.code-snippets
 
+.cache
+compile_commands.json
+
 measurements/

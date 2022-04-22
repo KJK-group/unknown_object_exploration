@@ -10,6 +10,7 @@ Panels:
         - /TF1/Frames1
         - /Path1
         - /Path2
+        - /Marker1
       Splitter Ratio: 0.5051546096801758
     Tree Height: 818
   - Class: rviz/Selection
@@ -158,6 +159,14 @@ Visualization Manager:
       Shaft Length: 0.10000000149011612
       Topic: /mdi/paths/target
       Unreliable: false
+      Value: true
+    - Class: rviz/Marker
+      Enabled: true
+      Marker Topic: /mdi/visualisation_marker
+      Name: Marker
+      Namespaces:
+        {}
+      Queue Size: 100
       Value: true
   Enabled: true
   Global Options:

@@ -21,8 +21,9 @@ using vec3 = Eigen::Vector3f;
 auto main(int argc, char* argv[]) -> int {
     ros::init(argc, argv, "rtt_test");
     auto nh = ros::NodeHandle();
+    ros::Duration(5).sleep();
     auto pub_visualize_rrt = [&nh]() {
-        const auto topic_name = "/visualisation_marker";
+        const auto topic_name = "/mdi/visualisation_marker";
         return nh.advertise<visualization_msgs::Marker>(topic_name, 10);
     }();
 
@@ -41,7 +42,7 @@ auto main(int argc, char* argv[]) -> int {
                              .color({0, 1, 0, 1})
                              .build();
     ROS_INFO("creating rrt");
-    auto rrt = mdi::rrt::RRT::from_rosparam("/rrt");
+    auto rrt = mdi::rrt::RRT::from_rosparam("/mdi/rrt");
 
 #ifdef MEASURE_PERF
 
@@ -66,10 +67,10 @@ auto main(int argc, char* argv[]) -> int {
 
     // rrt.register_cb_for_event_on_trying_full_path(
     //     [](const auto& p1, const auto& p2) { std::cout << "trying full path" << '\n'; });
-    // rrt.register_cb_for_event_on_new_node_created([&](const vec3& parent, const vec3& new_node) {
-    //     auto msg = arrow_msg_gen({parent, new_node});
-    //     publish(msg);
-    // });
+    rrt.register_cb_for_event_on_new_node_created([&](const vec3& parent, const vec3& new_node) {
+        auto msg = arrow_msg_gen({parent, new_node});
+        publish(msg);
+    });
 
     const auto start = rrt.start_position();
     const auto goal = rrt.goal_position();
@@ -96,7 +97,7 @@ auto main(int argc, char* argv[]) -> int {
     auto sphere_tolerance_msg = sphere_msg_gen(goal);
     const auto goal_tolerance = [&]() {
         float goal_tolerance = 1.0f;
-        if (! nh.getParam("/rrt/max_dist_goal_tolerance", goal_tolerance)) {
+        if (! nh.getParam("/mdi/rrt/max_dist_goal_tolerance", goal_tolerance)) {
             std::exit(EXIT_FAILURE);
         }
         return goal_tolerance;
@@ -105,9 +106,9 @@ auto main(int argc, char* argv[]) -> int {
     for (size_t i = 0; i < 5; i++) {
         publish([&]() {
             auto msg = sphere_msg_gen(goal);
-            msg.scale.x = goal_tolerance;
-            msg.scale.y = goal_tolerance;
-            msg.scale.z = goal_tolerance;
+            msg.scale.x = goal_tolerance * 2;
+            msg.scale.y = goal_tolerance * 2;
+            msg.scale.z = goal_tolerance * 2;
             msg.color.b = 0.6f;
             msg.color.g = 0.f;
             msg.color.a = 0.25f;
@@ -223,6 +224,7 @@ auto main(int argc, char* argv[]) -> int {
             ++i;
         }
     }
+    std::cout << rrt << std::endl;
 
     // auto i = std::size_t{0};
     // rrt.bft([&](const auto& pt) { ++i; });

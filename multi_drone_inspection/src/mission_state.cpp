@@ -6,6 +6,7 @@
 #include <ros/ros.h>
 #include <tf2_ros/transform_listener.h>
 
+#include <algorithm>
 #include <cmath>
 #include <eigen3/Eigen/Dense>
 #include <vector>
@@ -14,6 +15,9 @@
 #include "mdi_msgs/MissionStateStamped.h"
 #include "mdi_msgs/PointNormStamped.h"
 #include "multi_drone_inspection/bezier_spline.hpp"
+#include "multi_drone_inspection/rrt/rrt.hpp"
+#include "multi_drone_inspection/rrt/rrt_builder.hpp"
+#include "multi_drone_inspection/utils/rviz/rviz.hpp"
 #include "multi_drone_inspection/utils/transformlistener.hpp"
 
 #define TOLERANCE_DISTANCE 0.1
@@ -100,11 +104,11 @@ tf2_ros::Buffer tf_buffer;
 //--------------------------------------------------------------------------------------------------
 
 mdi::BezierSpline spline;
-auto spline_input_points =
-    vector<Eigen::Vector3f>{Eigen::Vector3f(0.0, 0.0, 0.0),  Eigen::Vector3f(3.0, 0.5, 1.0),
-                            Eigen::Vector3f(-3.5, 1.5, 0.0), Eigen::Vector3f(-2.8, 1.0, 0.7),
-                            Eigen::Vector3f(1.2, 2.2, 1.5),  Eigen::Vector3f(1.0, 3.0, 1.0)};
-auto forwards = true;
+// auto spline_input_points =
+//     vector<Eigen::Vector3f>{Eigen::Vector3f(0.0, 0.0, 0.0),  Eigen::Vector3f(3.0, 0.5, 1.0),
+//                             Eigen::Vector3f(-3.5, 1.5, 0.0), Eigen::Vector3f(-2.8, 1.0, 0.7),
+//                             Eigen::Vector3f(1.2, 2.2, 1.5),  Eigen::Vector3f(1.0, 3.0, 1.0)};
+// auto forwards = true;
 
 //--------------------------------------------------------------------------------------------------
 // Callback Functions
@@ -145,7 +149,72 @@ auto main(int argc, char** argv) -> int {
         point *= 10;
     }
 
-    spline = mdi::BezierSpline(spline_input_points);
+    mdi::BezierSpline spline;  // = mdi::BezierSpline(spline_input_points);
+
+    //----------------------------------------------------------------------------------------------
+    // RRT
+
+    auto arrow_msg_gen = mdi::utils::rviz::arrow_msg_gen::builder()
+                             .arrow_head_width(0.01f)
+                             .arrow_length(0.1f)
+                             .arrow_width(0.02f)
+                             .color({0, 1, 0, 1})
+                             .build();
+    arrow_msg_gen.header.frame_id = "world_enu";
+    auto rrt = mdi::rrt::RRT::from_rosparam("/mdi/rrt");
+
+    // RRT Visulisation
+    auto pub_visualize_rrt = [&nh]() {
+        const auto topic_name = "/mdi/visualisation_marker";
+        return nh.advertise<visualization_msgs::Marker>(topic_name, 10);
+    }();
+
+    auto publish = [&pub_visualize_rrt, &rate](const auto& msg) {
+        pub_visualize_rrt.publish(msg);
+        rate.sleep();
+        ros::spinOnce();
+    };
+
+    rrt.register_cb_for_event_on_new_node_created([&](const auto& parent, const auto& new_node) {
+        auto msg = arrow_msg_gen({parent, new_node});
+        msg.color.r = 0.5;
+        msg.color.g = 1;
+        msg.color.b = 1;
+        msg.color.a = 1;
+        publish(msg);
+    });
+
+    rrt.register_cb_for_event_on_new_node_created(
+        [](auto& a, const auto& b) { std::cout << "inserting node" << std::endl; });
+
+    if (const auto opt = rrt.run()) {
+        auto path = *opt;
+        std::cerr << "[DEBUG] " << __FILE__ << ":" << __LINE__ << ": "
+                  << " before reverse " << '\n';
+
+        decltype(path) path2(path.size());
+        std::copy(path.rbegin(), path.rend(), std::back_inserter(path2));
+        std::cerr << "[DEBUG] " << __FILE__ << ":" << __LINE__ << ": "
+                  << " after reverse " << '\n';
+
+        // std::reverse(path.begin(), path.end());
+        if (path2.size() > 20) {
+            path2.resize(20);
+        }
+        spline = mdi::BezierSpline(path2);
+        std::cerr << "[DEBUG] " << __FILE__ << ":" << __LINE__ << ": "
+                  << " spline generated" << '\n';
+
+        for (int i = 0; i < path2.size() && ros::ok(); i++) {
+            auto& p1 = path2[i - 1];
+            auto& p2 = path2[i];
+            auto arrow = arrow_msg_gen({p1, p2});
+            publish(arrow);
+            ++i;
+        }
+    }
+    rrt.print_number_of_root_nodes();
+    std::cout << rrt << std::endl;
 
     //----------------------------------------------------------------------------------------------
     // state subscriber
@@ -228,7 +297,7 @@ auto main(int argc, char** argv) -> int {
                 // 2. if it's the second time we're here, go to LAND
                 expected_pos = home;
                 ros::Duration(1.0).sleep();
-                std::cout << MAGENTA << error << RESET << std::endl;
+                // std::cout << MAGENTA << error << RESET << std::endl;
                 if (error.norm < TOLERANCE_DISTANCE && delta_time.toSec() > 5) {
                     if (inspection_complete) {
                         mission_state_msg.state = LAND;
@@ -294,27 +363,27 @@ auto main(int argc, char** argv) -> int {
         // ROS logging
         //------------------------------------------------------------------------------------------
         // mission state
-        ROS_INFO_STREAM(GREEN << BOLD << ITALIC << "mission:" << RESET);
-        ROS_INFO_STREAM("  time:   " << boost::format("%1.2f") %
-                                            boost::io::group(std::setfill(' '), std::setw(w + 2),
-                                                             delta_time.toSec()));
-        ROS_INFO_STREAM("  dstate: " << boost::format("%s") % boost::io::group(std::setfill(' '),
-                                                                               std::setw(w),
-                                                                               drone_state.mode));
-        ROS_INFO_STREAM(
-            "  mstate: " << boost::format("%d") %
-                                boost::io::group(std::setfill(' '), std::setw(w),
-                                                 state_to_string((state)mission_state_msg.state)));
-        ROS_INFO_STREAM("  target:");
-        ROS_INFO_STREAM("    x: " << boost::format("%1.5f") %
-                                         boost::io::group(std::setfill(' '), std::setw(8),
-                                                          mission_state_msg.target.position.x));
-        ROS_INFO_STREAM("    y: " << boost::format("%1.5f") %
-                                         boost::io::group(std::setfill(' '), std::setw(8),
-                                                          mission_state_msg.target.position.y));
-        ROS_INFO_STREAM("    z: " << boost::format("%1.5f") %
-                                         boost::io::group(std::setfill(' '), std::setw(8),
-                                                          mission_state_msg.target.position.z));
+        // ROS_INFO_STREAM(GREEN << BOLD << ITALIC << "mission:" << RESET);
+        // ROS_INFO_STREAM("  time:   " << boost::format("%1.2f") %
+        //                                     boost::io::group(std::setfill(' '), std::setw(w + 2),
+        //                                                      delta_time.toSec()));
+        // ROS_INFO_STREAM("  dstate: " << boost::format("%s") % boost::io::group(std::setfill(' '),
+        //                                                                        std::setw(w),
+        //                                                                        drone_state.mode));
+        // ROS_INFO_STREAM(
+        //     "  mstate: " << boost::format("%d") %
+        //                         boost::io::group(std::setfill(' '), std::setw(w),
+        //                                          state_to_string((state)mission_state_msg.state)));
+        // ROS_INFO_STREAM("  target:");
+        // ROS_INFO_STREAM("    x: " << boost::format("%1.5f") %
+        //                                  boost::io::group(std::setfill(' '), std::setw(8),
+        //                                                   mission_state_msg.target.position.x));
+        // ROS_INFO_STREAM("    y: " << boost::format("%1.5f") %
+        //                                  boost::io::group(std::setfill(' '), std::setw(8),
+        //                                                   mission_state_msg.target.position.y));
+        // ROS_INFO_STREAM("    z: " << boost::format("%1.5f") %
+        //                                  boost::io::group(std::setfill(' '), std::setw(8),
+        //                                                   mission_state_msg.target.position.z));
         // //------------------------------------------------------------------------------------------
         // // drone position
         // ROS_INFO_STREAM(GREEN << BOLD << ITALIC << "position:" << RESET);
