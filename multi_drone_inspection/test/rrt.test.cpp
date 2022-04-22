@@ -66,10 +66,10 @@ auto main(int argc, char* argv[]) -> int {
 
     // rrt.register_cb_for_event_on_trying_full_path(
     //     [](const auto& p1, const auto& p2) { std::cout << "trying full path" << '\n'; });
-    // rrt.register_cb_for_event_on_new_node_created([&](const vec3& parent, const vec3& new_node) {
-    //     auto msg = arrow_msg_gen({parent, new_node});
-    //     publish(msg);
-    // });
+    rrt.register_cb_for_event_on_new_node_created([&](const vec3& parent, const vec3& new_node) {
+        auto msg = arrow_msg_gen({parent, new_node});
+        publish(msg);
+    });
 
     const auto start = rrt.start_position();
     const auto goal = rrt.goal_position();

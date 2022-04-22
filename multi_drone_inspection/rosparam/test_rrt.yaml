@@ -1,12 +1,12 @@
 rrt:
   start_position:
-    - 3
-    - -2
     - 0
+    - 0
+    - 5
   goal_position:
-    - 30
-    - 50
-    - 100
+    - 4
+    - 4
+    - 6
 
   max_iterations: 100000
   goal_bias: 0.5
