@@ -169,31 +169,85 @@ auto main(int argc, char** argv) -> int {
         return nh.advertise<visualization_msgs::Marker>(topic_name, 10);
     }();
 
-    auto publish = [&pub_visualize_rrt, &rate](const auto& msg) {
-        pub_visualize_rrt.publish(msg);
-        rate.sleep();
-        ros::spinOnce();
+    auto publish_visualisation = [&pub_visualize_rrt, &rate](const auto& msg) {
+        for (size_t i = 0; i < 1; i++) {
+            pub_visualize_rrt.publish(msg);
+            rate.sleep();
+            ros::spinOnce();
+        }
     };
 
     rrt.register_cb_for_event_on_new_node_created([&](const auto& parent, const auto& new_node) {
-        std::cout << GREEN << parent << "\n" << MAGENTA << new_node << RESET << std::endl;
+        // std::cout << GREEN << parent << "\n" << MAGENTA << new_node << RESET << std::endl;
         auto msg = arrow_msg_gen({parent, new_node});
         msg.color.r = 0.5;
         msg.color.g = 1;
-        msg.color.b = 1;
+        msg.color.b = 0.9;
         msg.color.a = 1;
-        publish(msg);
+        publish_visualisation(msg);
     });
 
-    rrt.register_cb_for_event_on_new_node_created(
-        [](auto& a, const auto& b) { std::cout << "inserting node" << std::endl; });
+    const auto start = rrt.start_position();
+    const auto goal = rrt.goal_position();
+
+    auto sphere_msg_gen = mdi::utils::rviz::sphere_msg_gen{};
+    sphere_msg_gen.header.frame_id = "world_enu";
+
+    ros::Duration(1).sleep();
+    // publish starting position
+    auto start_msg = sphere_msg_gen(start);
+    start_msg.color.r = 0.5;
+    start_msg.color.g = 1;
+    start_msg.color.b = 0.9;
+    start_msg.color.a = 1;
+    start_msg.scale.x = 0.2;
+    start_msg.scale.y = 0.2;
+    start_msg.scale.z = 0.2;
+    publish_visualisation(start_msg);
+    // publish goal position
+    auto goal_msg = sphere_msg_gen(goal);
+    goal_msg.color.r = 0;
+    goal_msg.color.g = 1;
+    goal_msg.color.b = 0;
+    goal_msg.color.a = 1;
+    goal_msg.scale.x = 0.2;
+    goal_msg.scale.y = 0.2;
+    goal_msg.scale.z = 0.2;
+    publish_visualisation(goal_msg);
+
+    auto sphere_tolerance_msg = sphere_msg_gen(goal);
+    const auto goal_tolerance = [&]() {
+        float goal_tolerance = 1.0f;
+        if (! nh.getParam("/mdi/rrt/max_dist_goal_tolerance", goal_tolerance)) {
+            std::exit(EXIT_FAILURE);
+        }
+        return goal_tolerance;
+    }();
+
+    for (size_t i = 0; i < 5; i++) {
+        publish_visualisation([&]() {
+            auto msg = sphere_msg_gen(goal);
+            msg.scale.x = goal_tolerance * 2;
+            msg.scale.y = goal_tolerance * 2;
+            msg.scale.z = goal_tolerance * 2;
+            msg.color.r = 1.f;
+            msg.color.g = 1.f;
+            msg.color.b = 1.f;
+            msg.color.a = 0.05f;
+
+            return msg;
+        }());
+    }
+
+    // rrt.register_cb_for_event_on_new_node_created(
+    //     [](auto& a, const auto& b) { std::cout << "inserting node" << std::endl; });
 
     if (const auto opt = rrt.run()) {
-        auto path = *opt;
+        const auto path = *opt;
         // std::cout << GREEN << "PATH" << RESET << std::endl;
-        for (auto& p : path) {
-            std::cout << p << std::endl;
-        }
+        // for (auto& p : path) {
+        //     std::cout << p << std::endl;
+        // }
         // std::cerr << "[DEBUG] " << __FILE__ << ":" << __LINE__ << ": "
         //           << " before reverse " << '\n';
 
@@ -221,11 +275,28 @@ auto main(int argc, char** argv) -> int {
         // std::cerr << "[DEBUG] " << __FILE__ << ":" << __LINE__ << ": "
         //           << " spline generated" << '\n';
 
-        for (int i = 0; i < path.size() && ros::ok(); i++) {
+        // for (int i = 1; i < path.size() && ros::ok(); i++) {
+        //     auto& p1 = path[i - 1];
+        //     auto& p2 = path[i];
+        //     auto arrow = arrow_msg_gen({p1, p2});
+        //     publish(arrow);
+        //     ++i;
+        // }
+        std::cout << "[DEBUG] " << __FILE__ << ":" << __LINE__ << " "
+                  << " found a solution" << '\n';
+
+        arrow_msg_gen.color.r = 0.0f;
+        arrow_msg_gen.color.g = 1.0f;
+        arrow_msg_gen.color.b = 0.0f;
+        int i = 1;
+        arrow_msg_gen.scale.x = 0.05f;
+        arrow_msg_gen.scale.y = 0.05f;
+        arrow_msg_gen.scale.z = 0.05f;
+        while (ros::ok() && i < path.size()) {
             auto& p1 = path[i - 1];
             auto& p2 = path[i];
             auto arrow = arrow_msg_gen({p1, p2});
-            publish(arrow);
+            publish_visualisation(arrow);
             ++i;
         }
     }
@@ -325,7 +396,8 @@ auto main(int argc, char** argv) -> int {
                 break;
             case EXPLORATION:
                 // when object is matched, go to INSPECTION
-                // go through spline here, getting spline from BezierSpline getting input from RRT*
+                // go through spline here, getting spline from BezierSpline getting input from
+                // RRT*
                 expected_pos = spline.get_point_at_distance(delta_time.toSec() * velocity_target);
                 expected_pos(2) = expected_pos.z();  // + SPLINE_Z_OFFSET;
                 if (exploration_complete) {
@@ -381,9 +453,11 @@ auto main(int argc, char** argv) -> int {
         // mission state
         // ROS_INFO_STREAM(GREEN << BOLD << ITALIC << "mission:" << RESET);
         // ROS_INFO_STREAM("  time:   " << boost::format("%1.2f") %
-        //                                     boost::io::group(std::setfill(' '), std::setw(w + 2),
+        //                                     boost::io::group(std::setfill(' '), std::setw(w +
+        //                                     2),
         //                                                      delta_time.toSec()));
-        // ROS_INFO_STREAM("  dstate: " << boost::format("%s") % boost::io::group(std::setfill(' '),
+        // ROS_INFO_STREAM("  dstate: " << boost::format("%s") % boost::io::group(std::setfill('
+        // '),
         //                                                                        std::setw(w),
         //                                                                        drone_state.mode));
         // ROS_INFO_STREAM(
@@ -436,13 +510,16 @@ auto main(int argc, char** argv) -> int {
         // //------------------------------------------------------------------------------------------
         // // controller outputs
         // ROS_INFO_STREAM(GREEN << BOLD << ITALIC << "controller outputs:" << RESET);
-        // ROS_INFO_STREAM("  x_vel: " << boost::format("%1.5f") % boost::io::group(std::setfill('
+        // ROS_INFO_STREAM("  x_vel: " << boost::format("%1.5f") %
+        // boost::io::group(std::setfill('
         // '), std::setw(8),
         //                                                        command_previous.twist.linear.x));
-        // ROS_INFO_STREAM("  y_vel: " << boost::format("%1.5f") % boost::io::group(std::setfill('
+        // ROS_INFO_STREAM("  y_vel: " << boost::format("%1.5f") %
+        // boost::io::group(std::setfill('
         // '), std::setw(8),
         //                                                        command_previous.twist.linear.y));
-        // ROS_INFO_STREAM("  z_vel: " << boost::format("%1.5f") % boost::io::group(std::setfill('
+        // ROS_INFO_STREAM("  z_vel: " << boost::format("%1.5f") %
+        // boost::io::group(std::setfill('
         // '), std::setw(8),
         //                                                        command_previous.twist.linear.z));
         // ROS_INFO_STREAM("  norm:  " << boost::format("%1.5f") %
@@ -469,11 +546,14 @@ auto main(int argc, char** argv) -> int {
         // //------------------------------------------------------------------------------------------
         // // velocity
         // ROS_INFO_STREAM(GREEN << BOLD << ITALIC << "velocity:" << RESET);
-        // ROS_INFO_STREAM("  x:    " << boost::format("%1.5f") % boost::io::group(std::setfill('
-        // '), std::setw(8), velocity.x())); ROS_INFO_STREAM("  y:    " << boost::format("%1.5f") %
-        // boost::io::group(std::setfill(' '), std::setw(8), velocity.y())); ROS_INFO_STREAM("  z: "
+        // ROS_INFO_STREAM("  x:    " << boost::format("%1.5f") %
+        // boost::io::group(std::setfill('
+        // '), std::setw(8), velocity.x())); ROS_INFO_STREAM("  y:    " <<
+        // boost::format("%1.5f") % boost::io::group(std::setfill(' '), std::setw(8),
+        // velocity.y())); ROS_INFO_STREAM("  z: "
         // << boost::format("%1.5f") % boost::io::group(std::setfill('
-        // '), std::setw(8), velocity.z())); ROS_INFO_STREAM("  norm: " << boost::format("%1.5f") %
+        // '), std::setw(8), velocity.z())); ROS_INFO_STREAM("  norm: " <<
+        // boost::format("%1.5f") %
         //                                   boost::io::group(std::setfill(' '), std::setw(8),
         //                                   velocity.norm()));
 

@@ -210,8 +210,8 @@ auto main(int argc, char* argv[]) -> int {
         std::cout << "[DEBUG] " << __FILE__ << ":" << __LINE__ << " "
                   << " found a solution" << '\n';
 
-        arrow_msg_gen.color.r = 1.0f;
-        arrow_msg_gen.color.g = 0.0f;
+        arrow_msg_gen.color.r = 0.0f;
+        arrow_msg_gen.color.g = 1.0f;
         int i = 1;
         arrow_msg_gen.scale.x = 0.1f;
         arrow_msg_gen.scale.y = 0.1f;
