@@ -31,8 +31,6 @@
 namespace mdi::rrt {
 
 auto RRT::run() -> std::optional<std::vector<vec3>> {
-    using mdi::utils::eigen::format_vector3_as_row_vector;
-
     while (remaining_iterations_ > 0) {
         if (grow_()) {
             return waypoints_;
@@ -153,7 +151,7 @@ auto RRT::find_nearest_neighbor_(const vec3& pt) -> RRT::node_t* {
             }
         }
     }
-#endif // USE_KDTREE
+#endif  // USE_KDTREE
 
     // 2. find nearest neighbor in the linear search segment.
     nearest_neighbor_candidates.push_back([&]() {
@@ -517,11 +515,19 @@ auto RRT::grow_() -> bool {
         (inserted_node.position_ - goal_position_).norm() <= max_dist_goal_tolerance_;
 
     if (reached_goal) {
+        // TODO: try direct edge when within tolerance to goal_position_
+        const auto edge_between_inserted_pt_and_goal_is_free = true;
+        if (edge_between_inserted_pt_and_goal_is_free) {
+            insert_node_(goal_position_, &inserted_node);
+            call_cbs_for_event_on_new_node_created_(inserted_node.position_, goal_position_);
+        }
+
         // a path has been found from the start coordinate to the goal coordinate,
         // so we need to backtrack to the start coordinate, to get the path as
         // a list of coordinates.
-        call_cbs_for_event_on_goal_reached_(inserted_node.position_);
-        backtrack_and_set_waypoints_(&inserted_node);
+        auto& last_node = nodes_.back();
+        call_cbs_for_event_on_goal_reached_(last_node.position_);
+        backtrack_and_set_waypoints_(&last_node);
 
         return true;
     }
