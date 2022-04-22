@@ -182,7 +182,6 @@ struct sphere_msg_gen : public visualization_marker_msg_gen {
     }
 };
 
-
 struct text_msg_gen : public visualization_marker_msg_gen {
     text_msg_gen(float text_height = 0.5f, const std::string& ns = "text") {
         msg.type = visualization_msgs::Marker::TEXT_VIEW_FACING;

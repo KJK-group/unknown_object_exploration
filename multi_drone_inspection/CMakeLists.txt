@@ -102,6 +102,7 @@ add_ros_executable(trajectory_follower src/trajectory_follower.cpp)
 add_ros_executable(spline_tester src/spline_tester.cpp)
 add_ros_executable(mission_state src/mission_state.cpp)
 add_ros_executable(pid_controller src/pid_controller.cpp)
+add_ros_executable(publish_traversed_path src/publish_traversed_path.cpp)
 
 target_sources(
   spline_tester

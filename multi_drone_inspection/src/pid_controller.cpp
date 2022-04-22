@@ -62,7 +62,7 @@ auto pid_command_from_error(Eigen::Vector3f error) -> geometry_msgs::TwistStampe
     auto error_derivative = error - error_previous;
 
     // linear velocity controller output
-    auto c = k_rho_p * error;  // + k_rho_p * error_integral + k_rho_p * error_derivative;
+    auto c = k_rho_p * error + k_rho_i * error_integral + k_rho_d * error_derivative;
     // TODO: angular velocity controller output
     // std::cout << c << std::endl;
 
@@ -135,16 +135,12 @@ auto main(int argc, char** argv) -> int {
             // converting from NED to ENU coordinates
             error = Eigen::Vector3f(error_opt.value().y(), error_opt.value().x(),
                                     -error_opt.value().z());
-            // auto R = Eigen::Matrix3f(0.f, 1.f, 0.f, 1.f, 0.f, 0.f, 0.f, 0.f, -1.f);
-            // Eigen::Matrix3f R{{0, 1, 0}, {1, 0, 0}, {0, 0, -1}};
-            // Eigen::Matrix3f R;
-            // R << 0, 1, 0, 1, 0, 0, 0, 0, -1;
-            // error = error_opt.value() * R;
         }
         auto command_velocity = pid_command_from_error(error);
 
-        // publish
+        // publish velocity control command
         pub_velocity.publish(command_velocity);
+        // publish error
         mdi_msgs::PointNormStamped error_msg;
         error_msg.header.seq = seq_error++;
         error_msg.header.stamp = ros::Time::now();
