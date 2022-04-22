@@ -176,6 +176,7 @@ auto main(int argc, char** argv) -> int {
     };
 
     rrt.register_cb_for_event_on_new_node_created([&](const auto& parent, const auto& new_node) {
+        std::cout << GREEN << parent << "\n" << MAGENTA << new_node << RESET << std::endl;
         auto msg = arrow_msg_gen({parent, new_node});
         msg.color.r = 0.5;
         msg.color.g = 1;
@@ -189,25 +190,43 @@ auto main(int argc, char** argv) -> int {
 
     if (const auto opt = rrt.run()) {
         auto path = *opt;
+        std::cout << GREEN << "PATH" << RESET << std::endl;
+        for (auto& p : path) {
+            std::cout << p << std::endl;
+        }
         std::cerr << "[DEBUG] " << __FILE__ << ":" << __LINE__ << ": "
                   << " before reverse " << '\n';
 
-        decltype(path) path2(path.size());
-        std::copy(path.rbegin(), path.rend(), std::back_inserter(path2));
+        // decltype(path) path2(path.size());
+        // std::copy(path.rbegin(), path.rend(), std::back_inserter(path2));
+        // std::reverse(path.begin(), path.end());
         std::cerr << "[DEBUG] " << __FILE__ << ":" << __LINE__ << ": "
                   << " after reverse " << '\n';
 
         // std::reverse(path.begin(), path.end());
-        if (path2.size() > 20) {
-            path2.resize(20);
+        if (path.size() > 20) {
+            path.resize(20);
         }
-        spline = mdi::BezierSpline(path2);
+        std::cout << GREEN << "PATH" << RESET << std::endl;
+        for (auto& p : path) {
+            std::cout << p << std::endl;
+        }
+        spline = mdi::BezierSpline(path);
+
+        std::cout << GREEN << "SPLINE POINTS" << RESET << std::endl;
+        auto spline_points = spline.get_spline_points();
+        int i = 0;
+        for (auto& point : spline_points) {
+            auto color = i % 2 == 0 ? MAGENTA : GREEN;
+            std::cout << color << point << RESET << std::endl;
+            i++;
+        }
         std::cerr << "[DEBUG] " << __FILE__ << ":" << __LINE__ << ": "
                   << " spline generated" << '\n';
 
-        for (int i = 0; i < path2.size() && ros::ok(); i++) {
-            auto& p1 = path2[i - 1];
-            auto& p2 = path2[i];
+        for (int i = 0; i < path.size() && ros::ok(); i++) {
+            auto& p1 = path[i - 1];
+            auto& p2 = path[i];
             auto arrow = arrow_msg_gen({p1, p2});
             publish(arrow);
             ++i;
@@ -311,7 +330,7 @@ auto main(int argc, char** argv) -> int {
                 // when object is matched, go to INSPECTION
                 // go through spline here, getting spline from BezierSpline getting input from RRT*
                 expected_pos = spline.get_point_at_distance(delta_time.toSec() * velocity_target);
-                expected_pos(2) = expected_pos.z() + SPLINE_Z_OFFSET;
+                expected_pos(2) = expected_pos.z();  // + SPLINE_Z_OFFSET;
                 if (exploration_complete) {
                     mission_state_msg.state = INSPECTION;
                 }

@@ -7,7 +7,7 @@ namespace mdi {
 // Constructor; generates the spline the first time,
 // calling generate_spline with `points` and `resolution`
 BezierSpline::BezierSpline(vector<Vector3f> points, int resolution) {
-    std::cout << "Inside spline constructor" << std::endl;
+    // std::cout << "Inside spline constructor" << std::endl;
     // generate the spline points
     generate_spline(points, resolution);
 }
@@ -16,25 +16,31 @@ BezierSpline::BezierSpline(vector<Vector3f> points, int resolution) {
 // Generates the spline from the input points given in the vector `points`,
 // at a time resolution of `resolution`
 auto BezierSpline::generate_spline(vector<Vector3f> points, int resolution) -> void {
-    std::cout << "Inside spline generator" << std::endl;
+    // std::cout << "Inside spline generator" << std::endl;
     this->input_points = points;
     this->resolution = resolution;
     this->size = points.size();
-    std::cerr << "[DEBUG] " << __FILE__ << ":" << __LINE__ << ": "
-              << " before binomial LUT generation" << '\n';
+    this->offset = points.back();
+
+    this->generate_offset_points();
+    // std::cerr << "[DEBUG] " << __FILE__ << ":" << __LINE__ << ": "
+    //   << " before binomial LUT generation" << '\n';
 
     // in case the binomial lookup table isn't big enough, generate a new one
     if (binomial_lut.size() != this->size) {
-        std::cerr << "[DEBUG] " << __FILE__ << ":" << __LINE__ << ": "
-                  << " inside if" << '\n';
+        // std::cerr << "[DEBUG] " << __FILE__ << ":" << __LINE__ << ": "
+        //   << " inside if" << '\n';
         this->generate_binomial_lut();
-        std::cerr << "[DEBUG] " << __FILE__ << ":" << __LINE__ << ": "
-                  << " inside if after generation" << '\n';
+        // std::cerr << "[DEBUG] " << __FILE__ << ":" << __LINE__ << ": "
+        //   << " inside if after generation" << '\n';
+        // for (auto& bc : this->binomial_lut) {
+        //     std::cout << bc << std::endl;
+        // }
     }
-    std::cerr << "[DEBUG] " << __FILE__ << ":" << __LINE__ << ": "
-              << " binomial: " << this->binomial_lut.size() << '\n';
-    std::cerr << "[DEBUG] " << __FILE__ << ":" << __LINE__ << ": "
-              << " binomial: " << points.size() << '\n';
+    // std::cerr << "[DEBUG] " << __FILE__ << ":" << __LINE__ << ": "
+    //           << " binomial: " << this->binomial_lut.size() << '\n';
+    // std::cerr << "[DEBUG] " << __FILE__ << ":" << __LINE__ << ": "
+    //           << " binomial: " << points.size() << '\n';
 
     assert(points.size() == binomial_lut.size());
 
@@ -88,9 +94,21 @@ auto BezierSpline::f(float t) -> Vector3f {
     auto spline_point = Vector3f(0, 0, 0);
     for (int i = 0; i < this->size; i++) {
         auto w = binomial_lut[i] * pow(t, i) * pow(1 - t, this->size - i);
-        spline_point += w * this->input_points[i];
+        spline_point += w * this->offset_input_points[i];
     }
     return spline_point;
+}
+
+//--------------------------------------------------------------------------------------------------
+// Translates spline input points to start at the origin
+auto BezierSpline::generate_offset_points() -> void {
+    // std::cout << "OFFSET POINTS" << std::endl;
+    this->offset_input_points = vector<Vector3f>();
+    for (auto& point : this->input_points) {
+        auto offset_point = point - this->offset;
+        // std::cout << "POINT: " << offset_point << std::endl;
+        this->offset_input_points.emplace_back(offset_point);
+    }
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -129,24 +147,24 @@ auto BezierSpline::generate_distance_lut() -> void {
 // Generates the binomial LUT for a Bezier pline with `n` points
 // This will be used to generate the spline
 auto BezierSpline::generate_binomial_lut() -> void {
-    std::cerr << "[DEBUG] " << __FILE__ << ":" << __LINE__ << ": "
-              << " before for loop" << '\n';
-    std::cerr << "[DEBUG] " << __FILE__ << ":" << __LINE__ << ": "
-              << " size: " << this->size << '\n';
+    // std::cerr << "[DEBUG] " << __FILE__ << ":" << __LINE__ << ": "
+    //   << " before for loop" << '\n';
+    // std::cerr << "[DEBUG] " << __FILE__ << ":" << __LINE__ << ": "
+    //   << " size: " << this->size << '\n';
 
     for (int i = 0; i < this->size; i++) {
         std::cout << "idx: " << i << std::endl;
         binomial_lut.push_back(mdi::utils::binomial_coefficient(this->size, i));
     }
-    std::cerr << "[DEBUG] " << __FILE__ << ":" << __LINE__ << ": "
-              << " after for loop" << '\n';
+    // std::cerr << "[DEBUG] " << __FILE__ << ":" << __LINE__ << ": "
+    //   << " after for loop" << '\n';
 }
 
 //--------------------------------------------------------------------------------------------------
 // Returns the closest point at the given `time`, where 0<=time<=1.
 auto BezierSpline::get_point_at_time(float time) -> Vector3f {
     assert(time <= 1.0 && time >= 0);
-    return this->spline_points[(int)(resolution * time)];
+    return this->spline_points[(int)(resolution * time)] + this->offset;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -154,6 +172,11 @@ auto BezierSpline::get_point_at_time(float time) -> Vector3f {
 auto BezierSpline::get_point_at_distance(float distance) -> Vector3f {
     // assume distance is greater not negative
     assert(distance >= 0);
+    // std::cout << "distance = " << distance << std::endl;
+    distance = this->distance_lut[this->distance_lut.size() - 1] - distance;
+    if (distance < 0) {
+        distance = 0;
+    }
     // std::cout << "distance = " << distance << std::endl;
     auto t_idx = this->get_time_idx(distance);
     // std::cout << "t_idx = " << t_idx << std::endl;
@@ -169,6 +192,10 @@ auto BezierSpline::get_point_at_distance(float distance) -> Vector3f {
     // the one given, which is the closest before the `distance`,
     // and the next one after the given `distance`
 
+    // for (auto& d : this->distance_lut) {
+    //     std::cout << "distance: " << d << std::endl;
+    // }
+
     // distance range to map from
     auto distance_diff = this->distance_lut[t_idx + 1] - this->distance_lut[t_idx];
     // std::cout << "distance_diff = " << distance_diff << std::endl;
@@ -183,14 +210,14 @@ auto BezierSpline::get_point_at_distance(float distance) -> Vector3f {
     auto t = ((float)t_idx + diff_frac) / resolution;
     // std::cout << "t = " << t << "\n" << std::endl;
 
-    return this->f(t);
+    return this->f(t) + this->offset;
 }
 
 //--------------------------------------------------------------------------------------------------
 // Returns the closes time idx, the given `distance` comes after
 // If `distance`<0 return minimum time idx; 0
 // If `distance`>arc_length, return max time idx; resolution
-auto BezierSpline::get_time_idx(float distance) -> float {
+auto BezierSpline::get_time_idx(float distance) -> int {
     auto found_t_idx = 0;
     for (int t_idx = 0; t_idx < this->resolution && this->distance_lut[t_idx] < distance; t_idx++) {
         found_t_idx = t_idx;
@@ -200,7 +227,12 @@ auto BezierSpline::get_time_idx(float distance) -> float {
 
 //--------------------------------------------------------------------------------------------------
 // Returns a vector of all points along the spline
-auto BezierSpline::get_spline_points() -> vector<Vector3f> { return this->spline_points; }
+auto BezierSpline::get_spline_points() -> vector<Vector3f> {
+    auto copy = vector<Vector3f>(this->spline_points.size());
+    std::transform(this->spline_points.begin(), this->spline_points.end(), std::back_inserter(copy),
+                   [this](const Vector3f& point) { return point + this->offset; });
+    return this->spline_points;  // copy;
+}
 
 //--------------------------------------------------------------------------------------------------
 // Return the arc length of the spline,
