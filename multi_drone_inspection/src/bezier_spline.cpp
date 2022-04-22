@@ -17,6 +17,10 @@ BezierSpline::BezierSpline(vector<Vector3f> points, int resolution) {
 // at a time resolution of `resolution`
 auto BezierSpline::generate_spline(vector<Vector3f> points, int resolution) -> void {
     // std::cout << "Inside spline generator" << std::endl;
+
+    if (points.size() > 20) {
+        points.resize(20);
+    }
     this->input_points = points;
     this->resolution = resolution;
     this->size = points.size();

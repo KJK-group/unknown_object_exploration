@@ -190,39 +190,36 @@ auto main(int argc, char** argv) -> int {
 
     if (const auto opt = rrt.run()) {
         auto path = *opt;
-        std::cout << GREEN << "PATH" << RESET << std::endl;
+        // std::cout << GREEN << "PATH" << RESET << std::endl;
         for (auto& p : path) {
             std::cout << p << std::endl;
         }
-        std::cerr << "[DEBUG] " << __FILE__ << ":" << __LINE__ << ": "
-                  << " before reverse " << '\n';
+        // std::cerr << "[DEBUG] " << __FILE__ << ":" << __LINE__ << ": "
+        //           << " before reverse " << '\n';
 
         // decltype(path) path2(path.size());
         // std::copy(path.rbegin(), path.rend(), std::back_inserter(path2));
         // std::reverse(path.begin(), path.end());
-        std::cerr << "[DEBUG] " << __FILE__ << ":" << __LINE__ << ": "
-                  << " after reverse " << '\n';
+        // std::cerr << "[DEBUG] " << __FILE__ << ":" << __LINE__ << ": "
+        //           << " after reverse " << '\n';
 
         // std::reverse(path.begin(), path.end());
-        if (path.size() > 20) {
-            path.resize(20);
-        }
-        std::cout << GREEN << "PATH" << RESET << std::endl;
-        for (auto& p : path) {
-            std::cout << p << std::endl;
-        }
+        // std::cout << GREEN << "PATH" << RESET << std::endl;
+        // for (auto& p : path) {
+        //     std::cout << p << std::endl;
+        // }
         spline = mdi::BezierSpline(path);
 
-        std::cout << GREEN << "SPLINE POINTS" << RESET << std::endl;
-        auto spline_points = spline.get_spline_points();
-        int i = 0;
-        for (auto& point : spline_points) {
-            auto color = i % 2 == 0 ? MAGENTA : GREEN;
-            std::cout << color << point << RESET << std::endl;
-            i++;
-        }
-        std::cerr << "[DEBUG] " << __FILE__ << ":" << __LINE__ << ": "
-                  << " spline generated" << '\n';
+        // std::cout << GREEN << "SPLINE POINTS" << RESET << std::endl;
+        // auto spline_points = spline.get_spline_points();
+        // int i = 0;
+        // for (auto& point : spline_points) {
+        //     auto color = i % 2 == 0 ? MAGENTA : GREEN;
+        //     std::cout << color << point << RESET << std::endl;
+        //     i++;
+        // }
+        // std::cerr << "[DEBUG] " << __FILE__ << ":" << __LINE__ << ": "
+        //           << " spline generated" << '\n';
 
         for (int i = 0; i < path.size() && ros::ok(); i++) {
             auto& p1 = path[i - 1];
