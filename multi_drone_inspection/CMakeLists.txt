@@ -8,8 +8,8 @@ project(
 add_compile_options(-std=c++17)
 # global configuration set(CMAKE_CXX_COMPILER "/usr/bin/clang++-12")
 # set(CMAKE_CXX_STANDARD 17) set(CMAKE_CXX_STANDARD_REQUIRED ON)
-# set(CMAKE_EXPORT_COMPILE_COMMANDS 1)
-# set(CMAKE_EXPORT_COMPILE_COMMANDS ON CACHE INTERNAL "")
+# set(CMAKE_EXPORT_COMPILE_COMMANDS 1) set(CMAKE_EXPORT_COMPILE_COMMANDS ON
+# CACHE INTERNAL "")
 
 set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake" ${CMAKE_MODULE_PATH})
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -70,14 +70,8 @@ function(add_ros_executable name main)
   target_compile_options(
     ${name}
     PRIVATE -O0
-            # -g
-            # -Wall
-            # -Werror
-            # -Wextra
-            # -Wpedantic
-            # -Weffc++
-            # -Wsign-conversion
-            )
+            # -g -Wall -Werror -Wextra -Wpedantic -Weffc++ -Wsign-conversion
+  )
 endfunction(add_ros_executable)
 
 # add_ros_executable(visualize_kdtree src/visualize_kdtree.cpp)
@@ -124,8 +118,7 @@ target_sources(
   PUBLIC src/math.cpp
   PUBLIC src/rrt/rrt.cpp)
 
-target_sources(pid_controller
-               PUBLIC src/transformlistener.cpp)
+target_sources(pid_controller PUBLIC src/transformlistener.cpp)
 
 # ##############################################################################
 # Install ##

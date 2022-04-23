@@ -141,10 +141,9 @@ auto main(int argc, char** argv) -> int {
 
     //----------------------------------------------------------------------------------------------
     // spline preprocessing
-    auto spline_input_points = vector<Vector3f>{Vector3f(0.0, 0.0, 0.0),   Vector3f(3.0, 0.5, 1.0),
-                                                Vector3f(-3.5, 1.5, 0.0),  Vector3f(-2.8, 1.0, 0.7),
-                                                Vector3f(1.2, 2.2, 1.5),   Vector3f(1.0, 3.0, 1.0),
-                                                Vector3f(-0.2, -0.5, -0.2)};
+    auto spline_input_points = vector<Vector3f>{
+        Vector3f(0.0, 0.0, 0.0), Vector3f(3.0, 0.5, 1.0), Vector3f(-3.5, 1.5, 0.0),  Vector3f(-2.8, 1.0, 0.7),
+        Vector3f(1.2, 2.2, 1.5), Vector3f(1.0, 3.0, 1.0), Vector3f(-0.2, -0.5, -0.2)};
     for (auto& point : spline_input_points) {
         point *= 10;
     }
@@ -300,7 +299,6 @@ auto main(int argc, char** argv) -> int {
             ++i;
         }
     }
-    rrt.print_number_of_root_nodes();
     std::cout << rrt << std::endl;
 
     //----------------------------------------------------------------------------------------------
@@ -341,8 +339,7 @@ auto main(int argc, char** argv) -> int {
     while (ros::ok()) {
         //------------------------------------------------------------------------------------------
         // request to set drone mode to OFFBOARD every 5 seconds until successful
-        if (drone_state.mode != "OFFBOARD" &&
-            (ros::Time::now() - previous_request_time > ros::Duration(5.0))) {
+        if (drone_state.mode != "OFFBOARD" && (ros::Time::now() - previous_request_time > ros::Duration(5.0))) {
             if (client_mode.call(mode_msg) && mode_msg.response.mode_sent) {
                 ROS_INFO("mode set: OFFBOARD");
             } else {
@@ -352,8 +349,7 @@ auto main(int argc, char** argv) -> int {
         }
         //------------------------------------------------------------------------------------------
         // request to arm throttle every 5 seconds until succesful
-        if (! drone_state.armed &&
-            (ros::Time::now() - previous_request_time > ros::Duration(5.0))) {
+        if (! drone_state.armed && (ros::Time::now() - previous_request_time > ros::Duration(5.0))) {
             if (client_arm.call(srv)) {
                 ROS_INFO("throttle armed: success");
             } else {

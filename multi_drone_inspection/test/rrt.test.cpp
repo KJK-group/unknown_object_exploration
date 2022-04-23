@@ -25,7 +25,7 @@ using vec3 = Eigen::Vector3f;
 auto main(int argc, char* argv[]) -> int {
     ros::init(argc, argv, "rtt_test");
     auto nh = ros::NodeHandle();
-    ros::Duration(5).sleep();
+    ros::Duration(2).sleep();
     auto pub_visualize_rrt = [&nh] {
         const auto topic_name = "/visualization_marker";
         const auto queue_size = 10;
