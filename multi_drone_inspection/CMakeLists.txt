@@ -92,8 +92,8 @@ target_link_libraries(test_rrt ${catkin_LIBRARIES} fmt::fmt-header-only
 
 target_compile_options(test_rrt PRIVATE -O3 -finline-functions-called-once)
 # target_compile_options(test_rrt PRIVATE -g -O0 -Wall -Wextra -Wpedantic)
-target_compile_definitions(test_rrt PUBLIC MEASURE_PERF)
-# target_compile_definitions(test_rrt PUBLIC USE_KDTREE)
+# target_compile_definitions(test_rrt PUBLIC MEASURE_PERF)
+target_compile_definitions(test_rrt PUBLIC USE_KDTREE)
 # target_sources(visualize_kdtree PUBLIC src/kdtree3/kdtree3.cpp)
 # target_compile_options(visualize_kdtree PRIVATE -g)
 

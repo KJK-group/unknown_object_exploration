@@ -12,6 +12,7 @@
 #include <string_view>
 
 #include "multi_drone_inspection/utils/time.hpp"
+#include "visualization_msgs/MarkerArray.h"
 
 namespace mdi::utils::rviz {
 
@@ -21,10 +22,6 @@ struct RGBA {
 
 struct Scale {
     float x = 1.f, y = 1.f, z = 1.f;
-};
-
-struct Arrow {
-    Eigen::Vector3f start, end;
 };
 
 struct Header {
@@ -83,6 +80,12 @@ struct visualization_marker_msg_gen {
 struct arrow_msg_gen : public visualization_marker_msg_gen {
     class Builder;
 
+    struct Arrow {
+        Eigen::Vector3f start, end;
+    };
+
+    using Arrows = std::vector<Arrow>;
+
     static auto builder() -> Builder;
 
     arrow_msg_gen(const std::string& ns = "arrow") {
@@ -104,6 +107,15 @@ struct arrow_msg_gen : public visualization_marker_msg_gen {
         msg.points[1] = vec3_to_geometry_msg_point_(arrow.end);
 
         return msg;
+    }
+
+    auto operator()(std::vector<Arrow> arrows, ros::Time timestamp = ros::Time::now(),
+                    ros::Duration lifetime = ros::Duration(0)) -> visualization_msgs::MarkerArray {
+        auto markerarray = visualization_msgs::MarkerArray();
+        std::transform(arrows.cbegin(), arrows.cend(), markerarray.markers.begin(),
+                       [this](const auto& arrow) { return this->operator()(arrow); });
+
+        return markerarray;
     }
 
    private:

@@ -10,23 +10,39 @@
 #include <iostream>
 #include <optional>
 #include <thread>
+#include <vector>
 
 #include "multi_drone_inspection/rrt/rrt.hpp"
 #include "multi_drone_inspection/rrt/rrt_builder.hpp"
 #include "multi_drone_inspection/utils/rviz/rviz.hpp"
 #include "ros/assert.h"
+#include "ros/init.h"
+#include "ros/rate.h"
+#include "ros/spinner.h"
 
 using vec3 = Eigen::Vector3f;
 
 auto main(int argc, char* argv[]) -> int {
     ros::init(argc, argv, "rtt_test");
     auto nh = ros::NodeHandle();
-    auto pub_visualize_rrt = [&nh]() {
-        const auto topic_name = "/visualisation_marker";
-        return nh.advertise<visualization_msgs::Marker>(topic_name, 10);
+    auto pub_visualize_rrt = [&nh] {
+        const auto topic_name = "/visualization_marker";
+        const auto queue_size = 10;
+        return nh.advertise<visualization_msgs::Marker>(topic_name, queue_size);
     }();
 
+    auto pub_marker_array = [&nh] {
+        const auto topic_name = "/visualization_marker_array";
+        const auto queue_size = 10;
+        return nh.advertise<visualization_msgs::MarkerArray>(topic_name, queue_size);
+    }();
     auto publish_rate = ros::Rate(10);
+
+    auto publish_marker_array = [&](const auto& markerarray) {
+        pub_marker_array.publish(markerarray);
+        publish_rate.sleep();
+        ros::spinOnce();
+    };
 
     auto publish = [&pub_visualize_rrt, &publish_rate](const auto& msg) {
         pub_visualize_rrt.publish(msg);
@@ -66,10 +82,13 @@ auto main(int argc, char* argv[]) -> int {
 
     // rrt.register_cb_for_event_on_trying_full_path(
     //     [](const auto& p1, const auto& p2) { std::cout << "trying full path" << '\n'; });
-    rrt.register_cb_for_event_on_new_node_created([&](const vec3& parent, const vec3& new_node) {
-        auto msg = arrow_msg_gen({parent, new_node});
-        publish(msg);
-    });
+    // rrt.register_cb_for_event_on_new_node_created([&](const vec3& parent, const vec3& new_node) {
+    //     auto msg = arrow_msg_gen({parent, new_node});
+    //     publish(msg);
+    // });
+
+    // rrt.register_cb_for_event_on_new_node_created(
+    // [&](const vec3& parent, const vec3& new_node) { std::cout << "insert new node" << '\n'; });
 
     const auto start = rrt.start_position();
     const auto goal = rrt.goal_position();
@@ -105,9 +124,9 @@ auto main(int argc, char* argv[]) -> int {
     for (size_t i = 0; i < 5; i++) {
         publish([&]() {
             auto msg = sphere_msg_gen(goal);
-            msg.scale.x = goal_tolerance;
-            msg.scale.y = goal_tolerance;
-            msg.scale.z = goal_tolerance;
+            msg.scale.x = goal_tolerance * 2;
+            msg.scale.y = goal_tolerance * 2;
+            msg.scale.z = goal_tolerance * 2;
             msg.color.b = 0.6f;
             msg.color.g = 0.f;
             msg.color.a = 0.25f;
@@ -158,79 +177,42 @@ auto main(int argc, char* argv[]) -> int {
 
     std::cout << rrt << std::endl;
 
-    std::cout << "[DEBUG] " << __FILE__ << ":" << __LINE__ << ": "
-              << " calling rrt.run()" << '\n';
+    ROS_INFO_STREAM("calling rrt.run()");
 
-    // while (true) {
-    //     if (rrt.grow1()) break;
-    //     // std::this_thread::sleep_for(std::chrono::microseconds(5000));
-    //     std::string input;
-    //     std::cout << "press any key (press q to quit)\n";
-    //     std::cin.clear();
-    //     // std::cin.ignore(INT_MAX, '\n');
-    //     std::cout << "input: " << input << '\n';
-    //     std::getline(std::cin, input);
-    //     std::cout << rrt << std::endl;
+    const auto opt = rrt.run();
+    // wait for rviz
+    ros::Rate(0.5).sleep();
 
-    //     if (input == "q") {
-    //         break;
-    //     }
-    // }
+    {
+        auto markerarray = visualization_msgs::MarkerArray{};
+        rrt.bft([&](const auto& p1, const auto& p2) {
+            auto arrow = arrow_msg_gen({p1, p2});
+            markerarray.markers.push_back(arrow);
+        });
+        publish_marker_array(markerarray);
+    }
 
-    // if (const auto opt = rrt.get_waypoints()) {
-    //     const auto waypoints = *opt;
-    //     arrow_msg_gen.color.r = 1.0f;
-    //     arrow_msg_gen.color.g = 0.0f;
-    //     int i = 1;
-    //     arrow_msg_gen.scale.x = 0.1f;
-    //     arrow_msg_gen.scale.y = 0.1f;
-    //     arrow_msg_gen.scale.z = 0.1f;
-
-    //     std::cerr << "[DEBUG] " << __FILE__ << ":" << __LINE__ << ": "
-    //               << " waypoints.size() == " << waypoints.size() << '\n';
-
-    //     while (ros::ok() && i < waypoints.size()) {
-    //         auto& p1 = waypoints[i - 1];
-    //         auto& p2 = waypoints[i];
-    //         auto arrow = arrow_msg_gen({p1, p2});
-    //         publish(arrow);
-    //         ++i;
-    //     }
-    //     std::cerr << "[DEBUG] " << __FILE__ << ":" << __LINE__ << ": "
-    //               << " i = " << i << '\n';
-    // }
-
-    // rrt.print_number_of_root_nodes();
-
-    // const auto wp = rrt.w
-
-    if (const auto opt = rrt.run()) {
+    if (opt) {
         const auto path = *opt;
-        std::cout << "[DEBUG] " << __FILE__ << ":" << __LINE__ << " "
-                  << " found a solution" << '\n';
-
+        ROS_INFO_STREAM("found solution path");
         arrow_msg_gen.color.r = 1.0f;
         arrow_msg_gen.color.g = 0.0f;
-        int i = 1;
         arrow_msg_gen.scale.x = 0.1f;
         arrow_msg_gen.scale.y = 0.1f;
         arrow_msg_gen.scale.z = 0.1f;
-        while (ros::ok() && i < path.size()) {
+
+        auto markerarray = visualization_msgs::MarkerArray{};
+        for (int i = 1; i < path.size(); ++i) {
             auto& p1 = path[i - 1];
             auto& p2 = path[i];
             auto arrow = arrow_msg_gen({p1, p2});
-            publish(arrow);
-            ++i;
+            markerarray.markers.push_back(arrow);
         }
+
+        publish_marker_array(markerarray);
     }
 
-    // auto i = std::size_t{0};
-    // rrt.bft([&](const auto& pt) { ++i; });
-
-    // rrt.print_each_node();
-
-    // std::cout << "[DEBUG] " << __FILE__ << ":" << __LINE__ << ": "
-    //   << " bft reached " << i << " nodes, number of nodes is " << rrt.size() << '\n';
+    std::cout << rrt << std::endl;
 
     return 0;
 }
