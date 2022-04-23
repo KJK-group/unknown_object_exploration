@@ -24,7 +24,6 @@
 #include <vector>
 
 #ifdef USE_KDTREE
-// #include "kdtree/kdtree.hpp"
 #include "kdtree/kdtree3.hpp"
 #endif  // USE_KDTREE
 

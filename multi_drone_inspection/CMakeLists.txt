@@ -8,7 +8,8 @@ project(
 add_compile_options(-std=c++17)
 # global configuration set(CMAKE_CXX_COMPILER "/usr/bin/clang++-12")
 # set(CMAKE_CXX_STANDARD 17) set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_EXPORT_COMPILE_COMMANDS 1)
+# set(CMAKE_EXPORT_COMPILE_COMMANDS 1)
+# set(CMAKE_EXPORT_COMPILE_COMMANDS ON CACHE INTERNAL "")
 
 set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake" ${CMAKE_MODULE_PATH})
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -68,13 +69,15 @@ function(add_ros_executable name main)
   target_link_libraries(${name} ${catkin_LIBRARIES} fmt::fmt-header-only)
   target_compile_options(
     ${name}
-    PRIVATE -O2
-            -Wall
+    PRIVATE -O0
+            # -g
+            # -Wall
             # -Werror
-            -Wextra
-            -Wpedantic
+            # -Wextra
+            # -Wpedantic
             # -Weffc++
-            -Wsign-conversion)
+            # -Wsign-conversion
+            )
 endfunction(add_ros_executable)
 
 # add_ros_executable(visualize_kdtree src/visualize_kdtree.cpp)
@@ -106,22 +109,23 @@ add_ros_executable(publish_traversed_path src/publish_traversed_path.cpp)
 
 target_sources(
   spline_tester
-  PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src/bezier_spline.cpp
-  PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src/math.cpp)
+  PUBLIC src/bezier_spline.cpp
+  PUBLIC src/math.cpp)
 
 target_sources(
   trajectory_follower
-  PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src/bezier_spline.cpp
-  PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src/math.cpp)
+  PUBLIC src/bezier_spline.cpp
+  PUBLIC src/math.cpp)
 
 target_sources(
   mission_state
-  PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src/bezier_spline.cpp
-  PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src/transformlistener.cpp
-  PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src/math.cpp)
+  PUBLIC src/bezier_spline.cpp
+  PUBLIC src/transformlistener.cpp
+  PUBLIC src/math.cpp
+  PUBLIC src/rrt/rrt.cpp)
 
 target_sources(pid_controller
-               PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src/transformlistener.cpp)
+               PUBLIC src/transformlistener.cpp)
 
 # ##############################################################################
 # Install ##

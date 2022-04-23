@@ -3,12 +3,17 @@
 
 #include <tf2_eigen/tf2_eigen.h>
 
+#include <cstdint>
+#include <functional>
+#include <iostream>
+
 namespace mdi::utils {
 using Eigen::Vector3f;
+using std::uint64_t;
 
 //--------------------------------------------------------------------------------------------------
 // Return the factorial of `i`
-auto factorial(unsigned int i) -> unsigned int;
+auto factorial(unsigned int i) -> uint64_t;
 
 //--------------------------------------------------------------------------------------------------
 // Returns the binomial coefficient for `n` choose `i`,

@@ -25,6 +25,7 @@ using vec3 = Eigen::Vector3f;
 auto main(int argc, char* argv[]) -> int {
     ros::init(argc, argv, "rtt_test");
     auto nh = ros::NodeHandle();
+    ros::Duration(5).sleep();
     auto pub_visualize_rrt = [&nh] {
         const auto topic_name = "/visualization_marker";
         const auto queue_size = 10;
@@ -57,7 +58,7 @@ auto main(int argc, char* argv[]) -> int {
                              .color({0, 1, 0, 1})
                              .build();
     ROS_INFO("creating rrt");
-    auto rrt = mdi::rrt::RRT::from_rosparam("/rrt");
+    auto rrt = mdi::rrt::RRT::from_rosparam("/mdi/rrt");
 
 #ifdef MEASURE_PERF
 
@@ -115,7 +116,7 @@ auto main(int argc, char* argv[]) -> int {
     auto sphere_tolerance_msg = sphere_msg_gen(goal);
     const auto goal_tolerance = [&]() {
         float goal_tolerance = 1.0f;
-        if (! nh.getParam("/rrt/max_dist_goal_tolerance", goal_tolerance)) {
+        if (! nh.getParam("/mdi/rrt/max_dist_goal_tolerance", goal_tolerance)) {
             std::exit(EXIT_FAILURE);
         }
         return goal_tolerance;
@@ -197,6 +198,9 @@ auto main(int argc, char* argv[]) -> int {
         ROS_INFO_STREAM("found solution path");
         arrow_msg_gen.color.r = 1.0f;
         arrow_msg_gen.color.g = 0.0f;
+        arrow_msg_gen.color.r = 0.0f;
+        arrow_msg_gen.color.g = 1.0f;
+        int i = 1;
         arrow_msg_gen.scale.x = 0.1f;
         arrow_msg_gen.scale.y = 0.1f;
         arrow_msg_gen.scale.z = 0.1f;
@@ -208,10 +212,8 @@ auto main(int argc, char* argv[]) -> int {
             auto arrow = arrow_msg_gen({p1, p2});
             markerarray.markers.push_back(arrow);
         }
-
         publish_marker_array(markerarray);
     }
-
     std::cout << rrt << std::endl;
 
     return 0;

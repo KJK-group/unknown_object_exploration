@@ -11,14 +11,19 @@
     <arg name="kad" default="0"/>
     <arg name="vel" default="0"/>
 
-    <node pkg="$(arg package)" type="mission_state" name="mission_state"
-        args="$(arg vel)" />
+	<rosparam command="load" file="$(dirname)/../rosparam/rrt.yaml"/>
+
+    <node
+        pkg="$(arg package)"
+        type="mission_state"
+        name="mission_state"
+        args="$(arg vel)"
+        output="screen" />
     <node
         pkg="$(arg package)"
         type="pid_controller"
         name="pid_controller"
-        args="$(arg krp) $(arg kri) $(arg krd) $(arg kap) $(arg kai) $(arg kad)"
-        output="screen" />
+        args="$(arg krp) $(arg kri) $(arg krd) $(arg kap) $(arg kai) $(arg kad)" />
     <node
         pkg="$(arg package)"
         type="publish_traversed_path"

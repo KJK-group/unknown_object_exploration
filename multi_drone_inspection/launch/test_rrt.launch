@@ -11,7 +11,7 @@
 
 
 	<node pkg="rviz" type="rviz" name="rviz" args="-d $(dirname)/../rviz/$(arg node).rviz"/>
-	<rosparam command="load" file="$(dirname)/../rosparam/$(arg node).yaml"/>
+	<rosparam command="load" file="$(dirname)/../rosparam/rrt.yaml"/>
 
 	<!-- <arg name="measurements_output_dir" value="~/.cache/"/> -->
 	<arg name="measurements_output_dir" value="$(dirname)/../measurements"/>
