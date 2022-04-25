@@ -4,7 +4,9 @@
 	<arg name="package" value="multi_drone_inspection"/>
 	<!-- <arg name="launch-prefix" default="valgrind \-\-leak-check=full"/> -->
 	<!-- <arg name="launch-prefix" default="kitty lldb"/> -->
-	<!-- <arg name="launch-prefix" default="perf record \-\-call-graph dwarf "/> -->
+	<!-- <arg name="launch-prefix" default="kitty lldb"/> -->
+	<!-- <arg name="launch-prefix" default="perf stat -e cache-misses -e branch-misses"/> -->
+	<!-- <arg name="launch-prefix" default="perf stat"/> -->
 	<arg name="launch-prefix" value=""/>
 
 

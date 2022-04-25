@@ -22,9 +22,11 @@
 #include <string_view>
 #include <utility>
 #include <vector>
+
 #ifdef USE_KDTREE
-#include "kdtree/kdtree.hpp"
-#endif
+#include "kdtree/kdtree3.hpp"
+#endif  // USE_KDTREE
+
 #include "multi_drone_inspection/utils/random.hpp"
 
 namespace mdi::rrt {
@@ -35,36 +37,102 @@ class RRTBuilder;  // forward declare builder class
 
 class RRT {
    public:
+    // factory methods
     friend class RRTBuilder;
     static auto from_builder() -> RRTBuilder;
     static auto from_rosparam(std::string_view prefix) -> RRT;
 
-#ifdef MEASURE_PERF
-    ~RRT() {
-        if (log_perf_measurements_enabled_) {
-            // std::filesystem::is_regular_file(file_path_csv_);
-            // const auto path = std::filesystem::current_path() / "perf.csv";
-            std::cerr << "[DEBUG] " << __FILE__ << ":" << __LINE__ << ": "
-                      << " path = " << file_path_csv_ << '\n';
+    // pretty printer
+    friend std::ostream& operator<<(std::ostream& os, const RRT& rrt);
 
-            auto file = std::ofstream(file_path_csv_);
-            if (file.is_open()) {
-                file << "t,nodes\n";
-                const auto nanoseconds_to_seconds = [](double nanoseconds) {
-                    return nanoseconds / 1e9;
-                };
+    using coordinate_type = vec3;
+    using waypoint_type = coordinate_type;
+    using waypoints_type = std::vector<waypoint_type>;
 
-                for (std::size_t i = 0; i < timimg_measurements_.size(); ++i) {
-                    // std::nth_element(timimg_measurements_.cb)
-                    const auto& measurement = timimg_measurements_[i];
-                    file << i << ","
-                         << nanoseconds_to_seconds(static_cast<double>(measurement.count()))
-                         << '\n';
-                }
-                file.close();
-            }
-        }
+    // TODO:
+    enum class traversal_order {
+        breath_first,
+        depth_first,
+    };
+
+    /**
+     * @brief grow the tree until a path is found, or max number of iterations is exceeded.
+     *
+     * @return std::optional<waypoints_type> some variant containing the waypoints if a path is
+     * found. Otherwise std::nullopt.
+     */
+    auto run() -> std::optional<waypoints_type>;
+    /**
+     * @brief // grow the tree n nodes.
+     * @throws std::invalid_argument if n < 0.
+     * @param n
+     * @return true if a path is found, false otherwise
+     */
+    auto growN(int n) -> bool;
+    /**
+     * @brief // grow the tree 1 node.
+     * @return true if a path is found, false otherwise
+     */
+    auto grow1() -> bool { return growN(1); }
+
+    /**
+     * @brief // deallocate all nodes in the tree.
+     */
+    auto clear() -> void {
+        // TODO: handle kdtrees
+        nodes_.clear();
+        call_cbs_for_event_on_clearing_nodes_in_tree_();
     }
+
+    /**
+     * @brief Get the waypoints.
+     * meant to be called after @ref growN or @ref grow1
+     * @return std::optional<waypoint_type> some variant if a path goal has been found,
+     * else std::nullopt.
+     */
+    auto get_waypoints() -> std::optional<waypoints_type> {
+        if (waypoints_.empty()) {
+            return std::nullopt;
+        }
+        return waypoints_;
+    }
+    [[nodiscard]] auto get_frontier_nodes() const -> std::vector<vec3>;
+
+    /**
+     * @brief traverse tree in breath first order, and call @ref f, for every node
+     * @param f the function to call.
+     */
+    auto bft(const std::function<void(const vec3& pt)>& f) const -> void {
+        const auto skip_root = false;
+        bft_([&](const vec3& _, const vec3& pt) { f(pt); }, skip_root);
+    }
+    /**
+     * @brief traverse tree in breath first order, and call @ref f, for every edge
+     * i.e. every pair of parent and child node.
+     * @param f the function to call.
+     * @param skip_root if true then @ref f will be called with itself as parent and child.
+     */
+    auto bft(const std::function<void(const vec3& pt, const vec3& parent_pt)>& f, bool skip_root = true) const -> void {
+        bft_(f, skip_root);
+    }
+
+    /**
+     * @brief returns the number of nodes that are reachable from the root node, plus the root
+     * itself.
+     * @return std::size_t
+     */
+    [[nodiscard]] auto reachable_nodes() const -> std::size_t {
+        std::size_t count = 0;
+        bft([&](const auto& _) { ++count; });
+        return count;
+    }
+    /**
+     * @brief true, when every node is reachable from the root i.e. the tree is connected.
+     */
+    [[nodiscard]] auto connected() const -> bool { return reachable_nodes() == size(); }
+
+#ifdef MEASURE_PERF
+    ~RRT();
 
     auto enable_perf_logging(const std::filesystem::path& p) -> void {
         log_perf_measurements_enabled_ = true;
@@ -73,79 +141,25 @@ class RRT {
     auto disable_perf_logging() -> void { log_perf_measurements_enabled_ = false; }
 #endif  // MEASURE_PERF
 
-    // FIXME: remove this
-    auto print_each_node() const -> void {
-        for (const auto& n : nodes_) {
-            std::cout << n << '\n';
-        }
-    }
-    // FIXME: remove this
-    auto print_number_of_root_nodes() -> void {
-        const auto is_root = [](const node_t& n) { return n.is_root(); };
-        const auto count = std::count_if(nodes_.cbegin(), nodes_.cend(), is_root);
-        std::cout << "number of root nodes" << count << '\n';
-    }
-
-    friend std::ostream& operator<<(std::ostream& os, const RRT& rrt);
-
-    auto run() -> std::optional<std::vector<vec3>>;
-    auto growN(int n) -> bool;                 // grow the tree n nodes.
-    auto grow1() -> bool { return growN(1); }  // grow the tree one node.
-                                               /**
-                                                * @brief // deallocate all nodes in the tree.
-                                                */
-    auto clear() -> void {
-        nodes_.clear();
-        call_cbs_for_event_on_clearing_nodes_in_tree_();
-    }
-
-    auto get_waypoints() -> std::optional<std::vector<vec3>> {
-        if (waypoints_.empty()) {
-            return std::nullopt;
-        }
-        return waypoints_;
-    }
-    [[nodiscard]] auto get_frontier_nodes() const -> std::vector<vec3>;
-    auto bft(const std::function<void(const vec3& pt)>& f) -> void;
-    auto bft(const std::function<void(const vec3& pt, const vec3& parent_pt)>& f) -> void;
-
-    auto connectivity() const -> std::size_t {
-        std::size_t n = 0;
-        // return std::count_if(nodes_.cbegin(), nodes_.cend(), [](const node& n) { n. ; })
-        bft_([&](const auto& p1, const auto& p2) { ++n; });
-        return n;
-    }
-
-    auto fully_connected() const -> bool { return connectivity() == size(); }
-
-    auto register_cb_for_event_on_new_node_created(std::function<void(const vec3&, const vec3&)> cb)
-        -> void {
+    auto register_cb_for_event_on_new_node_created(std::function<void(const vec3&, const vec3&)> cb) -> void {
         on_new_node_created_cb_list.push_back(cb);
     }
-    auto register_cb_for_event_on_goal_reached(std::function<void(const vec3&, size_t)> cb)
-        -> void {
+    auto register_cb_for_event_on_goal_reached(std::function<void(const vec3&, size_t)> cb) -> void {
         on_goal_reached_cb_list.push_back(cb);
     }
-    auto register_cb_for_event_on_trying_full_path(std::function<void(const vec3&, const vec3&)> cb)
-        -> void {
+    auto register_cb_for_event_on_trying_full_path(std::function<void(const vec3&, const vec3&)> cb) -> void {
         on_trying_full_path_cb_list.push_back(cb);
     }
     auto register_cb_for_event_on_clearing_nodes_in_tree(std::function<void()> cb) -> void {
         on_clearing_nodes_in_tree_cb_list.push_back(cb);
     }
 
-    auto unregister_cbs_for_event_on_new_node_created() -> void {
-        on_new_node_created_cb_list.clear();
-    }
+    auto unregister_cbs_for_event_on_new_node_created() -> void { on_new_node_created_cb_list.clear(); }
 
-    auto unregister_cbs_for_event_on_trying_full_path() -> void {
-        on_trying_full_path_cb_list.clear();
-    }
+    auto unregister_cbs_for_event_on_trying_full_path() -> void { on_trying_full_path_cb_list.clear(); }
 
     auto unregister_cbs_for_event_on_goal_reached() -> void { on_goal_reached_cb_list.clear(); }
-    auto unregister_cbs_for_event_on_clearing_nodes_in_tree() -> void {
-        on_clearing_nodes_in_tree_cb_list.clear();
-    }
+    auto unregister_cbs_for_event_on_clearing_nodes_in_tree() -> void { on_clearing_nodes_in_tree_cb_list.clear(); }
     auto unregister_cbs_for_all_events() -> void {
         unregister_cbs_for_event_on_new_node_created();
         unregister_cbs_for_event_on_goal_reached();
@@ -168,8 +182,7 @@ class RRT {
 
     struct node_t {
        public:
-        node_t(vec3 pos, node_t* parent_ = nullptr)
-            : parent(parent_), children{}, position_(std::move(pos)) {}
+        node_t(vec3 pos, node_t* parent_ = nullptr) : parent(parent_), children{}, position_(std::move(pos)) {}
 
         node_t* parent = nullptr;
         std::vector<node_t*> children{};
@@ -194,9 +207,18 @@ class RRT {
 
     auto sample_random_point_() -> vec3;
     // TODO: make kdtree or list transparent to the caller
-    auto find_nearest_neighbor_(const vec3& point) -> node_t*;
-    auto bft_(const std::function<void(const vec3& pt, const vec3& parent_pt)>& f) const -> void;
+    auto find_nearest_neighbor_(const vec3& pt) -> node_t*;
+
+    /**
+     * @brief traverse tree in breath first order, and call @ref f, for every edge
+     * i.e. every pair of parent and child node.
+     * @param f the function to call.
+     * @param skip_root if true then @ref f will be called with itself as parent and child.
+     */
+    auto bft_(const std::function<void(const vec3& parent_pt, const vec3& child_pt)>& f, bool skip_root = true) const
+        -> void;
     [[nodiscard]] auto grow_() -> bool;
+
     auto insert_node_(const vec3& pos, node_t* parent) -> node_t&;
 
     auto backtrack_and_set_waypoints_(node_t* start_node) -> bool;
@@ -236,31 +258,28 @@ class RRT {
 
 #ifdef USE_KDTREE
 
-    // TODO: use this variable
-    std::int32_t kdtree_size_ = 1000;
-    static constexpr std::int32_t max_number_of_kdtrees_per_bucket_ = 5;
+    static constexpr std::int32_t max_number_of_kdtrees_per_bucket_ = 10;
     static constexpr std::int32_t max_number_of_nodes_to_do_linear_search_on_ = 1000;
-    using kdtree3 = kdtree::kdtree<float, std::size_t, 3>;
-    // std::vector<kdtree3*> kdtree3s_;
+    std::int32_t n_kdtree_nodes_ = 0;
+
+    using kdtree3 = kdtree::kdtree3<std::size_t>;
 
     struct kdtree3_bucket_t {
         int size_of_a_tree;
         // TODO: use std::unique_ptr
-        std::array<kdtree3*, max_number_of_kdtrees_per_bucket_> forest;
-        kdtree3_bucket_t(int size_of_a_tree_) : size_of_a_tree(size_of_a_tree_), forest{} {}
+        std::array<kdtree3*, max_number_of_kdtrees_per_bucket_> forest{};
+        kdtree3_bucket_t(int size_of_a_tree_) : size_of_a_tree(size_of_a_tree_) {}
 
         [[nodiscard]] auto number_of_trees() const {
-            return std::count_if(forest.begin(), forest.end(),
-                                 [](const auto& tree) { return tree != nullptr; });
+            return std::count_if(forest.begin(), forest.end(), [](const auto& tree) { return tree != nullptr; });
         }
         [[nodiscard]] auto bucket_is_full() const -> bool {
             return number_of_trees() == max_number_of_kdtrees_per_bucket_;
         }
         [[nodiscard]] auto empty() const { return number_of_trees() == 0; }
 
-        [[nodiscard]] auto number_of_nodes_in_bucket() const {
-            return number_of_trees() * size_of_a_tree;
-        }
+        [[nodiscard]] auto number_of_nodes_in_bucket() const { return number_of_trees() * size_of_a_tree; }
+
         auto delete_trees() {
             std::for_each(forest.begin(), forest.end(), [&](auto& tree) {
                 if (tree != nullptr) {
@@ -293,12 +312,19 @@ class RRT {
 
     // precompute
     std::vector<kdtree3_bucket_t> kdtree3s_{
-        {max_number_of_nodes_to_do_linear_search_on_},
-        {max_number_of_nodes_to_do_linear_search_on_ * max_number_of_kdtrees_per_bucket_},
-        {static_cast<int>(max_number_of_nodes_to_do_linear_search_on_ *
+        {max_number_of_nodes_to_do_linear_search_on_}}; /*, {max_number_of_nodes_to_do_linear_search_on_ *
+        max_number_of_kdtrees_per_bucket_}, {static_cast<int>(max_number_of_nodes_to_do_linear_search_on_ *
                           std::pow(max_number_of_kdtrees_per_bucket_, 2))},
         {static_cast<int>(max_number_of_nodes_to_do_linear_search_on_ *
-                          std::pow(max_number_of_kdtrees_per_bucket_, 3))}};
+                          std::pow(max_number_of_kdtrees_per_bucket_, 3))},
+        {static_cast<int>(max_number_of_nodes_to_do_linear_search_on_ *
+                        //   std::pow(max_number_of_kdtrees_per_bucket_, 4))} }; */
+
+    auto add_bucket() -> void {
+        kdtree3s_.emplace_back(static_cast<int>(max_number_of_nodes_to_do_linear_search_on_ *
+                                                std::pow(max_number_of_kdtrees_per_bucket_, kdtree3s_.size())));
+    }
+
 #endif  // USE_KDTREE
 
     // std::vector<std::unique_ptr<kdtree3>> kdtree3s_;
@@ -327,8 +353,7 @@ class RRT {
     using microseconds_t = std::chrono::duration<double, std::nano>;
     std::vector<std::chrono::nanoseconds> timimg_measurements_{};
 #endif  // MEASURE_PERF
-
-};  // class RRT
+};
 
 }  // namespace mdi::rrt
 

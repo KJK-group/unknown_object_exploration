@@ -103,9 +103,9 @@ tf2_ros::Buffer tf_buffer;
 mdi::BezierSpline spline;
 
 // Points of interest
-auto interest_points = std::vector<Eigen::Vector3f>{
-    Eigen::Vector3f(10, 10, 7), Eigen::Vector3f(18, 9, 15), Eigen::Vector3f(20, 25, 20),
-    Eigen::Vector3f(7, 21, 13), Eigen::Vector3f(10, 10, 17)};
+auto interest_points =
+    std::vector<Eigen::Vector3f>{Eigen::Vector3f(10, 10, 7), Eigen::Vector3f(18, 9, 15), Eigen::Vector3f(20, 25, 20),
+                                 Eigen::Vector3f(7, 21, 13), Eigen::Vector3f(10, 10, 17)};
 
 //--------------------------------------------------------------------------------------------------
 // Callback Functions
@@ -139,9 +139,8 @@ auto main(int argc, char** argv) -> int {
     //----------------------------------------------------------------------------------------------
     // spline preprocessing
     auto spline_input_points = std::vector<Eigen::Vector3f>{
-        Eigen::Vector3f(0.0, 0.0, 0.0),   Eigen::Vector3f(3.0, 0.5, 1.0),
-        Eigen::Vector3f(-3.5, 1.5, 0.0),  Eigen::Vector3f(-2.8, 1.0, 0.7),
-        Eigen::Vector3f(1.2, 2.2, 1.5),   Eigen::Vector3f(1.0, 3.0, 1.0),
+        Eigen::Vector3f(0.0, 0.0, 0.0),   Eigen::Vector3f(3.0, 0.5, 1.0), Eigen::Vector3f(-3.5, 1.5, 0.0),
+        Eigen::Vector3f(-2.8, 1.0, 0.7),  Eigen::Vector3f(1.2, 2.2, 1.5), Eigen::Vector3f(1.0, 3.0, 1.0),
         Eigen::Vector3f(-0.2, -0.5, -0.2)};
     for (auto& point : spline_input_points) {
         point *= 10;
@@ -298,7 +297,6 @@ auto main(int argc, char** argv) -> int {
             ++i;
         }
     }
-    rrt.print_number_of_root_nodes();
     std::cout << rrt << std::endl;
 
     //----------------------------------------------------------------------------------------------
@@ -339,8 +337,7 @@ auto main(int argc, char** argv) -> int {
     while (ros::ok()) {
         //------------------------------------------------------------------------------------------
         // request to set drone mode to OFFBOARD every 5 seconds until successful
-        if (drone_state.mode != "OFFBOARD" &&
-            (ros::Time::now() - previous_request_time > ros::Duration(5.0))) {
+        if (drone_state.mode != "OFFBOARD" && (ros::Time::now() - previous_request_time > ros::Duration(5.0))) {
             if (client_mode.call(mode_msg) && mode_msg.response.mode_sent) {
                 ROS_INFO("mode set: OFFBOARD");
             } else {
@@ -350,8 +347,7 @@ auto main(int argc, char** argv) -> int {
         }
         //------------------------------------------------------------------------------------------
         // request to arm throttle every 5 seconds until succesful
-        if (! drone_state.armed &&
-            (ros::Time::now() - previous_request_time > ros::Duration(5.0))) {
+        if (! drone_state.armed && (ros::Time::now() - previous_request_time > ros::Duration(5.0))) {
             if (client_arm.call(srv)) {
                 ROS_INFO("throttle armed: success");
             } else {

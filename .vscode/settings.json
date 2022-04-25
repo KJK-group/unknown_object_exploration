@@ -78,5 +78,6 @@
         "forward_list": "cpp",
         "*.ipp": "cpp"
     },
-    "cmake.configureOnOpen": false
+    "cmake.configureOnOpen": false,
+    "cmake.sourceDirectory": "${workspaceFolder}/multi_drone_inspection"
 }

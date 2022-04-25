@@ -8,8 +8,8 @@ project(
 add_compile_options(-std=c++17)
 # global configuration set(CMAKE_CXX_COMPILER "/usr/bin/clang++-12")
 # set(CMAKE_CXX_STANDARD 17) set(CMAKE_CXX_STANDARD_REQUIRED ON)
-# set(CMAKE_EXPORT_COMPILE_COMMANDS 1)
-# set(CMAKE_EXPORT_COMPILE_COMMANDS ON CACHE INTERNAL "")
+# set(CMAKE_EXPORT_COMPILE_COMMANDS 1) set(CMAKE_EXPORT_COMPILE_COMMANDS ON
+# CACHE INTERNAL "")
 
 set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake" ${CMAKE_MODULE_PATH})
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -70,14 +70,8 @@ function(add_ros_executable name main)
   target_compile_options(
     ${name}
     PRIVATE -O0
-            # -g
-            # -Wall
-            # -Werror
-            # -Wextra
-            # -Wpedantic
-            # -Weffc++
-            # -Wsign-conversion
-            )
+            # -g -Wall -Werror -Wextra -Wpedantic -Weffc++ -Wsign-conversion
+  )
 endfunction(add_ros_executable)
 
 # add_ros_executable(visualize_kdtree src/visualize_kdtree.cpp)
@@ -95,8 +89,8 @@ target_link_libraries(test_rrt ${catkin_LIBRARIES} fmt::fmt-header-only
 
 target_compile_options(test_rrt PRIVATE -O3 -finline-functions-called-once)
 # target_compile_options(test_rrt PRIVATE -g -O0 -Wall -Wextra -Wpedantic)
-target_compile_definitions(test_rrt PUBLIC MEASURE_PERF)
-# target_compile_definitions(test_rrt PUBLIC USE_KDTREE)
+# target_compile_definitions(test_rrt PUBLIC MEASURE_PERF)
+target_compile_definitions(test_rrt PUBLIC USE_KDTREE)
 # target_sources(visualize_kdtree PUBLIC src/kdtree3/kdtree3.cpp)
 # target_compile_options(visualize_kdtree PRIVATE -g)
 
@@ -124,8 +118,7 @@ target_sources(
   PUBLIC src/math.cpp
   PUBLIC src/rrt/rrt.cpp)
 
-target_sources(pid_controller
-               PUBLIC src/transformlistener.cpp)
+target_sources(pid_controller PUBLIC src/transformlistener.cpp)
 
 # ##############################################################################
 # Install ##
