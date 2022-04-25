@@ -4,7 +4,7 @@
 
 #include <algorithm>
 
-#include "multi_drone_inspection/bezier_spline.hpp"
+#include "mdi/bezier_spline.hpp"
 
 using mdi::BezierSpline;
 using std::abs;
@@ -28,9 +28,8 @@ auto main(int argc, char** argv) -> int {
     pub_line = nh.advertise<visualization_msgs::Marker>("mdi/visualisation/spline", 10);
     pub_spline_anim = nh.advertise<visualization_msgs::Marker>("mdi/visualisation/spline_anim", 10);
 
-    auto points = vector<Vector3f>{Vector3f(0.0, 0.0, 0.0),  Vector3f(3.0, 0.5, 1.0),
-                                   Vector3f(-3.5, 1.5, 0.0), Vector3f(-2.8, 1.0, 0.7),
-                                   Vector3f(1.2, 2.2, 1.5),  Vector3f(1.0, 3.0, 1.0)};
+    auto points = vector<Vector3f>{Vector3f(0.0, 0.0, 0.0),  Vector3f(3.0, 0.5, 1.0), Vector3f(-3.5, 1.5, 0.0),
+                                   Vector3f(-2.8, 1.0, 0.7), Vector3f(1.2, 2.2, 1.5), Vector3f(1.0, 3.0, 1.0)};
 
     ROS_INFO_STREAM("INPUT POINTS");
     auto input_points = vector<geometry_msgs::Point>();
@@ -131,7 +130,7 @@ auto main(int argc, char** argv) -> int {
     while (ros::ok()) {
         if (dt > duration) {
             st = ros::Time::now();
-            forwards = !forwards;
+            forwards = ! forwards;
         }
         dt = ros::Time::now() - st;
 

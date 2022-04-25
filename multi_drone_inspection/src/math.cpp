@@ -1,4 +1,4 @@
-#include "multi_drone_inspection/utils/math.hpp"
+#include "mdi/utils/math.hpp"
 
 namespace mdi::utils {
 //--------------------------------------------------------------------------------------------------

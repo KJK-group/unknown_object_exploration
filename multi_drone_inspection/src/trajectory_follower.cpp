@@ -15,7 +15,7 @@
 #include <tuple>
 
 #include "boost/format.hpp"
-#include "multi_drone_inspection/bezier_spline.hpp"
+#include "mdi/bezier_spline.hpp"
 
 #define V_MAX 0.2
 #define A 0.4
@@ -113,9 +113,8 @@ auto error_previous = Vector3f(0, 0, 0);
 //--------------------------------------------------------------------------------------------------
 
 BezierSpline spline;
-auto spline_input_points =
-    vector<Vector3f>{Vector3f(0.0, 0.0, 0.0),  Vector3f(3.0, 0.5, 1.0), Vector3f(-3.5, 1.5, 0.0),
-                     Vector3f(-2.8, 1.0, 0.7), Vector3f(1.2, 2.2, 1.5), Vector3f(1.0, 3.0, 1.0)};
+auto spline_input_points = vector<Vector3f>{Vector3f(0.0, 0.0, 0.0),  Vector3f(3.0, 0.5, 1.0), Vector3f(-3.5, 1.5, 0.0),
+                                            Vector3f(-2.8, 1.0, 0.7), Vector3f(1.2, 2.2, 1.5), Vector3f(1.0, 3.0, 1.0)};
 auto forwards = true;
 
 //--------------------------------------------------------------------------------------------------
@@ -123,14 +122,10 @@ auto forwards = true;
 //--------------------------------------------------------------------------------------------------
 
 // 5th order trajectory function
-auto trajectory(float x) -> float {
-    return A * pow(x, 5) + B * pow(x, 4) + C * pow(x, 3) + D * pow(x, 2) + E * x + F;
-}
+auto trajectory(float x) -> float { return A * pow(x, 5) + B * pow(x, 4) + C * pow(x, 3) + D * pow(x, 2) + E * x + F; }
 
 // 5th order trajectory slope
-auto trajectory_slope(float x) -> float {
-    return 5 * A * pow(x, 4) + 4 * B * pow(x, 3) + 3 * pow(x, 2) + D * x + E;
-}
+auto trajectory_slope(float x) -> float { return 5 * A * pow(x, 4) + 4 * B * pow(x, 3) + 3 * pow(x, 2) + D * x + E; }
 
 //--------------------------------------------------------------------------------------------------
 // Vector Functions
@@ -139,9 +134,7 @@ auto trajectory_slope(float x) -> float {
 auto scale = 4;
 
 // circle vector function
-auto circle_trajectory(float t) -> Vector2f {
-    return Vector2f(scale * cos(V_MAX * t), scale * sin(V_MAX * t));
-}
+auto circle_trajectory(float t) -> Vector2f { return Vector2f(scale * cos(V_MAX * t), scale * sin(V_MAX * t)); }
 
 // 3D trajectory
 auto circle_trajectory_3d(float t) -> Vector3f {
@@ -177,9 +170,9 @@ auto main(int argc, char** argv) -> int {
 
     //----------------------------------------------------------------------------------------------
     // spline preprocessing
-    auto spline_input_points = vector<Vector3f>{Vector3f(0.0, 0.0, 0.0),  Vector3f(3.0, 0.5, 1.0),
-                                                Vector3f(-3.5, 1.5, 0.0), Vector3f(-2.8, 1.0, 0.7),
-                                                Vector3f(1.2, 2.2, 1.5),  Vector3f(1.0, 3.0, 1.0)};
+    auto spline_input_points =
+        vector<Vector3f>{Vector3f(0.0, 0.0, 0.0),  Vector3f(3.0, 0.5, 1.0), Vector3f(-3.5, 1.5, 0.0),
+                         Vector3f(-2.8, 1.0, 0.7), Vector3f(1.2, 2.2, 1.5), Vector3f(1.0, 3.0, 1.0)};
     for (auto& point : spline_input_points) {
         point *= 10;
     }
@@ -194,13 +187,10 @@ auto main(int argc, char** argv) -> int {
 
     //----------------------------------------------------------------------------------------------
     // velocity publisher
-    pub_velocity =
-        nh.advertise<geometry_msgs::TwistStamped>("/mavros/setpoint_velocity/cmd_vel", 10);
+    pub_velocity = nh.advertise<geometry_msgs::TwistStamped>("/mavros/setpoint_velocity/cmd_vel", 10);
     // point publishers
-    pub_point_body =
-        nh.advertise<geometry_msgs::PointStamped>("/mdi/points/expected_pos/body_frame", 10);
-    pub_point_world =
-        nh.advertise<geometry_msgs::PointStamped>("/mdi/points/expected_pos/world_frame", 10);
+    pub_point_body = nh.advertise<geometry_msgs::PointStamped>("/mdi/points/expected_pos/body_frame", 10);
+    pub_point_world = nh.advertise<geometry_msgs::PointStamped>("/mdi/points/expected_pos/world_frame", 10);
     pub_point_est = nh.advertise<geometry_msgs::PointStamped>("/mdi/points/estimated_pos", 10);
 
     //----------------------------------------------------------------------------------------------
@@ -211,7 +201,7 @@ auto main(int argc, char** argv) -> int {
 
     //----------------------------------------------------------------------------------------------
     // wait for FCU connection
-    while (ros::ok() && !state.connected) {
+    while (ros::ok() && ! state.connected) {
         ros::spinOnce();
         rate.sleep();
     }
@@ -256,7 +246,7 @@ auto main(int argc, char** argv) -> int {
         auto spline_length = spline.get_length();
         if (distance_along_spline >= spline_length) {
             start_time = ros::Time::now();
-            forwards = !forwards;
+            forwards = ! forwards;
         }
         if (forwards) {
             distance_along_spline = spline_length - distance_along_spline;
@@ -289,8 +279,7 @@ auto main(int argc, char** argv) -> int {
         point_body_frame.header.frame_id = frame_body;
         // apply transform outputting result to point_body_frame
         tf2::doTransform(point_world_frame, point_body_frame, transform);
-        auto expected_pos_body =
-            Vector3f(point_body_frame.point.x, point_body_frame.point.y, point_body_frame.point.z);
+        auto expected_pos_body = Vector3f(point_body_frame.point.x, point_body_frame.point.y, point_body_frame.point.z);
         //----------------------------------------------------------------------------------------------
         // publish points
         pub_point_world.publish(point_world_frame);
@@ -344,26 +333,21 @@ auto main(int argc, char** argv) -> int {
         ROS_INFO_STREAM("  y: " << format("%1.5f") % group(setfill(' '), setw(8), pos.y));
         ROS_INFO_STREAM("  z: " << format("%1.5f") % group(setfill(' '), setw(8), pos.z));
         ROS_INFO_STREAM(green << bold << italic << "errors:" << reset);
-        ROS_INFO_STREAM("  heading: " << format("%1.5f") %
-                                             group(setfill(' '), setw(8), error_heading));
+        ROS_INFO_STREAM("  heading: " << format("%1.5f") % group(setfill(' '), setw(8), error_heading));
         ROS_INFO_STREAM("  x:       " << format("%1.5f") % group(setfill(' '), setw(8), error.x()));
         ROS_INFO_STREAM("  y:       " << format("%1.5f") % group(setfill(' '), setw(8), error.y()));
         ROS_INFO_STREAM("  z:       " << format("%1.5f") % group(setfill(' '), setw(8), error.z()));
         ROS_INFO_STREAM(green << bold << italic << "controller outputs:" << reset);
         ROS_INFO_STREAM("  omega: " << format("%1.5f") % group(setfill(' '), setw(8), omega));
-        ROS_INFO_STREAM("  x_vel: " << format("%1.5f") %
-                                           group(setfill(' '), setw(8), control_vel.x()));
-        ROS_INFO_STREAM("  y_vel: " << format("%1.5f") %
-                                           group(setfill(' '), setw(8), control_vel.y()));
-        ROS_INFO_STREAM("  z_vel: " << format("%1.5f") %
-                                           group(setfill(' '), setw(8), control_vel.z()));
+        ROS_INFO_STREAM("  x_vel: " << format("%1.5f") % group(setfill(' '), setw(8), control_vel.x()));
+        ROS_INFO_STREAM("  y_vel: " << format("%1.5f") % group(setfill(' '), setw(8), control_vel.y()));
+        ROS_INFO_STREAM("  z_vel: " << format("%1.5f") % group(setfill(' '), setw(8), control_vel.z()));
         ROS_INFO_STREAM(green << bold << italic << "time:" << reset);
-        ROS_INFO_STREAM("  delta_time: " << format("%1.2f") %
-                                                group(setfill(' '), setw(5), delta_time));
+        ROS_INFO_STREAM("  delta_time: " << format("%1.2f") % group(setfill(' '), setw(5), delta_time));
 
         //------------------------------------------------------------------------------------------
         // arm the drone
-        if (!state.armed) {
+        if (! state.armed) {
             mavros_msgs::CommandBool srv;
             srv.request.value = true;
             if (client_arm.call(srv)) {

@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.14)
 project(
-  multi_drone_inspection
+  mdi
   VERSION 0.1
   DESCRIPTION ""
   LANGUAGES CXX)

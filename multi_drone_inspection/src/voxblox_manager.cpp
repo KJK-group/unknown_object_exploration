@@ -1,4 +1,4 @@
-#include "multi_drone_inspection/voxblox_manager.hpp"
+#include "mdi/voxblox_manager.hpp"
 
 #include <cstdlib>
 #include <optional>
@@ -22,8 +22,7 @@ VoxbloxManager::VoxbloxManager(const ros::NodeHandle& nh_, const ros::NodeHandle
     esdf_server.publishTraversable();
 };
 
-auto VoxbloxManager::get_map_distance(const Eigen::Vector3d& position, bool interpolate)
-    -> double const {
+auto VoxbloxManager::get_map_distance(const Eigen::Vector3d& position, bool interpolate) -> double const {
     // if (auto esdf_map_ptr = get_esdf_map_ptr()) {
     if (true) {
         auto esdf_map_ptr = esdf_server.getEsdfMapPtr();
@@ -42,8 +41,7 @@ auto VoxbloxManager::get_map_distance(const Eigen::Vector3d& position, bool inte
     }
 }
 
-auto VoxbloxManager::get_voxel_status_at_position(const Eigen::Vector3d& position)
-    -> VoxelStatus const {
+auto VoxbloxManager::get_voxel_status_at_position(const Eigen::Vector3d& position) -> VoxelStatus const {
     return VoxelStatus::Free;
 }
 

@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <package format="2">
-  <name>multi_drone_inspection</name>
+  <name>mdi</name>
   <version>0.0.0</version>
   <description>The multi_drone_inspection package</description>
 

@@ -8,8 +8,8 @@
 #include <eigen3/Eigen/Dense>
 #include <optional>
 
-#include "multi_drone_inspection/voxelgrid.hpp"
-#include "multi_drone_inspection/voxelstatus.hpp"
+#include "mdi/voxelgrid.hpp"
+#include "mdi/voxelstatus.hpp"
 
 namespace mpi {
 
@@ -28,8 +28,7 @@ class VoxbloxManager : public VoxelGrid {
     auto raycast(const Vector3f& position, const Vector3f& direction, float distance) const
         -> std::optional<Vector3f> override final;
 
-    auto raycast(const Vector3f& position, const Vector3f& direction) const
-        -> std::optional<Vector3f> override final;
+    auto raycast(const Vector3f& position, const Vector3f& direction) const -> std::optional<Vector3f> override final;
 
     auto get_voxel_sixe() const -> float override final;
     auto get_euclidian_distance_to_closest_occupied_voxel_from(const Vector3f& position) const
@@ -38,8 +37,7 @@ class VoxbloxManager : public VoxelGrid {
         -> std::optional<Vector3f> override final;
     // interface end
 
-    auto get_map_distance(const Eigen::Vector3d& position, bool interpolate = false)
-        -> double const;
+    auto get_map_distance(const Eigen::Vector3d& position, bool interpolate = false) -> double const;
     // auto get_voxel_status_at_position(const Eigen::Vector3d& position) -> VoxelStatus const;
 
    private:

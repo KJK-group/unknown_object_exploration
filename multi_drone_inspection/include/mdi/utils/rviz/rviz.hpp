@@ -11,7 +11,7 @@
 #include <string>
 #include <string_view>
 
-#include "multi_drone_inspection/utils/time.hpp"
+#include "mdi/utils/time.hpp"
 #include "visualization_msgs/MarkerArray.h"
 
 namespace mdi::utils::rviz {
@@ -94,8 +94,8 @@ struct arrow_msg_gen : public visualization_marker_msg_gen {
         header.ns = append_epoch_suffix_if_enabled(ns);
     }
 
-    auto operator()(Arrow arrow, ros::Time timestamp = ros::Time::now(),
-                    ros::Duration lifetime = ros::Duration(0)) -> visualization_msgs::Marker {
+    auto operator()(Arrow arrow, ros::Time timestamp = ros::Time::now(), ros::Duration lifetime = ros::Duration(0))
+        -> visualization_msgs::Marker {
         set_fields();
         msg.header.stamp = timestamp;
         msg.lifetime = lifetime;
@@ -200,8 +200,7 @@ struct text_msg_gen : public visualization_marker_msg_gen {
         header.ns = append_epoch_suffix_if_enabled(ns);
         scale.z = text_height;
     }
-    auto operator()(std::string_view text, geometry_msgs::Pose pose,
-                    ros::Time timestamp = ros::Time::now(),
+    auto operator()(std::string_view text, geometry_msgs::Pose pose, ros::Time timestamp = ros::Time::now(),
                     ros::Duration lifetime = ros::Duration(0)) -> visualization_msgs::Marker {
         set_fields();
         msg.header.stamp = timestamp;
@@ -213,8 +212,7 @@ struct text_msg_gen : public visualization_marker_msg_gen {
         return msg;
     }
 
-    auto operator()(std::string_view text, const Eigen::Vector3f v,
-                    ros::Time timestamp = ros::Time::now(),
+    auto operator()(std::string_view text, const Eigen::Vector3f v, ros::Time timestamp = ros::Time::now(),
                     ros::Duration lifetime = ros::Duration(0)) -> visualization_msgs::Marker {
         // set_fields();
         // msg.header.stamp = timestamp;

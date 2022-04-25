@@ -10,8 +10,8 @@
 #include <variant>
 
 #include "kdtree3/kdtree3.hpp"
-#include "multi_drone_inspection/utils/random.hpp"
-#include "multi_drone_inspection/utils/rviz/rviz.hpp"
+#include "mdi/utils/random.hpp"
+#include "mdi/utils/rviz/rviz.hpp"
 
 using u8 = unsigned char;
 
@@ -23,9 +23,8 @@ struct scale {
     float x = 1.f, y = 1.f, z = 1.f;
 };
 
-auto create_visualization_msgs_marker(geometry_msgs::Pose pose, rgba color = {0, 1, 0, 1},
-                                      scale scl = {0.1, 0.1, 0.1}, std::string_view ns = "kdtree",
-                                      std::string_view frame_id = "map")
+auto create_visualization_msgs_marker(geometry_msgs::Pose pose, rgba color = {0, 1, 0, 1}, scale scl = {0.1, 0.1, 0.1},
+                                      std::string_view ns = "kdtree", std::string_view frame_id = "map")
     -> visualization_msgs::Marker {
     static unsigned long long id = 0;
     auto msg = visualization_msgs::Marker{};
@@ -61,8 +60,8 @@ auto create_visualization_msgs_marker(geometry_msgs::Pose pose, rgba color = {0,
 // }
 
 auto format_vector3(const Eigen::Vector3f& vector) -> std::string {
-    return "[ " + std::to_string(vector.x()) + "," + std::to_string(vector.y()) + "," +
-           std::to_string(vector.z()) + " ]";
+    return "[ " + std::to_string(vector.x()) + "," + std::to_string(vector.y()) + "," + std::to_string(vector.z()) +
+           " ]";
 }
 
 int main(int argc, char* argv[]) {
@@ -101,8 +100,7 @@ int main(int argc, char* argv[]) {
     pose.position.z = bounding_sphere_center.z();
 
     ROS_INFO("publishing bounding sphere");
-    auto bounding_sphere =
-        create_visualization_msgs_marker(pose, rgba{0, 0, 0.8, 0.2}, scale{r, r, r});
+    auto bounding_sphere = create_visualization_msgs_marker(pose, rgba{0, 0, 0.8, 0.2}, scale{r, r, r});
     for (int i = 0; i < 10; i++) {
         publish(bounding_sphere);
     }
@@ -131,8 +129,8 @@ int main(int argc, char* argv[]) {
     auto n_points = 1000;
     auto points = std::vector<Eigen::Vector3f>(n_points);
     for (size_t i = 0; i < n_points; ++i) {
-        points[i] = (mdi::utils::random::sample_random_point_inside_unit_sphere(direction, 0) * r +
-                     bounding_sphere_center);
+        points[i] =
+            (mdi::utils::random::sample_random_point_inside_unit_sphere(direction, 0) * r + bounding_sphere_center);
     }
     auto kdtree = kdtree::kdtree3{points};
 

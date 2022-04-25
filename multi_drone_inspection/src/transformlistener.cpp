@@ -1,9 +1,8 @@
-#include "multi_drone_inspection/utils/transformlistener.hpp"
+#include "mdi/utils/transformlistener.hpp"
 
 namespace mdi::utils::transform {
 
-auto TransformListener::lookup_tf(const std::string& to_frame, const std::string& from_frame,
-                                  ros::Time time)
+auto TransformListener::lookup_tf(const std::string& to_frame, const std::string& from_frame, ros::Time time)
     -> std::optional<geometry_msgs::TransformStamped> {
     try {
         return buffer.lookupTransform(to_frame, from_frame, time);
@@ -13,8 +12,7 @@ auto TransformListener::lookup_tf(const std::string& to_frame, const std::string
 }
 
 auto TransformListener::transform_vec3(const std::string& to_frame, const std::string& from_frame,
-                                       const Eigen::Vector3f& vec3, ros::Time time)
-    -> std::optional<Eigen::Vector3f> {
+                                       const Eigen::Vector3f& vec3, ros::Time time) -> std::optional<Eigen::Vector3f> {
     if (const auto opt = lookup_tf(to_frame, from_frame, time)) {
         const auto tf = *opt;
         auto point_to_frame = geometry_msgs::PointStamped();

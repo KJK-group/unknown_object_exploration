@@ -27,7 +27,7 @@
 #include "kdtree/kdtree3.hpp"
 #endif  // USE_KDTREE
 
-#include "multi_drone_inspection/utils/random.hpp"
+#include "mdi/utils/random.hpp"
 
 namespace mdi::rrt {
 

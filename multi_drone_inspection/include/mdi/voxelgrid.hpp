@@ -4,7 +4,7 @@
 #include <eigen3/Eigen/Dense>
 #include <optional>
 
-#include "multi_drone_inspection/voxelstatus.hpp"
+#include "mdi/voxelstatus.hpp"
 
 namespace mdi {
 
@@ -18,8 +18,7 @@ class VoxelGrid {
     virtual auto raycast(const Vector3f& position, const Vector3f& direction,
                          float distance) const&& -> std::optional<Vector3f> = 0;
 
-    virtual auto raycast(const Vector3f& position,
-                         const Vector3f& direction) const&& -> std::optional<Vector3f> = 0;
+    virtual auto raycast(const Vector3f& position, const Vector3f& direction) const&& -> std::optional<Vector3f> = 0;
 
     virtual auto get_voxel_sixe() const&& -> float = 0;
     virtual auto get_euclidian_distance_to_closest_occupied_voxel_from(

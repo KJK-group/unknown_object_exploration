@@ -6,9 +6,9 @@
 #include <eigen3/Eigen/Dense>
 
 #include "boost/format.hpp"
+#include "mdi/utils/transformlistener.hpp"
 #include "mdi_msgs/MissionStateStamped.h"
 #include "mdi_msgs/PointNormStamped.h"
-#include "multi_drone_inspection/utils/transformlistener.hpp"
 
 #define TOLERANCE_DISTANCE 0.1
 #define FRAME_WORLD "world_enu"          // world/global frame
@@ -112,15 +112,13 @@ auto main(int argc, char** argv) -> int {
 
     //----------------------------------------------------------------------------------------------
     // state subscriber
-    sub_mission_state =
-        nh.subscribe<mdi_msgs::MissionStateStamped>("/mdi/state", 10, mission_state_cb);
+    sub_mission_state = nh.subscribe<mdi_msgs::MissionStateStamped>("/mdi/state", 10, mission_state_cb);
     // odom subscriber
     sub_odom = nh.subscribe<nav_msgs::Odometry>("/mavros/local_position/odom", 10, odom_cb);
 
     //----------------------------------------------------------------------------------------------
     // velocity publisher
-    pub_velocity =
-        nh.advertise<geometry_msgs::TwistStamped>("/mavros/setpoint_velocity/cmd_vel", 10);
+    pub_velocity = nh.advertise<geometry_msgs::TwistStamped>("/mavros/setpoint_velocity/cmd_vel", 10);
     // error publisher
     pub_error = nh.advertise<mdi_msgs::PointNormStamped>("/mdi/error", 10);
 
@@ -128,13 +126,11 @@ auto main(int argc, char** argv) -> int {
     // PID control loop
     while (ros::ok()) {
         // TODO: only do something if the mission state is different from PASSIVE
-        auto expected_position = Eigen::Vector3f(state.target.position.x, state.target.position.y,
-                                                 state.target.position.z);
-        if (auto error_opt =
-                tf_listener.transform_vec3(FRAME_BODY, FRAME_WORLD, expected_position)) {
+        auto expected_position =
+            Eigen::Vector3f(state.target.position.x, state.target.position.y, state.target.position.z);
+        if (auto error_opt = tf_listener.transform_vec3(FRAME_BODY, FRAME_WORLD, expected_position)) {
             // converting from NED to ENU coordinates
-            error = Eigen::Vector3f(error_opt.value().y(), error_opt.value().x(),
-                                    -error_opt.value().z());
+            error = Eigen::Vector3f(error_opt.value().y(), error_opt.value().x(), -error_opt.value().z());
         }
         auto command_velocity = pid_command_from_error(error);
 
@@ -155,55 +151,43 @@ auto main(int argc, char** argv) -> int {
         // drone position
         ROS_INFO_STREAM(GREEN << BOLD << ITALIC << "position:" << RESET);
         ROS_INFO_STREAM("  x:    " << boost::format("%1.5f") %
-                                          boost::io::group(std::setfill(' '), std::setw(8),
-                                                           odom.pose.pose.position.x));
+                                          boost::io::group(std::setfill(' '), std::setw(8), odom.pose.pose.position.x));
         ROS_INFO_STREAM("  y:    " << boost::format("%1.5f") %
-                                          boost::io::group(std::setfill(' '), std::setw(8),
-                                                           odom.pose.pose.position.y));
+                                          boost::io::group(std::setfill(' '), std::setw(8), odom.pose.pose.position.y));
         ROS_INFO_STREAM("  z:    " << boost::format("%1.5f") %
-                                          boost::io::group(std::setfill(' '), std::setw(8),
-                                                           odom.pose.pose.position.z));
+                                          boost::io::group(std::setfill(' '), std::setw(8), odom.pose.pose.position.z));
         ROS_INFO_STREAM(
             "  norm: " << boost::format("%1.5f") %
                               boost::io::group(std::setfill(' '), std::setw(8),
-                                               Eigen::Vector3f(odom.pose.pose.position.x,
-                                                               odom.pose.pose.position.y,
+                                               Eigen::Vector3f(odom.pose.pose.position.x, odom.pose.pose.position.y,
                                                                odom.pose.pose.position.z)
                                                    .norm()));
         //------------------------------------------------------------------------------------------
         // position errors
         ROS_INFO_STREAM(GREEN << BOLD << ITALIC << "errors:" << RESET);
-        ROS_INFO_STREAM("  x:    " << boost::format("%1.5f") % boost::io::group(std::setfill(' '),
-                                                                                std::setw(8),
-                                                                                error.x()));
-        ROS_INFO_STREAM("  y:    " << boost::format("%1.5f") % boost::io::group(std::setfill(' '),
-                                                                                std::setw(8),
-                                                                                error.y()));
-        ROS_INFO_STREAM("  z:    " << boost::format("%1.5f") % boost::io::group(std::setfill(' '),
-                                                                                std::setw(8),
-                                                                                error.z()));
-        ROS_INFO_STREAM("  norm: " << boost::format("%1.5f") % boost::io::group(std::setfill(' '),
-                                                                                std::setw(8),
-                                                                                error.norm()));
+        ROS_INFO_STREAM("  x:    " << boost::format("%1.5f") %
+                                          boost::io::group(std::setfill(' '), std::setw(8), error.x()));
+        ROS_INFO_STREAM("  y:    " << boost::format("%1.5f") %
+                                          boost::io::group(std::setfill(' '), std::setw(8), error.y()));
+        ROS_INFO_STREAM("  z:    " << boost::format("%1.5f") %
+                                          boost::io::group(std::setfill(' '), std::setw(8), error.z()));
+        ROS_INFO_STREAM("  norm: " << boost::format("%1.5f") %
+                                          boost::io::group(std::setfill(' '), std::setw(8), error.norm()));
         //------------------------------------------------------------------------------------------
         // controller outputs
         ROS_INFO_STREAM(GREEN << BOLD << ITALIC << "controller outputs:" << RESET);
-        ROS_INFO_STREAM("  x_vel: " << boost::format("%1.5f") %
+        ROS_INFO_STREAM("  x_vel: " << boost::format("%1.5f") % boost::io::group(std::setfill(' '), std::setw(8),
+                                                                                 command_velocity.twist.linear.x));
+        ROS_INFO_STREAM("  y_vel: " << boost::format("%1.5f") % boost::io::group(std::setfill(' '), std::setw(8),
+                                                                                 command_velocity.twist.linear.y));
+        ROS_INFO_STREAM("  z_vel: " << boost::format("%1.5f") % boost::io::group(std::setfill(' '), std::setw(8),
+                                                                                 command_velocity.twist.linear.z));
+        ROS_INFO_STREAM("  norm:  " << boost::format("%1.5f") %
                                            boost::io::group(std::setfill(' '), std::setw(8),
-                                                            command_velocity.twist.linear.x));
-        ROS_INFO_STREAM("  y_vel: " << boost::format("%1.5f") %
-                                           boost::io::group(std::setfill(' '), std::setw(8),
-                                                            command_velocity.twist.linear.y));
-        ROS_INFO_STREAM("  z_vel: " << boost::format("%1.5f") %
-                                           boost::io::group(std::setfill(' '), std::setw(8),
-                                                            command_velocity.twist.linear.z));
-        ROS_INFO_STREAM(
-            "  norm:  " << boost::format("%1.5f") %
-                               boost::io::group(std::setfill(' '), std::setw(8),
-                                                Eigen::Vector3f(command_velocity.twist.linear.x,
-                                                                command_velocity.twist.linear.y,
-                                                                command_velocity.twist.linear.z)
-                                                    .norm()));
+                                                            Eigen::Vector3f(command_velocity.twist.linear.x,
+                                                                            command_velocity.twist.linear.y,
+                                                                            command_velocity.twist.linear.z)
+                                                                .norm()));
 
         ros::spinOnce();
         rate.sleep();

@@ -12,9 +12,9 @@
 #include <thread>
 #include <vector>
 
-#include "multi_drone_inspection/rrt/rrt.hpp"
-#include "multi_drone_inspection/rrt/rrt_builder.hpp"
-#include "multi_drone_inspection/utils/rviz/rviz.hpp"
+#include "mdi/rrt/rrt.hpp"
+#include "mdi/rrt/rrt_builder.hpp"
+#include "mdi/utils/rviz/rviz.hpp"
 #include "ros/assert.h"
 #include "ros/init.h"
 #include "ros/rate.h"

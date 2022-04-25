@@ -1,4 +1,4 @@
-#include "multi_drone_inspection/bezier_spline.hpp"
+#include "mdi/bezier_spline.hpp"
 
 #include <iostream>
 
@@ -241,7 +241,5 @@ auto BezierSpline::get_spline_points() -> vector<Vector3f> {
 //--------------------------------------------------------------------------------------------------
 // Return the arc length of the spline,
 // found at the last index of the distance LUT
-auto BezierSpline::get_length() -> float {
-    return this->distance_lut[this->distance_lut.size() - 1];
-}
+auto BezierSpline::get_length() -> float { return this->distance_lut[this->distance_lut.size() - 1]; }
 }  // namespace mdi

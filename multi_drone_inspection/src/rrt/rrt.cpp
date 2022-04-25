@@ -1,4 +1,4 @@
-#include "multi_drone_inspection/rrt/rrt.hpp"
+#include "mdi/rrt/rrt.hpp"
 
 #include <fmt/core.h>
 #include <ros/console.h>
@@ -22,10 +22,10 @@
 #include <vector>
 
 #include "Eigen/src/Core/Matrix.h"
-#include "multi_drone_inspection/rrt/rrt_builder.hpp"
-#include "multi_drone_inspection/utils/eigen.hpp"
-#include "multi_drone_inspection/utils/random.hpp"
-#include "multi_drone_inspection/utils/rosparam.hpp"
+#include "mdi/rrt/rrt_builder.hpp"
+#include "mdi/utils/eigen.hpp"
+#include "mdi/utils/random.hpp"
+#include "mdi/utils/rosparam.hpp"
 #include "ros/param.h"
 
 namespace mdi::rrt {

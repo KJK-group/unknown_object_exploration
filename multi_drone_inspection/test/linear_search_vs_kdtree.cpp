@@ -9,8 +9,8 @@
 #include <thread>
 #include <vector>
 
-#include "multi_drone_inspection/utils/math.hpp"
-#include "multi_drone_inspection/utils/random.hpp"
+#include "mdi/utils/math.hpp"
+#include "mdi/utils/random.hpp"
 auto n_runs = 1e2;
 auto n_points = 1e5;
 constexpr auto r = 10;
@@ -22,20 +22,17 @@ auto measure(std::function<void()> f) -> void {
     f();
     const auto end = std::chrono::steady_clock::now();
 
-    cout << "Elapsed time in nanoseconds: "
-         << std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count() << " ns"
-         << endl;
+    cout << "Elapsed time in nanoseconds: " << std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count()
+         << " ns" << endl;
 
     cout << "Elapsed time in microseconds: "
-         << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << " µs"
-         << endl;
+         << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << " µs" << endl;
 
     cout << "Elapsed time in milliseconds: "
-         << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << " ms"
-         << endl;
+         << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << " ms" << endl;
 
-    cout << "Elapsed time in seconds: "
-         << std::chrono::duration_cast<std::chrono::seconds>(end - start).count() << " sec";
+    cout << "Elapsed time in seconds: " << std::chrono::duration_cast<std::chrono::seconds>(end - start).count()
+         << " sec";
 }
 
 auto measure_average(std::function<void()> f, std::size_t runs) -> void {
@@ -57,8 +54,7 @@ auto measure_average(std::function<void()> f, std::size_t runs) -> void {
 }
 
 auto fmt_vec3(const Eigen::Vector3f& v) -> std::string {
-    return "[ " + std::to_string(v.x()) + ", " + std::to_string(v.y()) + ", " +
-           std::to_string(v.z()) + " ]";
+    return "[ " + std::to_string(v.x()) + ", " + std::to_string(v.y()) + ", " + std::to_string(v.z()) + " ]";
 }
 
 //...
@@ -77,37 +73,34 @@ int main(int argc, char const* argv[]) {
     const auto bounding_sphere_center = Eigen::Vector3f::Ones() * 5.f;
     auto points = std::vector<Eigen::Vector3f>(n_points);
     for (size_t i = 0; i < n_points; ++i) {
-        points[i] = (mdi::utils::random::sample_random_point_inside_unit_sphere(direction, 0) * r +
-                     bounding_sphere_center);
+        points[i] =
+            (mdi::utils::random::sample_random_point_inside_unit_sphere(direction, 0) * r + bounding_sphere_center);
     }
 
     measure_average(
         [&]() {
             auto query_point =
-                mdi::utils::random::sample_random_point_inside_unit_sphere(direction, 0) * r +
-                bounding_sphere_center;
+                mdi::utils::random::sample_random_point_inside_unit_sphere(direction, 0) * r + bounding_sphere_center;
 
             auto best_distance = std::numeric_limits<float>::max();
             auto t1_best_distance = std::numeric_limits<float>::max();
             auto t2_best_distance = std::numeric_limits<float>::max();
             auto it = points.begin();
             auto t1 = std::thread([&]() {
-                std::for_each(points.begin(), points.begin() + points.size() / 2,
-                              [&](const auto& point) {
-                                  auto distance = mdi::utils::squared_distance(query_point, point);
-                                  if (distance < t1_best_distance) {
-                                      t1_best_distance = distance;
-                                  }
-                              });
+                std::for_each(points.begin(), points.begin() + points.size() / 2, [&](const auto& point) {
+                    auto distance = mdi::utils::squared_distance(query_point, point);
+                    if (distance < t1_best_distance) {
+                        t1_best_distance = distance;
+                    }
+                });
             });
             auto t2 = std::thread([&]() {
-                std::for_each(points.begin() + points.size() / 2 + 1, points.end(),
-                              [&](const auto& point) {
-                                  auto distance = mdi::utils::squared_distance(query_point, point);
-                                  if (distance < t2_best_distance) {
-                                      t2_best_distance = distance;
-                                  }
-                              });
+                std::for_each(points.begin() + points.size() / 2 + 1, points.end(), [&](const auto& point) {
+                    auto distance = mdi::utils::squared_distance(query_point, point);
+                    if (distance < t2_best_distance) {
+                        t2_best_distance = distance;
+                    }
+                });
             });
 
             // for (const auto& p : points) {
@@ -122,8 +115,8 @@ int main(int argc, char const* argv[]) {
             best_distance = std::min(t1_best_distance, t2_best_distance);
 
             std::cout << std::fixed << std::setprecision(4);
-            std::cout << "best distance: for " << fmt_vec3(query_point) << " is " << std::setw(5)
-                      << best_distance << std::endl;
+            std::cout << "best distance: for " << fmt_vec3(query_point) << " is " << std::setw(5) << best_distance
+                      << std::endl;
         },
         n_runs);
 

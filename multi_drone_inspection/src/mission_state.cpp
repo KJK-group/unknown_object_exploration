@@ -12,13 +12,13 @@
 #include <vector>
 
 #include "boost/format.hpp"
+#include "mdi/bezier_spline.hpp"
+#include "mdi/rrt/rrt.hpp"
+#include "mdi/rrt/rrt_builder.hpp"
+#include "mdi/utils/rviz/rviz.hpp"
+#include "mdi/utils/transformlistener.hpp"
 #include "mdi_msgs/MissionStateStamped.h"
 #include "mdi_msgs/PointNormStamped.h"
-#include "multi_drone_inspection/bezier_spline.hpp"
-#include "multi_drone_inspection/rrt/rrt.hpp"
-#include "multi_drone_inspection/rrt/rrt_builder.hpp"
-#include "multi_drone_inspection/utils/rviz/rviz.hpp"
-#include "multi_drone_inspection/utils/transformlistener.hpp"
 
 constexpr auto TOLERANCE_DISTANCE = 0.1;
 constexpr auto TARGET_VELOCITY = 1.f;              // move drone at 5m/s
