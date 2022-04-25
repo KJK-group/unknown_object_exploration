@@ -20,11 +20,11 @@
 #include "multi_drone_inspection/utils/rviz/rviz.hpp"
 #include "multi_drone_inspection/utils/transformlistener.hpp"
 
-#define TOLERANCE_DISTANCE 0.1
-#define TARGET_VELOCITY 1.f              // move drone at 5m/s
-#define FRAME_WORLD "world_enu"          // world/global frame
-#define FRAME_BODY "PX4/odom_local_ned"  // drone body frame
-#define SPLINE_Z_OFFSET 5
+constexpr auto TOLERANCE_DISTANCE = 0.1;
+constexpr auto TARGET_VELOCITY = 1.f;              // move drone at 5m/s
+constexpr auto FRAME_WORLD = "world_enu";          // world/global frame
+constexpr auto FRAME_BODY = "PX4/odom_local_ned";  // drone body frame
+constexpr auto SPLINE_Z_OFFSET = 5;
 
 // escape codes
 constexpr auto MAGENTA = "\u001b[35m";
@@ -99,16 +99,13 @@ ros::Time start_time;
 // transform utilities
 tf2_ros::Buffer tf_buffer;
 
-//--------------------------------------------------------------------------------------------------
 // Bezier Spline
-//--------------------------------------------------------------------------------------------------
-
 mdi::BezierSpline spline;
-// auto spline_input_points =
-//     vector<Eigen::Vector3f>{Eigen::Vector3f(0.0, 0.0, 0.0),  Eigen::Vector3f(3.0, 0.5, 1.0),
-//                             Eigen::Vector3f(-3.5, 1.5, 0.0), Eigen::Vector3f(-2.8, 1.0, 0.7),
-//                             Eigen::Vector3f(1.2, 2.2, 1.5),  Eigen::Vector3f(1.0, 3.0, 1.0)};
-// auto forwards = true;
+
+// Points of interest
+auto interest_points = std::vector<Eigen::Vector3f>{
+    Eigen::Vector3f(10, 10, 7), Eigen::Vector3f(18, 9, 15), Eigen::Vector3f(20, 25, 20),
+    Eigen::Vector3f(7, 21, 13), Eigen::Vector3f(10, 10, 17)};
 
 //--------------------------------------------------------------------------------------------------
 // Callback Functions
@@ -141,10 +138,11 @@ auto main(int argc, char** argv) -> int {
 
     //----------------------------------------------------------------------------------------------
     // spline preprocessing
-    auto spline_input_points = vector<Vector3f>{Vector3f(0.0, 0.0, 0.0),   Vector3f(3.0, 0.5, 1.0),
-                                                Vector3f(-3.5, 1.5, 0.0),  Vector3f(-2.8, 1.0, 0.7),
-                                                Vector3f(1.2, 2.2, 1.5),   Vector3f(1.0, 3.0, 1.0),
-                                                Vector3f(-0.2, -0.5, -0.2)};
+    auto spline_input_points = std::vector<Eigen::Vector3f>{
+        Eigen::Vector3f(0.0, 0.0, 0.0),   Eigen::Vector3f(3.0, 0.5, 1.0),
+        Eigen::Vector3f(-3.5, 1.5, 0.0),  Eigen::Vector3f(-2.8, 1.0, 0.7),
+        Eigen::Vector3f(1.2, 2.2, 1.5),   Eigen::Vector3f(1.0, 3.0, 1.0),
+        Eigen::Vector3f(-0.2, -0.5, -0.2)};
     for (auto& point : spline_input_points) {
         point *= 10;
     }
@@ -396,8 +394,12 @@ auto main(int argc, char** argv) -> int {
                 break;
             case EXPLORATION:
                 // when object is matched, go to INSPECTION
-                // go through spline here, getting spline from BezierSpline getting input from
-                // RRT*
+                // go through spline here, getting spline from BezierSpline getting input from RRT*
+
+                // pathfinding
+                mdi::rrt::RRT::from_builder();
+
+                // control the drone
                 expected_pos = spline.get_point_at_distance(delta_time.toSec() * velocity_target);
                 expected_pos(2) = expected_pos.z();  // + SPLINE_Z_OFFSET;
                 if (exploration_complete) {

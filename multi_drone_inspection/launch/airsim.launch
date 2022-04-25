@@ -4,6 +4,7 @@
     <arg name="package_path" value="$(find multi_drone_inspection)"/>
     <arg name="catkin_ws_path" default="$(optenv SOURCED_WS ~/catkin_ws)"/>
 
+    <node pkg="$(arg package)" type="run_airsim.sh" name="run_airsim" />
     <node
         pkg="$(arg package)"
         type="make_px4_airsim.sh"
@@ -13,6 +14,4 @@
     <include file="$(find mavros)/launch/px4.launch">
         <arg name="fcu_url" default="udp://:14550@127.0.0.1:14557"/>
     </include>
-    <include file="$(find airsim_ros_pkgs)/launch/airsim_node.launch"/>
-    <include file="$(find multi_drone_inspection)/launch/rviz.launch"/>
 </launch>

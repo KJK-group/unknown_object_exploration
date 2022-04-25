@@ -10,14 +10,14 @@
 
 #include "multi_drone_inspection/utils/math.hpp"
 
+namespace mdi {
+
 using Eigen::Vector3f;
 // using mdi::utils::binomial_coefficient;
 using std::abs;
 using std::pair;
 using std::pow;
 using std::vector;
-
-namespace mdi {
 // Generates necessary LUTs for a Bezier spline given a list of points
 // and a time resolution
 class BezierSpline {

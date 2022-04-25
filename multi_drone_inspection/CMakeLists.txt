@@ -102,15 +102,15 @@ target_compile_definitions(test_rrt PUBLIC MEASURE_PERF)
 
 add_ros_executable(test_controller src/test_controller.cpp)
 add_ros_executable(trajectory_follower src/trajectory_follower.cpp)
-add_ros_executable(spline_tester src/spline_tester.cpp)
+# add_ros_executable(spline_tester src/spline_tester.cpp)
 add_ros_executable(mission_state src/mission_state.cpp)
 add_ros_executable(pid_controller src/pid_controller.cpp)
 add_ros_executable(publish_traversed_path src/publish_traversed_path.cpp)
 
-target_sources(
-  spline_tester
-  PUBLIC src/bezier_spline.cpp
-  PUBLIC src/math.cpp)
+# target_sources(
+#   spline_tester
+#   PUBLIC src/bezier_spline.cpp
+#   PUBLIC src/math.cpp)
 
 target_sources(
   trajectory_follower
@@ -132,6 +132,10 @@ target_sources(pid_controller
 # ##############################################################################
 
 install(PROGRAMS scripts/make_px4_airsim.sh
+        DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
+install(PROGRAMS scripts/run_airsim.sh
+        DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
+install(PROGRAMS scripts/launch_airsim.sh
         DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
 install(PROGRAMS scripts/make_px4_gazebo.sh
         DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
