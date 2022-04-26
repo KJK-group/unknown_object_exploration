@@ -22,6 +22,7 @@ find_package(
   COMPONENTS geometry_msgs
              nav_msgs
              mavros_msgs
+             octomap_msgs
              mdi_msgs
              roscpp
              tf2
@@ -48,7 +49,6 @@ add_subdirectory(libs/kdtree)
 include_directories(include)
 
 catkin_package()
-# target_link_libraries(${OCTOMAP_LIBRARIES})
 
 # macro(append variable value) string(${variable} " ${value}") endmacro(append)
 
@@ -120,11 +120,11 @@ target_sources(
 
 target_sources(pid_controller PUBLIC src/transformlistener.cpp)
 
-add_executable(test_octomap test/octomap.test.cpp)
-add_dependencies(test_octomap ${${PROJECT_NAME}_EXPORTED_TARGETS}
-                 ${catkin_EXPORTED_TARGETS})
-target_link_libraries(test_octomap ${catkin_LIBRARIES} ${OCTOMAP_LIBRARIES})
-target_compile_options(test_octomap PUBLIC -O2)
+# add_executable(test_octomap test/octomap.test.cpp)
+# add_dependencies(test_octomap ${${PROJECT_NAME}_EXPORTED_TARGETS}
+#                  ${catkin_EXPORTED_TARGETS})
+# target_link_libraries(test_octomap ${catkin_LIBRARIES} ${OCTOMAP_LIBRARIES})
+# target_compile_options(test_octomap PUBLIC -O2)
 # ##############################################################################
 # Install ##
 # ##############################################################################
