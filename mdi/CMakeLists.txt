@@ -101,10 +101,8 @@ add_ros_executable(mission_state src/mission_state.cpp)
 add_ros_executable(pid_controller src/pid_controller.cpp)
 add_ros_executable(publish_traversed_path src/publish_traversed_path.cpp)
 
-# target_sources(
-#   spline_tester
-#   PUBLIC src/bezier_spline.cpp
-#   PUBLIC src/math.cpp)
+# target_sources( spline_tester PUBLIC src/bezier_spline.cpp PUBLIC
+# src/math.cpp)
 
 target_sources(
   trajectory_follower
