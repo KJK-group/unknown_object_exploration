@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <launch>
-    <arg name="package" default="multi_drone_inspection"/>
-    <arg name="package_path" default="$(find multi_drone_inspection)"/>
+    <arg name="package" default="mdi"/>
+    <arg name="package_path" default="$(find mdi)"/>
     <arg name="catkin_ws_path" default="$(optenv SOURCED_WS ~/catkin_ws)"/>
 
     <node

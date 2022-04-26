@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <launch>
-    <arg name="package" value="multi_drone_inspection"/>
-    <arg name="package_path" value="$(find multi_drone_inspection)"/>
+    <arg name="package" value="mdi"/>
+    <arg name="package_path" value="$(find mdi)"/>
     <!-- Controller Arguments -->
     <arg name="krp" default="0.5"/>
     <arg name="kri" default="0"/>

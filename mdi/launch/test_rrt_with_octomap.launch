@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <launch>
 	<arg name="node" value="test_rrt_with_octomap"/>
-	<arg name="package" value="multi_drone_inspection"/>
+	<arg name="package" value="mdi"/>
 	<!-- <arg name="launch-prefix" default="valgrind \-\-leak-check=full"/> -->
 	<!-- <arg name="launch-prefix" default="kitty lldb"/> -->
 	<!-- <arg name="launch-prefix" default="kitty lldb"/> -->
@@ -18,7 +18,7 @@
 	<!-- <include file="$(find octomap_server)/launch/octomap_mapping.launch"/> -->
 
 
-	<node pkg="octomap_server" type="octomap_server_node" name="octomap_server" args="/home/kristoffer/bachelor_project_ws/src/multi_drone_inspection/multi_drone_inspection/simple_tree.bt">
+	<node pkg="octomap_server" type="octomap_server_node" name="octomap_server" args="/home/kristoffer/bachelor_project_ws/src/multi_drone_inspection/mdi/simple_tree.bt">
 		<param name="resolution" value="0.01"/>
 		<!-- fixed map frame (set to 'map' if SLAM or localization running!) -->
 		<param name="frame_id" type="string" value="map"/>
