@@ -77,10 +77,17 @@ class RRT {
 
     /**
      * @brief // deallocate all nodes in the tree.
+     * and reset the tree to its initial state as if constructed again with
+     * the same arguments.
      */
     auto clear() -> void {
-        // TODO: handle kdtrees
         nodes_.clear();
+#ifdef USE_KDTREE
+        std::for_each(kdtree3s_.begin(), kdtree3s_.end(), [&](const auto& bucket) { bucket.delete_trees(); });
+        kdtree3s_.resize(1);
+#endif  // USE_KDTREE
+
+        remaining_iterations_ = max_iterations_;
         call_cbs_for_event_on_clearing_nodes_in_tree_();
     }
 
