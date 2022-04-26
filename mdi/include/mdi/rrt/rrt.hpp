@@ -64,8 +64,8 @@ class RRT {
     auto clear() -> void {
         nodes_.clear();
 #ifdef USE_KDTREE
-        std::for_each(kdtree3s_.begin(), kdtree3s_.end(), [&](const auto& bucket) { bucket.delete_trees(); });
-        kdtree3s_.resize(1);
+        std::for_each(kdtree3s_.begin(), kdtree3s_.end(), [&](auto& bucket) { bucket.delete_trees(); });
+        kdtree3s_.erase(kdtree3s_.begin() + 1, kdtree3s_.end());
 #endif  // USE_KDTREE
 
         remaining_iterations_ = max_iterations_;
