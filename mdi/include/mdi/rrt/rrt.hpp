@@ -318,14 +318,7 @@ class RRT {
     };  // kdtree3_forest_t
 
     // precompute
-    std::vector<kdtree3_bucket_t> kdtree3s_{
-        {max_number_of_nodes_to_do_linear_search_on_}}; /*, {max_number_of_nodes_to_do_linear_search_on_ *
-        max_number_of_kdtrees_per_bucket_}, {static_cast<int>(max_number_of_nodes_to_do_linear_search_on_ *
-                          std::pow(max_number_of_kdtrees_per_bucket_, 2))},
-        {static_cast<int>(max_number_of_nodes_to_do_linear_search_on_ *
-                          std::pow(max_number_of_kdtrees_per_bucket_, 3))},
-        {static_cast<int>(max_number_of_nodes_to_do_linear_search_on_ *
-                        //   std::pow(max_number_of_kdtrees_per_bucket_, 4))} }; */
+    std::vector<kdtree3_bucket_t> kdtree3s_{{max_number_of_nodes_to_do_linear_search_on_}};
 
     auto add_bucket() -> void {
         kdtree3s_.emplace_back(static_cast<int>(max_number_of_nodes_to_do_linear_search_on_ *
