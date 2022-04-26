@@ -7,13 +7,19 @@
 #include <mavros_msgs/State.h>
 #include <nav_msgs/Odometry.h>
 #include <ros/ros.h>
+#include <visualization_msgs/Marker.h>
 
 #include <eigen3/Eigen/Dense>
+#include <utility>
 
 #include "mdi/bezier_spline.hpp"
+#include "mdi/rrt/rrt.hpp"
+#include "mdi/rrt/rrt_builder.hpp"
+#include "mdi/utils/utils.hpp"
 #include "mdi_msgs/MissionStateStamped.h"
-#include "mdi_msgs/PointNormStamped.h"
-#include "ros/publisher.h"
+#include "mdi_msgs/PointNormStamped.h
+#include "mdi/rrt/rrt_builder.hpp"
+#include "mdi/utils/rviz/rviz.hpp"
 
 namespace mdi {
 enum state { PASSIVE, HOME, EXPLORATION, INSPECTION, LAND };
@@ -42,16 +48,16 @@ auto state_to_string(state s) -> std::string {
 
 class MissionManager {
    public:
-    MissionManager(float velocity_target);
+    MissionManager(ros::NodeHandle& nh, float velocity_target, Eigen::Vector3f home);
 
    private:
-    mavros_msgs::State drone_state;
-    nav_msgs::Odometry drone_odom;
-    mdi_msgs::MissionStateStamped mission_state;
-    mdi_msgs::PointNormStamped position_error;
+    auto find_path(Eigen::Vector3f start, Eigen::Vector3f end) -> std::vector<Eigen::Vector3f>;
+
+    ros::NodeHandle& node_handle;
 
     // publishers
     ros::Publisher pub_mission_state;
+    ros::Publisher pub_visualise;
 
     // subscribers
     ros::Subscriber sub_drone_state;
@@ -60,7 +66,14 @@ class MissionManager {
     // services
     ros::ServiceClient client_arm;
     ros::ServiceClient client_mode;
+    ros::ServiceClient client_takeoff;
     ros::ServiceClient client_land;
+
+    // msg instances
+    mavros_msgs::State drone_state;
+    nav_msgs::Odometry drone_odom;
+    mdi_msgs::MissionStateStamped mission_state;
+    mdi_msgs::PointNormStamped position_error;
 
     // points
     Eigen::Vector3f home_position;
