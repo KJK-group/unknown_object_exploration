@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <launch>
-    <arg name="package" value="multi_drone_inspection"/>
-    <arg name="package_path" value="$(find multi_drone_inspection)"/>
+    <arg name="package" value="mdi"/>
+    <arg name="package_path" value="$(find mdi)"/>
 
     <include file="$(find airsim_ros_pkgs)/launch/airsim_node.launch"/>
     <include file="$(arg package_path)/launch/rviz.launch"/>

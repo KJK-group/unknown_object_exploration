@@ -1,9 +1,9 @@
 <?xml version="1.0"?>
 <launch>
 	<arg name="node" value="visualize_kdtree" />
-	<arg name="package" value="multi_drone_inspection" />
-	<arg name="package_path" value="$(find multi_drone_inspection)" />
+	<arg name="package" value="mdi" />
+	<arg name="package_path" value="$(find mdi)" />
 
-	<node pkg="rviz" type="rviz" name="rviz" args="-d $(find multi_drone_inspection)/rviz/$(arg node).rviz" />
+	<node pkg="rviz" type="rviz" name="rviz" args="-d $(arg package_path)/rviz/$(arg node).rviz" />
 	<node pkg="$(arg package)" type="$(arg node)" name="$(arg node)" output="screen" />
 </launch>
