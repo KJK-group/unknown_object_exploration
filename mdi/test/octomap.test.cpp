@@ -1,4 +1,4 @@
-#include <geographic_msgs/Point.h>
+#include <geometry_msgs/Point.h>
 #include <octomap/OcTree.h>
 #include <octomap/octomap.h>
 #include <octomap_msgs/BoundingBoxQuery.h>
@@ -181,7 +181,7 @@ void print_query_info(point3d query, OcTreeNode* node) {
         cout << "occupancy probability at " << query << ":\t is unknown" << endl;
 }
 
-auto octomap_cb(const octomap_msgs::Octomap::Ptr& msg) -> void {
+auto octomap_cb(const octomap_msgs::Octomap::ConstPtr& msg) -> void {
     const auto binary = msg->binary;
     const auto resolution = msg->resolution;
     const auto& data = msg->data;
@@ -229,9 +229,9 @@ auto main(int argc, char* argv[]) -> int {
 
         const auto convert = [](const point3d& pt) {
             auto geo_pt = geometry_msgs::Point{};
-            geo_pt.x = pt.x;
-            geo_pt.y = pt.y;
-            geo_pt.z = pt.z;
+            geo_pt.x = pt.x();
+            geo_pt.y = pt.y();
+            geo_pt.z = pt.z();
             return geo_pt;
         };
         auto request = Request{};
