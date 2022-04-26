@@ -21,7 +21,6 @@
 #include <utility>
 #include <vector>
 
-#include "Eigen/src/Core/Matrix.h"
 #include "mdi/rrt/rrt_builder.hpp"
 #include "mdi/utils/eigen.hpp"
 #include "mdi/utils/random.hpp"

@@ -1,33 +1,14 @@
-#ifndef _MULTI_DRONE_INSPECTION_RRT_HPP_
-#define _MULTI_DRONE_INSPECTION_RRT_HPP_
+#pragma once
 
 #include <ros/ros.h>
 
-#include <algorithm>
-#include <chrono>
-#include <cstddef>
-#include <cstdint>
-#include <cstdlib>
-#include <eigen3/Eigen/Dense>
-#include <filesystem>
-#include <forward_list>
-#include <fstream>
-#include <functional>
-#include <iostream>
-#include <limits>
-#include <memory>
-#include <optional>
-#include <ratio>
-#include <stdexcept>
-#include <string_view>
-#include <utility>
-#include <vector>
+#include "mdi/common_headers.hpp"
+#include "mdi/octomap.hpp"
+#include "mdi/utils/random.hpp"
 
 #ifdef USE_KDTREE
 #include "kdtree/kdtree3.hpp"
 #endif  // USE_KDTREE
-
-#include "mdi/utils/random.hpp"
 
 namespace mdi::rrt {
 
@@ -89,6 +70,7 @@ class RRT {
 
         remaining_iterations_ = max_iterations_;
         call_cbs_for_event_on_clearing_nodes_in_tree_();
+        unregister_cbs_for_all_events();
     }
 
     /**
@@ -356,5 +338,3 @@ class RRT {
 };
 
 }  // namespace mdi::rrt
-
-#endif  // _MULTI_DRONE_INSPECTION_RRT_HPP_
