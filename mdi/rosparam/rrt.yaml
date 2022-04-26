@@ -1,0 +1,16 @@
+mdi:
+  rrt:
+    start_position:
+      - 0
+      - 0
+      - 5
+    goal_position:
+      - 7
+      - 7
+      - 10
+
+    max_iterations: 100000
+    goal_bias: 0.6
+    max_dist_goal_tolerance: 2
+    step_size: 2
+    probability_of_testing_full_path_from_new_node_to_goal: 0.000
