@@ -1,0 +1,35 @@
+<?xml version="1.0"?>
+<launch>
+	<arg name="node" value="test_rrt_with_octomap"/>
+	<arg name="package" value="multi_drone_inspection"/>
+	<!-- <arg name="launch-prefix" default="valgrind \-\-leak-check=full"/> -->
+	<!-- <arg name="launch-prefix" default="kitty lldb"/> -->
+	<!-- <arg name="launch-prefix" default="kitty lldb"/> -->
+	<!-- <arg name="launch-prefix" default="perf stat -e cache-misses -e branch-misses"/> -->
+	<!-- <arg name="launch-prefix" default="perf stat"/> -->
+	<arg name="launch-prefix" value=""/>
+
+
+	<!-- <node pkg="rviz" type="rviz" name="rviz" args="-d $(dirname)/../rviz/$(arg node).rviz"/> -->
+	<node pkg="rviz" type="rviz" name="rviz" args="-d $(dirname)/../rviz/test_octomap.rviz"/>
+	<!-- <rosparam command="load" file="$(dirname)/../rosparam/rrt.yaml"/> -->
+	<!-- <rosparam command="load" file="$(dirname)/../rosparam/octomap.yaml"/> -->
+
+	<!-- <include file="$(find octomap_server)/launch/octomap_mapping.launch"/> -->
+
+
+	<node pkg="octomap_server" type="octomap_server_node" name="octomap_server" args="/home/kristoffer/bachelor_project_ws/src/multi_drone_inspection/multi_drone_inspection/simple_tree.bt">
+		<param name="resolution" value="0.01"/>
+		<!-- fixed map frame (set to 'map' if SLAM or localization running!) -->
+		<param name="frame_id" type="string" value="map"/>
+		<!-- maximum range to integrate (speedup!) -->
+		<param name="sensor_model/max_range" value="5.0"/>
+		<!-- data source to integrate (PointCloud2) -->
+		<!-- <remap from="cloud_in" to="/narrow_stereo/points_filtered2"/> -->
+
+	</node>
+	<!-- <arg name="measurements_output_dir" value="~/.cache/"/> -->
+	<!-- <arg name="measurements_output_dir" value="$(dirname)/../measurements"/> -->
+
+	<!-- <node pkg="$(arg package)" type="$(arg node)" name="$(arg node)" output="screen" args="" launch-prefix="$(arg launch-prefix)"/> -->
+</launch>

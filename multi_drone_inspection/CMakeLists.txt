@@ -5,14 +5,15 @@ project(
   DESCRIPTION ""
   LANGUAGES CXX)
 
+# GLOBAL CONFIGURATION ---------------------------------------------------------
+
+# set(CMAKE_CXX_COMPILER "/usr/bin/clang++-12")
 add_compile_options(-std=c++17)
-# global configuration set(CMAKE_CXX_COMPILER "/usr/bin/clang++-12")
-# set(CMAKE_CXX_STANDARD 17) set(CMAKE_CXX_STANDARD_REQUIRED ON)
-# set(CMAKE_EXPORT_COMPILE_COMMANDS 1) set(CMAKE_EXPORT_COMPILE_COMMANDS ON
-# CACHE INTERNAL "")
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake" ${CMAKE_MODULE_PATH})
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # Find catkin macros and libraries if COMPONENTS list like find_package(catkin
 # REQUIRED COMPONENTS xyz) is used, also find other catkin packages
@@ -27,40 +28,39 @@ find_package(
              tf2_ros
              tf2_eigen)
 # voxblox_ros)
+
+include_directories(${catkin_INCLUDE_DIRS})
+
 find_package(Eigen3 REQUIRED)
-find_package(xacro REQUIRED)
+include_directories(${Eigen3_INCLUDE_DIRS})
 
-add_subdirectory(deps/fmt)
-
-# System dependencies are found with CMake's conventions
+find_package(octomap REQUIRED)
+include_directories(${OCTOMAP_INCLUDE_DIRS})
+# find_package(xacro REQUIRED)
 find_package(Boost REQUIRED COMPONENTS system)
 
 # dependencies
-find_package(Eigen3 REQUIRED)
 
-include_directories(${CMAKE_SOURCE_DIR}/include)
+# include_directories(${CMAKE_SOURCE_DIR}/include)
 
+add_subdirectory(deps/fmt)
 add_subdirectory(libs/kdtree)
-
-# ##############################################################################
-# Declare ROS messages, services and actions ##
-# ##############################################################################
-
-# add_message_files( DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/msg FILES
-# MissionStateStamped.msg PointNormStamped.msg ) generate_messages(DEPENDENCIES
-# geometry_msgs std_msgs)
-
-# ##############################################################################
-# Declare ROS dynamic reconfigure parameters ##
-# ##############################################################################
+include_directories(include)
 
 catkin_package()
+# target_link_libraries(${OCTOMAP_LIBRARIES})
+
+# macro(append variable value) string(${variable} " ${value}") endmacro(append)
+
+# set(COMMON_LIBS "") append(COMMON_LIBS ${catkin_LIBRARIES}) append(COMMON_LIBS
+# fmt::fmt-header-only)
+
+# # set(COMMON_LIBS ${catkin_LIBRARIES} fmt::fmt-header-only) message("common
+# libraries: " ${COMMON_LIBS})
 
 # ##############################################################################
 # Build ##
 # ##############################################################################
-
-include_directories(include ${catkin_INCLUDE_DIRS} ${Eigen3_INCLUDE_DIRS})
 
 function(add_ros_executable name main)
   add_executable(${name} ${CMAKE_CURRENT_SOURCE_DIR}/${main})
@@ -120,6 +120,11 @@ target_sources(
 
 target_sources(pid_controller PUBLIC src/transformlistener.cpp)
 
+add_executable(test_octomap test/octomap.test.cpp)
+add_dependencies(test_octomap ${${PROJECT_NAME}_EXPORTED_TARGETS}
+                 ${catkin_EXPORTED_TARGETS})
+target_link_libraries(test_octomap ${catkin_LIBRARIES} ${OCTOMAP_LIBRARIES})
+target_compile_options(test_octomap PUBLIC -O2)
 # ##############################################################################
 # Install ##
 # ##############################################################################

@@ -20,3 +20,5 @@ SpaceAfterLogicalNot: true
 SpaceBeforeAssignmentOperators: true
 # AlignOperands:  AlignAfterOperator
 # AllowShortEnumsOnASingleLine: false
+AllowAllArgumentsOnNextLine: true
+AllowAllParametersOfDeclarationOnNextLine: true
