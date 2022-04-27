@@ -66,6 +66,7 @@ auto RRT::get_frontier_nodes() const -> std::vector<vec3> {
 RRT::RRT(const vec3& start_position, const vec3& goal_position, float step_size, float goal_bias,
          std::size_t max_iterations, float max_dist_goal_tolerance,
          float probability_of_testing_full_path_from_new_node_to_goal) {
+    // : octomap_(std::make_unique<mdi::Octomap>()) {
     {
         start_position_ = start_position;
         goal_position_ = goal_position;
@@ -369,7 +370,7 @@ auto RRT::grow_() -> bool {
     auto nearest_neighbor = find_nearest_neighbor_(random_pt);
 
     // this horror is needed to avoid a race condition with Eigen that
-    // causes the vector to be overwritten with garbage value.
+    // causes the vector to be overwritten with garbage values.
     const auto [x, y, z] = [=, &nearest_neighbor]() {
         const auto& pt = nearest_neighbor->position_;
         const auto direction = (random_pt - pt).normalized();
@@ -380,13 +381,21 @@ auto RRT::grow_() -> bool {
     Eigen::Vector3f v;
     v << x, y, z;
 
-    auto& inserted_node = insert_node_(v, nearest_neighbor);
+    const auto& origin = (*nearest_neighbor).position_;
+    const auto& end = v;
 
-    // TODO: use voxblox to check for valid raycast
-    const auto line_between_random_point_and_its_nearest_neighbor_is_free_space = true;
-    if (! line_between_random_point_and_its_nearest_neighbor_is_free_space) {
+    const auto convert_to_pt = [](const auto& v) -> mdi::Octomap::point_type { return {v.x(), v.y(), v.z()}; };
+
+    // if opt is the some variant, then it means that a occupied voxel was hit.
+    if (const auto opt = octomap_->raycast(convert_to_pt(origin), convert_to_pt(end))) {
         return false;
     }
+
+    auto& inserted_node = insert_node_(v, nearest_neighbor);
+    // const auto line_between_random_point_and_its_nearest_neighbor_is_free_space = true;
+    // if (! line_between_random_point_and_its_nearest_neighbor_is_free_space) {
+    // return false;
+    // }
 
 #ifdef MEASURE_PERF
     const auto t_end = std::chrono::high_resolution_clock::now();

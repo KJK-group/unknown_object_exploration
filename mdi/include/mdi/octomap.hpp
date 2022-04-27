@@ -34,6 +34,21 @@ class Octomap final {
    public:  // CONSTRUCTORS --------------------------------------------------------------------------------------------
     Octomap(double resolution) : octree_(resolution) {}
     // Octomap(octree_type&& tree) : octree_(tree) {}
+    Octomap(const Octomap& octree) = delete;
+    Octomap(const octomap_msgs::Octomap& map) : octree_{map.resolution} {
+        if (! map.binary) {
+            throw std::invalid_argument("octomap should be in binary format");
+        }
+        const auto& data = map.data;
+
+        if (data.size() <= 0) {
+            throw std::invalid_argument("the msg has no data");
+        }
+
+        auto data_stream = std::stringstream{};
+        data_stream.write((const char*)&data[0], data.size());
+        octree_.readBinaryData(data_stream);
+    }
 
     /**
      * @brief factory method for creating octree from octomap_msgs::Octomap.
@@ -41,25 +56,22 @@ class Octomap final {
      * @param msg
      * @return Octomap
      */
-    static auto from_octomap_msg(const octomap_msgs::Octomap::Ptr& msg) -> Octomap {
-        if (! msg->binary) {
-            throw std::invalid_argument("octomap should be in binary format");
-        }
-        const auto& data = msg->data;
-
-        if (data.size() <= 0) {
-            throw std::invalid_argument("the msg has no data");
-        }
-
-        return {msg};  // call private constructor
-    }
+    // static auto from_octomap_msg(const octomap_msgs::Octomap& map) -> std::unique_ptr<Octomap> {
+    //     return {map};  // call private constructor
+    // }
 
     // Octomap(OcTree&& tree) : octree_(std:Const:move(tree)) {}
-    Octomap(const Octomap& octree) = delete;
 
    public:  // PUBLIC INTERFACE ----------------------------------------------------------------------------------------
     auto raycast(const point_type& origin, const point_type& direction, double max_range,
                  bool ignore_unknown_voxels = false) const -> std::optional<point_type> {
+        return raycast_(origin, direction, max_range, ignore_unknown_voxels);
+    }
+
+    auto raycast(const point_type& origin, const point_type& end, bool ignore_unknown_voxels = false) const
+        -> std::optional<point_type> {
+        const auto direction = end - origin;
+        const auto max_range = direction.norm();
         return raycast_(origin, direction, max_range, ignore_unknown_voxels);
     }
 
@@ -114,12 +126,12 @@ class Octomap final {
 
     // PRIVATE METHODS
     // -----------------------------------------------------------------------------------------------------------------
-    Octomap(const octomap_msgs::Octomap::ConstPtr& msg) : octree_{msg->resolution} {
-        const auto& data = msg->data;
-        auto data_stream = std::stringstream{};
-        data_stream.write((const char*)&data[0], data.size());
-        octree_.readBinaryData(data_stream);
-    }
+    // Octomap(const octomap_msgs::Octomap& map) : octree_{map.resolution} {
+    //     const auto& data = map.data;
+    //     auto data_stream = std::stringstream{};
+    //     data_stream.write((const char*)&data[0], data.size());
+    //     octree_.readBinaryData(data_stream);
+    // }
 
     auto raycast_(const point_type& origin, const point_type& direction, double max_range = -1,
                   bool ignore_unknown_voxels = false) const -> std::optional<point_type> {
@@ -141,7 +153,7 @@ class Octomap final {
 
         return std::nullopt;
     }
-};  // Octomap
+};  // namespace mdi
 
 // std::ostream& operator<<(std::ostream& os, const Octomap& octomap) {
 // os << "octomap:\n";

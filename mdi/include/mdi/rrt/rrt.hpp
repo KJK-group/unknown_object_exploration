@@ -2,6 +2,8 @@
 
 #include <ros/ros.h>
 
+#include <memory>
+
 #include "mdi/common_headers.hpp"
 #include "mdi/octomap.hpp"
 #include "mdi/utils/random.hpp"
@@ -163,6 +165,8 @@ class RRT {
     [[nodiscard]] auto start_position() const -> vec3 { return start_position_; }
     [[nodiscard]] auto goal_position() const -> vec3 { return goal_position_; }
 
+    auto assign_octomap(mdi::Octomap* map) -> void { octomap_ = map; };
+
    private:
     RRT() = default;
     RRT(const vec3& start_position, const vec3& goal_position, float step_size, float goal_bias,
@@ -244,6 +248,8 @@ class RRT {
     std::vector<node_t> nodes_{};
 
     std::size_t linear_search_start_index_{0};
+
+    mdi::Octomap* octomap_ = nullptr;
 
 #ifdef USE_KDTREE
 

@@ -1,9 +1,11 @@
 #include <octomap/OcTree.h>
 #include <octomap_msgs/BoundingBoxQuery.h>
+#include <octomap_msgs/GetOctomap.h>
 #include <octomap_msgs/Octomap.h>
 #include <ros/ros.h>
 #include <std_srvs/Empty.h>
 
+#include <algorithm>
 #include <iterator>
 #include <memory>
 
@@ -17,45 +19,26 @@
 #include "ros/service_client.h"
 #include "ros/service_server.h"
 
+using mdi::Octomap;
+
 std::unique_ptr<mdi::Octomap> voxelgrid{};
 // use ptr to forward declare cause otherwise we have to call their constructor,
 // which is not allowed before ros::init(...)
-std::unique_ptr<ros::ServiceClient> clear_octomap_client, clear_region_of_octomap_client;
+std::unique_ptr<ros::ServiceClient> clear_octomap_client, clear_region_of_octomap_client, get_octomap_client;
 
-// template <typename From, typename To>
-// auto convert_to(const From& from) -> To {
-//     return To{};
-// }
+auto call_get_octomap() -> mdi::Octomap* {
+    auto request = octomap_msgs::GetOctomap::Request{};  // empty request
+    auto response = octomap_msgs::GetOctomap::Response{};
 
-// template <>
-// auto convert_to<geometry_msgs::Point, mdi::rrt::vec3>(const geometry_msgs::Point& from) -> mdi::rrt::vec3 {
-//     auto v = mdi::rrt::vec3{from.x, from.y, from.z};
-//     return v;
-// }
-
-// template <>
-// auto convert_to<mdi::rrt::vec3, geometry_msgs::Point>(const mdi::rrt::vec3& from) -> geometry_msgs::Point {
-//     auto pt = geometry_msgs::Point{};
-//     pt.x = from.x();
-//     pt.y = from.y();
-//     pt.z = from.z();
-//     return pt;
-// }
-
-// template <>
-// auto convert_to<octomap::point3d, geometry_msgs::Point>(const octomap::point3d& from) -> geometry_msgs::Point {
-//     auto pt = geometry_msgs::Point{};
-//     pt.x = from.x();
-//     pt.y = from.y();
-//     pt.z = from.z();
-//     return pt;
-// }
+    get_octomap_client->call(request, response);
+    return new mdi::Octomap{response.map};
+}
 
 /**
  * @brief reset octomap
  *
  */
-auto clear_octomap() -> void {
+auto call_clear_octomap() -> void {
     auto request = std_srvs::Empty::Request{};
     auto response = std_srvs::Empty::Response{};
 
@@ -65,7 +48,7 @@ auto clear_octomap() -> void {
 /**
  * @brief max and min defines a bbx. All voxels in the bounding box are set to "free"
  */
-auto clear_region_of_octomap_(const octomap::point3d& max, const octomap::point3d& min) -> void {
+auto call_clear_region_of_octomap(const octomap::point3d& max, const octomap::point3d& min) -> void {
     const auto convert = [](const octomap::point3d& pt) {
         auto geo_pt = geometry_msgs::Point{};
         geo_pt.x = pt.x();
@@ -82,8 +65,6 @@ auto clear_region_of_octomap_(const octomap::point3d& max, const octomap::point3
 }
 
 auto rrt_find_path_handler(mdi_msgs::RrtFindPath::Request& request, mdi_msgs::RrtFindPath::Response& response) -> bool {
-    // pass a const ref of octomap to rrt
-
     const auto convert = [](const auto& pt) -> mdi::rrt::vec3 {
         return {static_cast<float>(pt.x), static_cast<float>(pt.y), static_cast<float>(pt.z)};
     };
@@ -101,48 +82,63 @@ auto rrt_find_path_handler(mdi_msgs::RrtFindPath::Request& request, mdi_msgs::Rr
                    .step_size(request.step_size)
                    .build();
 
-    if (const auto opt = rrt.run()) {
-        const auto path = opt.value();
-        std::transform(path.begin(), path.end(), std::back_inserter(response.waypoints), [](const auto& pt) {
-            auto geo_pt = geometry_msgs::Point{};
-            geo_pt.x = pt.x();
-            geo_pt.y = pt.y();
-            geo_pt.z = pt.z();
-            return geo_pt;
-        });
+    auto success = false;
 
-        return true;
+    auto octomap_ptr = call_get_octomap();
+    if (octomap_ptr != nullptr) {
+        rrt.assign_octomap(octomap_ptr);
+
+        if (const auto opt = rrt.run()) {
+            const auto path = opt.value();
+            std::transform(path.begin(), path.end(), std::back_inserter(response.waypoints), [](const auto& pt) {
+                auto geo_pt = geometry_msgs::Point{};
+                geo_pt.x = pt.x();
+                geo_pt.y = pt.y();
+                geo_pt.z = pt.z();
+                return geo_pt;
+            });
+
+            success = true;
+        }
+
+        delete octomap_ptr;
     }
 
-    return false;
+    return success;
 }
 
-auto octomap_cb(const octomap_msgs::Octomap::ConstPtr& msg) -> void {
-    // TODO: add flag to not update map while finding path.
-    if (voxelgrid == nullptr) {
-    }
-}
+// auto octomap_cb(const octomap_msgs::GetOctomap::ConstPtr& msg) -> void {
+//     // TODO: add flag to not update map while finding path.
+//     if (voxelgrid == nullptr) {
+//     }
+// }
+
 auto main(int argc, char* argv[]) -> int {
     const auto name_of_node = "rrt_service";
 
     ros::init(argc, argv, name_of_node);
     auto nh = ros::NodeHandle();
 
+    get_octomap_client = std::make_unique<ros::ServiceClient>([&] {
+        const auto service_name = "/octomap_binary";
+        return nh.serviceClient<octomap_msgs::GetOctomap>(service_name);
+    }());
+
     clear_octomap_client = std::make_unique<ros::ServiceClient>([&] {
-        const auto service_name = "reset";
+        const auto service_name = "/octomap_server/reset";
         return nh.serviceClient<std_srvs::Empty>(service_name);
     }());
 
     clear_region_of_octomap_client = std::make_unique<ros::ServiceClient>([&] {
-        const auto service_name = "clear_bbx";
+        const auto service_name = "/octomap_server/clear_bbx";
         return nh.serviceClient<octomap_msgs::BoundingBoxQuery>(service_name);
     }());
 
-    auto octomap_server = [&] {
-        const auto topic_name = "/octomap_binary";
-        const auto queue_size = 10;
-        return nh.subscribe<octomap_msgs::Octomap>(topic_name, queue_size, octomap_cb);
-    }();
+    // auto octomap_server = [&] {
+    //     const auto topic_name = "/octomap_binary";
+    //     const auto queue_size = 10;
+    //     return nh.subscribe<octomap_msgs::Octomap>(topic_name, queue_size, octomap_cb);
+    // }();
 
     auto service = [&] {
         const auto url = "/rrt_service/find_path";

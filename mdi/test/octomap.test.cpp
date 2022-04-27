@@ -247,8 +247,8 @@ auto main(int argc, char* argv[]) -> int {
     const auto width = 10;
     // insert some measurements of occupied cells
 
-    for (float x = 0; x < width; x += resolution) {
-        for (float y = 0; y < width; y += resolution) {
+    for (float x = 2; x < width; x += resolution) {
+        for (float y = 2; y < width; y += resolution) {
             for (float z = 0; z < width; z += resolution) {
                 // octomap::point3d endpoint((float)x * resolution * 1, (float)y * resolution * 1,
                 //   (float)z * resolution * 1);

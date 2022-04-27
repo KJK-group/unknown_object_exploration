@@ -5,12 +5,12 @@ mdi:
       - 0
       - 5
     goal_position:
-      - 7
-      - 7
-      - 10
+      - 25
+      - 17
+      - 5
 
     max_iterations: 100000
-    goal_bias: 0.6
+    goal_bias: 0.5
     max_dist_goal_tolerance: 2
-    step_size: 2
+    step_size: 1.5
     probability_of_testing_full_path_from_new_node_to_goal: 0.000

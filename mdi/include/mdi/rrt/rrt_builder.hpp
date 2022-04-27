@@ -1,6 +1,7 @@
-#ifndef _MULTI_DRONE_INSPECTION_RRT_BUILDER_HPP_
-#define _MULTI_DRONE_INSPECTION_RRT_BUILDER_HPP_
+#pragma once
+
 #include <eigen3/Eigen/Dense>
+#include <memory>
 
 #include "mdi/rrt/rrt.hpp"
 
@@ -9,7 +10,7 @@ namespace mdi::rrt {
 /**
  * @brief builder pattern for RRT class
  */
-class RRTBuilder {
+class RRTBuilder final {
    public:
     RRTBuilder& start_and_goal_position(const Eigen::Vector3f& start, const Eigen::Vector3f& goal) {
         rrt_.start_position_ = start;
@@ -85,12 +86,16 @@ class RRTBuilder {
         return *this;
     }
 
+    // RRTBuilder& octomap(mdi::Octomap& map) {
+    //     // rrt_.octomap_ = std::make_unique(map);
+    //     rrt_.octomap_ = std::make_unique(map);
+    //     return *this;
+    // }
+
     auto build() -> RRT { return std::move(rrt_); }
 
    private:
-    RRT rrt_;
-};
+    RRT rrt_{};
+};  // namespace mdi::rrt
 
 }  // namespace mdi::rrt
-
-#endif  // _MULTI_DRONE_INSPECTION_RRT_BUILDER_HPP_
