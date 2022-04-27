@@ -97,7 +97,7 @@ target_compile_definitions(test_rrt PUBLIC USE_KDTREE)
 add_ros_executable(test_controller src/test_controller.cpp)
 add_ros_executable(trajectory_follower src/trajectory_follower.cpp)
 # add_ros_executable(spline_tester src/spline_tester.cpp)
-add_ros_executable(mission_state src/mission_state.cpp)
+add_ros_executable(mission_manager src/mission_manager.cpp)
 add_ros_executable(pid_controller src/pid_controller.cpp)
 add_ros_executable(publish_traversed_path src/publish_traversed_path.cpp)
 
@@ -110,9 +110,8 @@ target_sources(
   PUBLIC src/math.cpp)
 
 target_sources(
-  mission_state
+  mission_manager
   PUBLIC src/bezier_spline.cpp
-  PUBLIC src/transformlistener.cpp
   PUBLIC src/math.cpp
   PUBLIC src/rrt/rrt.cpp
   PUBLIC src/mission.cpp)

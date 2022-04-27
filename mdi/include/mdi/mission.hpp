@@ -30,7 +30,8 @@ class Mission {
     auto add_interest_point(Eigen::Vector3f interest_point) -> void;
 
     auto get_drone_state() -> mavros_msgs::State;
-    auto step() -> void;
+    auto get_spline() -> BezierSpline;
+    auto exploration_step() -> bool;
     auto drone_takeoff(float altitude = 0) -> bool;
     auto drone_land() -> bool;
     auto drone_set_mode(std::string mode = "OFFBOARD") -> bool;
@@ -84,6 +85,7 @@ class Mission {
 
     // state
     int seq_state;
+    int step_count;
 };
 }  // namespace mdi
 #endif  // _MDI_MISSION_MANAGER_HPP_

@@ -1,7 +1,5 @@
 #include "mdi/mission.hpp"
 
-#include "mdi/utils/utils.hpp"
-
 namespace mdi {
 Mission::Mission(ros::NodeHandle* nh, float velocity_target, Eigen::Vector3f home)
     : seq_state(0),
@@ -45,6 +43,7 @@ auto Mission::error_cb(const mdi_msgs::PointNormStamped::ConstPtr& error) -> voi
 
 auto Mission::add_interest_point(Eigen::Vector3f interest_point) -> void { interest_points.push_back(interest_point); }
 auto Mission::get_drone_state() -> mavros_msgs::State { return drone_state; }
+auto Mission::get_spline() -> BezierSpline { return spline; }
 
 /**
  * @brief requests px4 to takeoff through mavros
@@ -198,6 +197,42 @@ auto Mission::find_path(Eigen::Vector3f start, Eigen::Vector3f end) -> std::vect
     }
 
     return path;
+}
+
+auto Mission::exploration_step() -> bool {
+    delta_time = ros::Time::now() - start_time;
+
+    if (path_end_idx > interest_points.size()) {
+        state.state = INSPECTION;
+        return false;
+    }
+
+    auto distance = delta_time.toSec() * velocity_target;
+    auto remaining_distance = spline.get_length() - distance;
+
+    if (step_count == 0 || (remaining_distance < velocity_target * 2 && position_error.norm < velocity_target * 2)) {
+        auto start = interest_points[path_start_idx++];
+        auto end = interest_points[path_end_idx++];
+        auto path = find_path(start, end);
+        spline = mdi::BezierSpline(path);
+        start_time = ros::Time::now();
+        delta_time = ros::Time::now() - start_time;
+    }
+
+    std::cout << mdi::utils::GREEN << "delta_time: " << delta_time << mdi::utils::RESET << std::endl;
+
+    // control the drone along the spline path
+    distance = delta_time.toSec() * velocity_target;
+    auto expected_pos = spline.get_point_at_distance(distance);
+
+    state.target.position.x = expected_pos.x();
+    state.target.position.y = expected_pos.y();
+    state.target.position.z = expected_pos.z();
+
+    publish();
+
+    step_count++;
+    return true;
 }
 
 auto Mission::state_to_string(enum state s) -> std::string {
