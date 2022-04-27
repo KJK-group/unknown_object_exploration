@@ -114,7 +114,8 @@ target_sources(
   PUBLIC src/bezier_spline.cpp
   PUBLIC src/transformlistener.cpp
   PUBLIC src/math.cpp
-  PUBLIC src/rrt/rrt.cpp)
+  PUBLIC src/rrt/rrt.cpp
+  PUBLIC src/mission.cpp)
 
 target_sources(pid_controller PUBLIC src/transformlistener.cpp)
 

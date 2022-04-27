@@ -15,45 +15,36 @@
 #include "mdi/bezier_spline.hpp"
 #include "mdi/rrt/rrt.hpp"
 #include "mdi/rrt/rrt_builder.hpp"
+#include "mdi/utils/rviz/rviz.hpp"
 #include "mdi/utils/utils.hpp"
 #include "mdi_msgs/MissionStateStamped.h"
-#include "mdi_msgs/PointNormStamped.h
-#include "mdi/rrt/rrt_builder.hpp"
-#include "mdi/utils/rviz/rviz.hpp"
+#include "mdi_msgs/PointNormStamped.h"
 
 namespace mdi {
-enum state { PASSIVE, HOME, EXPLORATION, INSPECTION, LAND };
-auto state_to_string(state s) -> std::string {
-    switch (s) {
-        case PASSIVE:
-            return "PASSIVE";
-            break;
-        case HOME:
-            return "HOME";
-            break;
-        case EXPLORATION:
-            return "EXPLORATION";
-            break;
-        case INSPECTION:
-            return "INSPECTION";
-            break;
-        case LAND:
-            return "LAND";
-            break;
-        default:
-            return "UNKNOWN";
-            break;
-    }
-}
 
-class MissionManager {
+class Mission {
    public:
-    MissionManager(ros::NodeHandle& nh, float velocity_target, Eigen::Vector3f home);
+    Mission(ros::NodeHandle* nh, float velocity_target = 1, Eigen::Vector3f home = {0, 0, 5});
+    enum state { PASSIVE, HOME, EXPLORATION, INSPECTION, LAND };
+    static auto state_to_string(enum state s) -> std::string;
+    auto add_interest_point(Eigen::Vector3f interest_point) -> void;
+
+    auto get_drone_state() -> mavros_msgs::State;
+    auto step() -> void;
+    auto drone_takeoff(float altitude = 0) -> bool;
+    auto drone_land() -> bool;
+    auto drone_set_mode(std::string mode = "OFFBOARD") -> bool;
+    auto drone_arm() -> bool;
+    auto publish() -> void;
 
    private:
     auto find_path(Eigen::Vector3f start, Eigen::Vector3f end) -> std::vector<Eigen::Vector3f>;
+    auto state_cb(const mavros_msgs::State::ConstPtr& state) -> void;
+    auto error_cb(const mdi_msgs::PointNormStamped::ConstPtr& error) -> void;
 
-    ros::NodeHandle& node_handle;
+    vector<Eigen::Vector3f> interest_points;
+
+    // ros::NodeHandle& node_handle;
 
     // publishers
     ros::Publisher pub_mission_state;
@@ -72,7 +63,7 @@ class MissionManager {
     // msg instances
     mavros_msgs::State drone_state;
     nav_msgs::Odometry drone_odom;
-    mdi_msgs::MissionStateStamped mission_state;
+    mdi_msgs::MissionStateStamped state;
     mdi_msgs::PointNormStamped position_error;
 
     // points
@@ -83,9 +74,15 @@ class MissionManager {
     ros::Time start_time;
     ros::Duration delta_time;
 
+    // path
     mdi::BezierSpline spline;
+    int path_start_idx;
+    int path_end_idx;
 
     float velocity_target;
+
+    // state
+    int seq_state;
 };
 }  // namespace mdi
 #endif  // _MDI_MISSION_MANAGER_HPP_

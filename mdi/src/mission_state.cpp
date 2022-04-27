@@ -13,13 +13,13 @@
 
 #include "boost/format.hpp"
 #include "mdi/bezier_spline.hpp"
+#include "mdi/mission.hpp"
 #include "mdi/rrt/rrt.hpp"
 #include "mdi/rrt/rrt_builder.hpp"
 #include "mdi/utils/rviz/rviz.hpp"
 #include "mdi/utils/transformlistener.hpp"
 #include "mdi_msgs/MissionStateStamped.h"
 #include "mdi_msgs/PointNormStamped.h"
-#include "ros/init.h"
 
 constexpr auto TOLERANCE_DISTANCE = 0.1;
 constexpr auto TARGET_VELOCITY = 1.f;              // move drone at TARGET_VELOCITY m/s
@@ -79,6 +79,9 @@ auto first_exploration_iteration = true;
 auto home = Eigen::Vector3f(0, 0, SPLINE_Z_OFFSET);
 auto expected_pos = Eigen::Vector3f(0, 0, SPLINE_Z_OFFSET);
 
+// mission instance
+mdi::Mission mission;
+
 //--------------------------------------------------------------------------------------------------
 // ROS
 //--------------------------------------------------------------------------------------------------
@@ -110,113 +113,6 @@ auto interest_points = std::vector<Eigen::Vector3f>{
     Eigen::Vector3f(0, 0, 5),   Eigen::Vector3f(10, 10, 7),  Eigen::Vector3f(18, 9, 15), Eigen::Vector3f(20, 25, 20),
     Eigen::Vector3f(7, 21, 13), Eigen::Vector3f(10, 10, 17), Eigen::Vector3f(0, 0, 5)};
 
-auto find_path(Eigen::Vector3f start, Eigen::Vector3f end) -> std::vector<Eigen::Vector3f> {
-    const auto goal_tolerance = 2;
-    auto rrt = mdi::rrt::RRT::from_builder()
-                   .probability_of_testing_full_path_from_new_node_to_goal(0)
-                   .goal_bias(0.7)
-                   .max_dist_goal_tolerance(goal_tolerance)
-                   .start_and_goal_position(start, end)
-                   .max_iterations(10000)
-                   .step_size(2)
-                   .build();
-
-    auto arrow_msg_gen = mdi::utils::rviz::arrow_msg_gen::builder()
-                             .arrow_head_width(0.05f)
-                             .arrow_length(0.05f)
-                             .arrow_width(0.05f)
-                             .color({0, 1, 0, 1})
-                             .build();
-    arrow_msg_gen.header.frame_id = "world_enu";
-
-    // rrt.register_cb_for_event_on_new_node_created([&](const auto& parent, const auto& new_node) {
-    //     // std::cout << GREEN << parent << "\n" << MAGENTA << new_node << RESET << std::endl;
-    //     auto msg = arrow_msg_gen({parent, new_node});
-    //     msg.color.r = 0.5;
-    //     msg.color.g = 1;
-    //     msg.color.b = 0.9;
-    //     msg.color.a = 1;
-    //     pub_visualize_rrt.publish(msg);
-    // });
-
-    auto sphere_msg_gen = mdi::utils::rviz::sphere_msg_gen{};
-    sphere_msg_gen.header.frame_id = "world_enu";
-
-    ros::Duration(1).sleep();
-    // publish starting position
-    auto start_msg = sphere_msg_gen(start);
-    start_msg.color.r = 0.5;
-    start_msg.color.g = 1;
-    start_msg.color.b = 0.9;
-    start_msg.color.a = 1;
-    start_msg.scale.x = 0.2;
-    start_msg.scale.y = 0.2;
-    start_msg.scale.z = 0.2;
-    pub_visualize_rrt.publish(start_msg);
-    // publish goal position
-    auto goal_msg = sphere_msg_gen(end);
-    goal_msg.color.r = 0;
-    goal_msg.color.g = 1;
-    goal_msg.color.b = 0;
-    goal_msg.color.a = 1;
-    goal_msg.scale.x = 0.2;
-    goal_msg.scale.y = 0.2;
-    goal_msg.scale.z = 0.2;
-    pub_visualize_rrt.publish(goal_msg);
-
-    // visualise end tolerance
-    auto sphere_tolerance_msg = sphere_msg_gen(end);
-
-    auto msg = sphere_msg_gen(end);
-    msg.scale.x = goal_tolerance * 2;
-    msg.scale.y = goal_tolerance * 2;
-    msg.scale.z = goal_tolerance * 2;
-    msg.color.r = 1.f;
-    msg.color.g = 1.f;
-    msg.color.b = 1.f;
-    msg.color.a = 0.2f;
-    pub_visualize_rrt.publish(msg);
-
-    // ensure finding a path
-    auto opt = rrt.run();
-    while (! opt) {
-        rrt.clear();
-        opt = rrt.run();
-    }
-
-    const auto path = *opt;
-    spline = mdi::BezierSpline(path);
-
-    std::cout << "[DEBUG] " << __FILE__ << ":" << __LINE__ << " "
-              << " found a solution" << '\n';
-
-    // visualize result
-    arrow_msg_gen.color.r = 0.0f;
-    arrow_msg_gen.color.g = 1.0f;
-    arrow_msg_gen.color.b = 0.0f;
-    arrow_msg_gen.scale.x = 0.05f;
-    arrow_msg_gen.scale.y = 0.05f;
-    arrow_msg_gen.scale.z = 0.05f;
-    int i = 1;
-    while (ros::ok() && i < path.size()) {
-        auto& p1 = path[i - 1];
-        auto& p2 = path[i];
-        auto arrow = arrow_msg_gen({p1, p2});
-        pub_visualize_rrt.publish(arrow);
-        ++i;
-    }
-
-    return path;
-}
-
-//--------------------------------------------------------------------------------------------------
-// Callback Functions
-//--------------------------------------------------------------------------------------------------
-
-auto state_cb(const mavros_msgs::State::ConstPtr& msg) -> void { drone_state = *msg; }
-auto error_cb(const mdi_msgs::PointNormStamped::ConstPtr& msg) -> void { error = *msg; }
-// auto odom_cb(const nav_msgs::Odometry::ConstPtr& msg) -> void { odom = *msg; }
-
 //--------------------------------------------------------------------------------------------------
 // Main
 //--------------------------------------------------------------------------------------------------
@@ -228,104 +124,40 @@ auto main(int argc, char** argv) -> int {
     auto nh = ros::NodeHandle();
     ros::Rate rate(20.0);
     // save start_time
-    start_time = ros::Time::now();
-
-    //----------------------------------------------------------------------------------------------
-    // transform utilities
-    auto tf_listener = mdi::utils::transform::TransformListener{};
 
     //----------------------------------------------------------------------------------------------
     // pass in arguments
     if (argc > 1) velocity_target = std::stof(argv[1]);
 
-    mdi::BezierSpline spline;  // = mdi::BezierSpline(spline_input_points);
-
-    //----------------------------------------------------------------------------------------------
-    // mavros state subscriber
-    sub_state = nh.subscribe<mavros_msgs::State>("/mavros/state", 10, state_cb);
-    // error subscriber
-    sub_error = nh.subscribe<mdi_msgs::PointNormStamped>("/mdi/error", 10, error_cb);
-
-    //----------------------------------------------------------------------------------------------
-    // velocity publisher
-    pub_mission_state = nh.advertise<mdi_msgs::MissionStateStamped>("/mdi/state", 10);
-
-    // RRT Visualisation
-    pub_visualize_rrt = nh.advertise<visualization_msgs::Marker>("/mdi/visualisation_marker", 10);
-
-    auto sphere_msg_gen = mdi::utils::rviz::sphere_msg_gen{};
-    sphere_msg_gen.header.frame_id = "world_enu";
-    auto test_msg = sphere_msg_gen({0, 0, 7});
-    test_msg.color.r = 0.5;
-    test_msg.color.g = 1;
-    test_msg.color.b = 0.9;
-    test_msg.color.a = 1;
-    test_msg.scale.x = 0.2;
-    test_msg.scale.y = 0.2;
-    test_msg.scale.z = 0.2;
-    for (int i = 0; i < 5; i++) {
-        std::cout << "publishing test point" << std::endl;
-        pub_visualize_rrt.publish(test_msg);
-        ros::spinOnce();
-        rate.sleep();
+    auto mission = mdi::Mission(&nh, velocity_target);
+    for (auto& p : interest_points) {
+        mission.add_interest_point(p);
     }
 
     //----------------------------------------------------------------------------------------------
-    // arm service client
-    client_arm = nh.serviceClient<mavros_msgs::CommandBool>("/mavros/cmd/arming");
-    // mode service client
-    client_mode = nh.serviceClient<mavros_msgs::SetMode>("/mavros/set_mode");
-    // land service client
-    client_land = nh.serviceClient<mavros_msgs::CommandTOL>("/mavros/cmd/land");
-
-    //----------------------------------------------------------------------------------------------
     // wait for FCU connection
-    while (ros::ok() && ! drone_state.connected) {
+    while (ros::ok() && ! mission.get_drone_state().connected) {
         ros::spinOnce();
         rate.sleep();
     }
 
     auto previous_request_time = ros::Time(0);
-    // offboard mode message
-    mavros_msgs::SetMode mode_msg{};
-    mode_msg.request.custom_mode = "OFFBOARD";
-    // arm message
-    mavros_msgs::CommandBool srv{};
-    srv.request.value = true;
-
-    // waypoint indices
-    auto start_idx = 0;
-    auto end_idx = 1;
 
     //----------------------------------------------------------------------------------------------
     // control loop
     while (ros::ok()) {
         //------------------------------------------------------------------------------------------
         // request to set drone mode to OFFBOARD every 5 seconds until successful
-        if (drone_state.mode != "OFFBOARD" && (ros::Time::now() - previous_request_time > ros::Duration(5.0))) {
-            if (client_mode.call(mode_msg) && mode_msg.response.mode_sent) {
-                ROS_INFO("mode set: OFFBOARD");
-            } else {
-                ROS_INFO("mode set: fail");
-            }
+        if (ros::Time::now() - previous_request_time > ros::Duration(5.0)) {
+            mission.drone_takeoff();
             previous_request_time = ros::Time::now();
         }
         //------------------------------------------------------------------------------------------
         // request to arm throttle every 5 seconds until succesful
-        if (! drone_state.armed && (ros::Time::now() - previous_request_time > ros::Duration(5.0))) {
-            if (client_arm.call(srv)) {
-                ROS_INFO("throttle armed: success");
-            } else {
-                ROS_INFO("throttle armed: fail");
-            }
+        if (ros::Time::now() - previous_request_time > ros::Duration(5.0)) {
+            mission.drone_arm();
             previous_request_time = ros::Time::now();
         }
-
-        //------------------------------------------------------------------------------------------
-        // state message header
-        mission_state_msg.header.seq = seq_state++;
-        mission_state_msg.header.stamp = ros::Time::now();
-        mission_state_msg.header.frame_id = FRAME_WORLD;
 
         auto delta_time = ros::Time::now() - start_time;
         float distance;
