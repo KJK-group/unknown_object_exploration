@@ -19,9 +19,10 @@
 #include "mdi/utils/transformlistener.hpp"
 #include "mdi_msgs/MissionStateStamped.h"
 #include "mdi_msgs/PointNormStamped.h"
+#include "ros/init.h"
 
 constexpr auto TOLERANCE_DISTANCE = 0.1;
-constexpr auto TARGET_VELOCITY = 1.f;              // move drone at 5m/s
+constexpr auto TARGET_VELOCITY = 1.f;              // move drone at TARGET_VELOCITY m/s
 constexpr auto FRAME_WORLD = "world_enu";          // world/global frame
 constexpr auto FRAME_BODY = "PX4/odom_local_ned";  // drone body frame
 constexpr auto SPLINE_Z_OFFSET = 5;
@@ -72,6 +73,7 @@ auto velocity_target = TARGET_VELOCITY;
 auto seq_state = 0;
 auto exploration_complete = false;
 auto inspection_complete = false;
+auto first_exploration_iteration = true;
 
 // home pose
 auto home = Eigen::Vector3f(0, 0, SPLINE_Z_OFFSET);
@@ -83,6 +85,7 @@ auto expected_pos = Eigen::Vector3f(0, 0, SPLINE_Z_OFFSET);
 
 // publishers
 ros::Publisher pub_mission_state;
+ros::Publisher pub_visualize_rrt;
 
 // subscribers
 ros::Subscriber sub_state;
@@ -103,9 +106,108 @@ tf2_ros::Buffer tf_buffer;
 mdi::BezierSpline spline;
 
 // Points of interest
-auto interest_points =
-    std::vector<Eigen::Vector3f>{Eigen::Vector3f(10, 10, 7), Eigen::Vector3f(18, 9, 15), Eigen::Vector3f(20, 25, 20),
-                                 Eigen::Vector3f(7, 21, 13), Eigen::Vector3f(10, 10, 17)};
+auto interest_points = std::vector<Eigen::Vector3f>{
+    Eigen::Vector3f(0, 0, 5),   Eigen::Vector3f(10, 10, 7),  Eigen::Vector3f(18, 9, 15), Eigen::Vector3f(20, 25, 20),
+    Eigen::Vector3f(7, 21, 13), Eigen::Vector3f(10, 10, 17), Eigen::Vector3f(0, 0, 5)};
+
+auto find_path(Eigen::Vector3f start, Eigen::Vector3f end) -> std::vector<Eigen::Vector3f> {
+    const auto goal_tolerance = 2;
+    auto rrt = mdi::rrt::RRT::from_builder()
+                   .probability_of_testing_full_path_from_new_node_to_goal(0)
+                   .goal_bias(0.7)
+                   .max_dist_goal_tolerance(goal_tolerance)
+                   .start_and_goal_position(start, end)
+                   .max_iterations(10000)
+                   .step_size(2)
+                   .build();
+
+    auto arrow_msg_gen = mdi::utils::rviz::arrow_msg_gen::builder()
+                             .arrow_head_width(0.05f)
+                             .arrow_length(0.05f)
+                             .arrow_width(0.05f)
+                             .color({0, 1, 0, 1})
+                             .build();
+    arrow_msg_gen.header.frame_id = "world_enu";
+
+    // rrt.register_cb_for_event_on_new_node_created([&](const auto& parent, const auto& new_node) {
+    //     // std::cout << GREEN << parent << "\n" << MAGENTA << new_node << RESET << std::endl;
+    //     auto msg = arrow_msg_gen({parent, new_node});
+    //     msg.color.r = 0.5;
+    //     msg.color.g = 1;
+    //     msg.color.b = 0.9;
+    //     msg.color.a = 1;
+    //     pub_visualize_rrt.publish(msg);
+    // });
+
+    auto sphere_msg_gen = mdi::utils::rviz::sphere_msg_gen{};
+    sphere_msg_gen.header.frame_id = "world_enu";
+
+    ros::Duration(1).sleep();
+    // publish starting position
+    auto start_msg = sphere_msg_gen(start);
+    start_msg.color.r = 0.5;
+    start_msg.color.g = 1;
+    start_msg.color.b = 0.9;
+    start_msg.color.a = 1;
+    start_msg.scale.x = 0.2;
+    start_msg.scale.y = 0.2;
+    start_msg.scale.z = 0.2;
+    pub_visualize_rrt.publish(start_msg);
+    // publish goal position
+    auto goal_msg = sphere_msg_gen(end);
+    goal_msg.color.r = 0;
+    goal_msg.color.g = 1;
+    goal_msg.color.b = 0;
+    goal_msg.color.a = 1;
+    goal_msg.scale.x = 0.2;
+    goal_msg.scale.y = 0.2;
+    goal_msg.scale.z = 0.2;
+    pub_visualize_rrt.publish(goal_msg);
+
+    // visualise end tolerance
+    auto sphere_tolerance_msg = sphere_msg_gen(end);
+
+    auto msg = sphere_msg_gen(end);
+    msg.scale.x = goal_tolerance * 2;
+    msg.scale.y = goal_tolerance * 2;
+    msg.scale.z = goal_tolerance * 2;
+    msg.color.r = 1.f;
+    msg.color.g = 1.f;
+    msg.color.b = 1.f;
+    msg.color.a = 0.2f;
+    pub_visualize_rrt.publish(msg);
+
+    // ensure finding a path
+    auto opt = rrt.run();
+    while (! opt) {
+        rrt.clear();
+        opt = rrt.run();
+    }
+
+    const auto path = *opt;
+    spline = mdi::BezierSpline(path);
+
+    std::cout << "[DEBUG] " << __FILE__ << ":" << __LINE__ << " "
+              << " found a solution" << '\n';
+
+    // visualize result
+    arrow_msg_gen.color.r = 0.0f;
+    arrow_msg_gen.color.g = 1.0f;
+    arrow_msg_gen.color.b = 0.0f;
+    arrow_msg_gen.scale.x = 0.05f;
+    arrow_msg_gen.scale.y = 0.05f;
+    arrow_msg_gen.scale.z = 0.05f;
+    int i = 1;
+    while (ros::ok() && i < path.size()) {
+        auto& p1 = path[i - 1];
+        auto& p2 = path[i];
+        auto arrow = arrow_msg_gen({p1, p2});
+        pub_visualize_rrt.publish(arrow);
+        ++i;
+    }
+
+    return path;
+}
 
 //--------------------------------------------------------------------------------------------------
 // Callback Functions
@@ -136,171 +238,10 @@ auto main(int argc, char** argv) -> int {
     // pass in arguments
     if (argc > 1) velocity_target = std::stof(argv[1]);
 
-    //----------------------------------------------------------------------------------------------
-    // spline preprocessing
-    auto spline_input_points = std::vector<Eigen::Vector3f>{
-        Eigen::Vector3f(0.0, 0.0, 0.0),   Eigen::Vector3f(3.0, 0.5, 1.0), Eigen::Vector3f(-3.5, 1.5, 0.0),
-        Eigen::Vector3f(-2.8, 1.0, 0.7),  Eigen::Vector3f(1.2, 2.2, 1.5), Eigen::Vector3f(1.0, 3.0, 1.0),
-        Eigen::Vector3f(-0.2, -0.5, -0.2)};
-    for (auto& point : spline_input_points) {
-        point *= 10;
-    }
-
     mdi::BezierSpline spline;  // = mdi::BezierSpline(spline_input_points);
 
     //----------------------------------------------------------------------------------------------
-    // RRT
-
-    auto arrow_msg_gen = mdi::utils::rviz::arrow_msg_gen::builder()
-                             .arrow_head_width(0.01f)
-                             .arrow_length(0.1f)
-                             .arrow_width(0.02f)
-                             .color({0, 1, 0, 1})
-                             .build();
-    arrow_msg_gen.header.frame_id = "world_enu";
-    auto rrt = mdi::rrt::RRT::from_rosparam("/mdi/rrt");
-
-    // RRT Visulisation
-    auto pub_visualize_rrt = [&nh]() {
-        const auto topic_name = "/mdi/visualisation_marker";
-        return nh.advertise<visualization_msgs::Marker>(topic_name, 10);
-    }();
-
-    auto publish_visualisation = [&pub_visualize_rrt, &rate](const auto& msg) {
-        for (size_t i = 0; i < 1; i++) {
-            pub_visualize_rrt.publish(msg);
-            rate.sleep();
-            ros::spinOnce();
-        }
-    };
-
-    rrt.register_cb_for_event_on_new_node_created([&](const auto& parent, const auto& new_node) {
-        // std::cout << GREEN << parent << "\n" << MAGENTA << new_node << RESET << std::endl;
-        auto msg = arrow_msg_gen({parent, new_node});
-        msg.color.r = 0.5;
-        msg.color.g = 1;
-        msg.color.b = 0.9;
-        msg.color.a = 1;
-        publish_visualisation(msg);
-    });
-
-    const auto start = rrt.start_position();
-    const auto goal = rrt.goal_position();
-
-    auto sphere_msg_gen = mdi::utils::rviz::sphere_msg_gen{};
-    sphere_msg_gen.header.frame_id = "world_enu";
-
-    ros::Duration(1).sleep();
-    // publish starting position
-    auto start_msg = sphere_msg_gen(start);
-    start_msg.color.r = 0.5;
-    start_msg.color.g = 1;
-    start_msg.color.b = 0.9;
-    start_msg.color.a = 1;
-    start_msg.scale.x = 0.2;
-    start_msg.scale.y = 0.2;
-    start_msg.scale.z = 0.2;
-    publish_visualisation(start_msg);
-    // publish goal position
-    auto goal_msg = sphere_msg_gen(goal);
-    goal_msg.color.r = 0;
-    goal_msg.color.g = 1;
-    goal_msg.color.b = 0;
-    goal_msg.color.a = 1;
-    goal_msg.scale.x = 0.2;
-    goal_msg.scale.y = 0.2;
-    goal_msg.scale.z = 0.2;
-    publish_visualisation(goal_msg);
-
-    auto sphere_tolerance_msg = sphere_msg_gen(goal);
-    const auto goal_tolerance = [&]() {
-        float goal_tolerance = 1.0f;
-        if (! nh.getParam("/mdi/rrt/max_dist_goal_tolerance", goal_tolerance)) {
-            std::exit(EXIT_FAILURE);
-        }
-        return goal_tolerance;
-    }();
-
-    for (size_t i = 0; i < 5; i++) {
-        publish_visualisation([&]() {
-            auto msg = sphere_msg_gen(goal);
-            msg.scale.x = goal_tolerance * 2;
-            msg.scale.y = goal_tolerance * 2;
-            msg.scale.z = goal_tolerance * 2;
-            msg.color.r = 1.f;
-            msg.color.g = 1.f;
-            msg.color.b = 1.f;
-            msg.color.a = 0.05f;
-
-            return msg;
-        }());
-    }
-
-    // rrt.register_cb_for_event_on_new_node_created(
-    //     [](auto& a, const auto& b) { std::cout << "inserting node" << std::endl; });
-
-    if (const auto opt = rrt.run()) {
-        const auto path = *opt;
-        // std::cout << GREEN << "PATH" << RESET << std::endl;
-        // for (auto& p : path) {
-        //     std::cout << p << std::endl;
-        // }
-        // std::cerr << "[DEBUG] " << __FILE__ << ":" << __LINE__ << ": "
-        //           << " before reverse " << '\n';
-
-        // decltype(path) path2(path.size());
-        // std::copy(path.rbegin(), path.rend(), std::back_inserter(path2));
-        // std::reverse(path.begin(), path.end());
-        // std::cerr << "[DEBUG] " << __FILE__ << ":" << __LINE__ << ": "
-        //           << " after reverse " << '\n';
-
-        // std::reverse(path.begin(), path.end());
-        // std::cout << GREEN << "PATH" << RESET << std::endl;
-        // for (auto& p : path) {
-        //     std::cout << p << std::endl;
-        // }
-        spline = mdi::BezierSpline(path);
-
-        // std::cout << GREEN << "SPLINE POINTS" << RESET << std::endl;
-        // auto spline_points = spline.get_spline_points();
-        // int i = 0;
-        // for (auto& point : spline_points) {
-        //     auto color = i % 2 == 0 ? MAGENTA : GREEN;
-        //     std::cout << color << point << RESET << std::endl;
-        //     i++;
-        // }
-        // std::cerr << "[DEBUG] " << __FILE__ << ":" << __LINE__ << ": "
-        //           << " spline generated" << '\n';
-
-        // for (int i = 1; i < path.size() && ros::ok(); i++) {
-        //     auto& p1 = path[i - 1];
-        //     auto& p2 = path[i];
-        //     auto arrow = arrow_msg_gen({p1, p2});
-        //     publish(arrow);
-        //     ++i;
-        // }
-        std::cout << "[DEBUG] " << __FILE__ << ":" << __LINE__ << " "
-                  << " found a solution" << '\n';
-
-        arrow_msg_gen.color.r = 0.0f;
-        arrow_msg_gen.color.g = 1.0f;
-        arrow_msg_gen.color.b = 0.0f;
-        int i = 1;
-        arrow_msg_gen.scale.x = 0.05f;
-        arrow_msg_gen.scale.y = 0.05f;
-        arrow_msg_gen.scale.z = 0.05f;
-        while (ros::ok() && i < path.size()) {
-            auto& p1 = path[i - 1];
-            auto& p2 = path[i];
-            auto arrow = arrow_msg_gen({p1, p2});
-            publish_visualisation(arrow);
-            ++i;
-        }
-    }
-    std::cout << rrt << std::endl;
-
-    //----------------------------------------------------------------------------------------------
-    // state subscriber
+    // mavros state subscriber
     sub_state = nh.subscribe<mavros_msgs::State>("/mavros/state", 10, state_cb);
     // error subscriber
     sub_error = nh.subscribe<mdi_msgs::PointNormStamped>("/mdi/error", 10, error_cb);
@@ -308,6 +249,26 @@ auto main(int argc, char** argv) -> int {
     //----------------------------------------------------------------------------------------------
     // velocity publisher
     pub_mission_state = nh.advertise<mdi_msgs::MissionStateStamped>("/mdi/state", 10);
+
+    // RRT Visualisation
+    pub_visualize_rrt = nh.advertise<visualization_msgs::Marker>("/mdi/visualisation_marker", 10);
+
+    auto sphere_msg_gen = mdi::utils::rviz::sphere_msg_gen{};
+    sphere_msg_gen.header.frame_id = "world_enu";
+    auto test_msg = sphere_msg_gen({0, 0, 7});
+    test_msg.color.r = 0.5;
+    test_msg.color.g = 1;
+    test_msg.color.b = 0.9;
+    test_msg.color.a = 1;
+    test_msg.scale.x = 0.2;
+    test_msg.scale.y = 0.2;
+    test_msg.scale.z = 0.2;
+    for (int i = 0; i < 5; i++) {
+        std::cout << "publishing test point" << std::endl;
+        pub_visualize_rrt.publish(test_msg);
+        ros::spinOnce();
+        rate.sleep();
+    }
 
     //----------------------------------------------------------------------------------------------
     // arm service client
@@ -331,6 +292,10 @@ auto main(int argc, char** argv) -> int {
     // arm message
     mavros_msgs::CommandBool srv{};
     srv.request.value = true;
+
+    // waypoint indices
+    auto start_idx = 0;
+    auto end_idx = 1;
 
     //----------------------------------------------------------------------------------------------
     // control loop
@@ -362,12 +327,12 @@ auto main(int argc, char** argv) -> int {
         mission_state_msg.header.stamp = ros::Time::now();
         mission_state_msg.header.frame_id = FRAME_WORLD;
 
-        // transform to get error
-        // TODO: publish error from controller, subscribe to it here, and use that
-        // if (auto opt = tf_listener.transform_vec3(FRAME_BODY, FRAME_WORLD, expected_pos)) {
-        //     error = opt.value();
-        // }
         auto delta_time = ros::Time::now() - start_time;
+        float distance;
+        float remaining_distance;
+        Eigen::Vector3f start;
+        Eigen::Vector3f end;
+        std::vector<Eigen::Vector3f> path;
 
         switch (mission_state_msg.state) {
             case PASSIVE:
@@ -383,24 +348,45 @@ auto main(int argc, char** argv) -> int {
                     if (inspection_complete) {
                         mission_state_msg.state = LAND;
                     } else {
-                        start_time = ros::Time::now();
+                        // start_time = ros::Time::now();
+                        first_exploration_iteration = true;
                         mission_state_msg.state = EXPLORATION;
                     }
                 }
                 break;
             case EXPLORATION:
-                // when object is matched, go to INSPECTION
-                // go through spline here, getting spline from BezierSpline getting input from RRT*
-
-                // pathfinding
-                mdi::rrt::RRT::from_builder();
-
-                // control the drone
-                expected_pos = spline.get_point_at_distance(delta_time.toSec() * velocity_target);
-                expected_pos(2) = expected_pos.z();  // + SPLINE_Z_OFFSET;
-                if (exploration_complete) {
+                if (end_idx > interest_points.size()) {
+                    exploration_complete = true;
                     mission_state_msg.state = INSPECTION;
                 }
+                remaining_distance = spline.get_length() - distance;
+
+                // std::cout << GREEN << "first:         " << first_exploration_iteration << RESET << std::endl;
+                // std::cout << GREEN << "Distance:      " << distance << RESET << std::endl;
+                // std::cout << GREEN << "Spline length: " << spline.get_length() << RESET << std::endl;
+                // std::cout << GREEN << "remaining:     " << remaining_distance << RESET << std::endl;
+
+                if (first_exploration_iteration ||
+                    (remaining_distance < TARGET_VELOCITY && error.norm < TARGET_VELOCITY)) {
+                    start = interest_points[start_idx++];
+                    end = interest_points[end_idx++];
+                    path = find_path(start, end);
+                    spline = mdi::BezierSpline(path);
+                    start_time = ros::Time::now();
+                    delta_time = ros::Time::now() - start_time;
+                }
+
+                std::cout << GREEN << "delta_time: " << delta_time << RESET << std::endl;
+
+                // control the drone along the spline path
+                distance = delta_time.toSec() * velocity_target;
+                expected_pos = spline.get_point_at_distance(distance);
+
+                // when object is matched, go to INSPECTION
+                // if (exploration_complete) {
+                //     mission_state_msg.state = INSPECTION;
+                // }
+                first_exploration_iteration = false;
                 break;
             case INSPECTION:
                 // when object paths are completed,set mission complete, go to HOME

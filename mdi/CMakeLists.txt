@@ -69,7 +69,7 @@ function(add_ros_executable name main)
   target_link_libraries(${name} ${catkin_LIBRARIES} fmt::fmt-header-only)
   target_compile_options(
     ${name}
-    PRIVATE -O0
+    PRIVATE -O0 -g
             # -g -Wall -Werror -Wextra -Wpedantic -Weffc++ -Wsign-conversion
   )
 endfunction(add_ros_executable)

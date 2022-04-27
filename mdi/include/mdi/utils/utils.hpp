@@ -5,8 +5,11 @@
 #include <numeric>
 #include <vector>
 
-
 namespace mdi::utils {
+
+constexpr auto DEFAULT_QUEUE_SIZE = 10;
+constexpr auto FRAME_WORLD = "world_enu";          // world/global frame
+constexpr auto FRAME_BODY = "PX4/odom_local_ned";  // drone body frame
 
 auto range(int end) -> std::vector<int> {
     auto result = std::vector<int>(end);

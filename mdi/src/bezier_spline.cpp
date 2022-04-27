@@ -157,7 +157,7 @@ auto BezierSpline::generate_binomial_lut() -> void {
     //   << " size: " << this->size << '\n';
 
     for (int i = 0; i < this->size; i++) {
-        std::cout << "idx: " << i << std::endl;
+        // std::cout << "idx: " << i << std::endl;
         binomial_lut.push_back(mdi::utils::binomial_coefficient(this->size, i));
     }
     // std::cerr << "[DEBUG] " << __FILE__ << ":" << __LINE__ << ": "
@@ -241,5 +241,11 @@ auto BezierSpline::get_spline_points() -> vector<Vector3f> {
 //--------------------------------------------------------------------------------------------------
 // Return the arc length of the spline,
 // found at the last index of the distance LUT
-auto BezierSpline::get_length() -> float { return this->distance_lut[this->distance_lut.size() - 1]; }
+auto BezierSpline::get_length() -> float {
+    if (this->distance_lut.size() != 0) {
+        return this->distance_lut[this->distance_lut.size() - 1];
+    } else {
+        return 0;
+    }
+}
 }  // namespace mdi
