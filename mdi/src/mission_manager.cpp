@@ -5,19 +5,11 @@
 
 #include "mdi/mission.hpp"
 
-//--------------------------------------------------------------------------------------------------
-// Main
-//--------------------------------------------------------------------------------------------------
-
 auto main(int argc, char** argv) -> int {
-    //----------------------------------------------------------------------------------------------
-    // ROS initialisations
+    // ros
     ros::init(argc, argv, "mdi_mission_state");
     auto nh = ros::NodeHandle();
     ros::Rate rate(20.0);
-    // save start_time
-
-    auto start_time = ros::Time::now();
 
     // state
     auto exploration_complete = false;
@@ -30,17 +22,16 @@ auto main(int argc, char** argv) -> int {
                                                               Eigen::Vector3f(7, 21, 13), Eigen::Vector3f(10, 10, 17),
                                                               Eigen::Vector3f(0, 0, 5)};
 
-    //----------------------------------------------------------------------------------------------
     // pass in arguments
     auto velocity_target = 0.f;
     if (argc > 1) velocity_target = std::stof(argv[1]);
 
+    // mission instance
     auto mission = mdi::Mission(&nh, velocity_target);
     for (auto& p : interest_points) {
         mission.add_interest_point(p);
     }
 
-    //----------------------------------------------------------------------------------------------
     // wait for FCU connection
     while (ros::ok() && ! mission.get_drone_state().connected) {
         ros::spinOnce();
@@ -49,16 +40,13 @@ auto main(int argc, char** argv) -> int {
 
     auto previous_request_time = ros::Time(0);
 
-    //----------------------------------------------------------------------------------------------
     // control loop
     while (ros::ok()) {
-        //------------------------------------------------------------------------------------------
         // request to set drone mode to OFFBOARD every 5 seconds until successful
         if (ros::Time::now() - previous_request_time > ros::Duration(mdi::utils::REQUEST_TIMEOUT)) {
             mission.drone_takeoff();
             previous_request_time = ros::Time::now();
         }
-        //------------------------------------------------------------------------------------------
         // request to arm throttle every 5 seconds until succesful
         if (ros::Time::now() - previous_request_time > ros::Duration(mdi::utils::REQUEST_TIMEOUT)) {
             mission.drone_arm();

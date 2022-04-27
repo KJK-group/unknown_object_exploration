@@ -1,5 +1,5 @@
-#ifndef _MULTI_DRONE_INSPECTION_UTILS_HPP_
-#define _MULTI_DRONE_INSPECTION_UTILS_HPP_
+#ifndef _MDI_UTILS_HPP_
+#define _MDI_UTILS_HPP_
 
 #include <cassert>
 #include <numeric>
@@ -43,4 +43,4 @@ auto range(int start, int end) -> std::vector<int> {
 // }
 }  // namespace mdi::utils
 
-#endif  // _MULTI_DRONE_INSPECTION_UTILS_HPP_
+#endif  // _MDI_UTILS_HPP_
