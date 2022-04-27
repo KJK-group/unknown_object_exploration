@@ -55,7 +55,7 @@ auto main(int argc, char* argv[]) -> int {
                              .arrow_head_width(0.01f)
                              .arrow_length(0.1f)
                              .arrow_width(0.02f)
-                             .color({0, 1, 0, 1})
+                             .color({0, 0.8, 1, 1})
                              .build();
     ROS_INFO("creating rrt");
     auto rrt = mdi::rrt::RRT::from_rosparam("/mdi/rrt");
@@ -130,7 +130,7 @@ auto main(int argc, char* argv[]) -> int {
             msg.scale.z = goal_tolerance * 2;
             msg.color.b = 0.6f;
             msg.color.g = 0.f;
-            msg.color.a = 0.25f;
+            msg.color.a = 0.1f;
 
             return msg;
         }());
@@ -196,10 +196,9 @@ auto main(int argc, char* argv[]) -> int {
     if (opt) {
         const auto path = *opt;
         ROS_INFO_STREAM("found solution path");
-        arrow_msg_gen.color.r = 1.0f;
-        arrow_msg_gen.color.g = 0.0f;
         arrow_msg_gen.color.r = 0.0f;
         arrow_msg_gen.color.g = 1.0f;
+        arrow_msg_gen.color.b = 0.0f;
         int i = 1;
         arrow_msg_gen.scale.x = 0.1f;
         arrow_msg_gen.scale.y = 0.1f;

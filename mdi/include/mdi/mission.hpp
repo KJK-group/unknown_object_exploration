@@ -37,6 +37,8 @@ class Mission {
     auto drone_arm() -> bool;
     auto publish() -> void;
 
+    mdi_msgs::MissionStateStamped state;
+
    private:
     auto find_path(Eigen::Vector3f start, Eigen::Vector3f end) -> std::vector<Eigen::Vector3f>;
     auto state_cb(const mavros_msgs::State::ConstPtr& state) -> void;
@@ -63,7 +65,6 @@ class Mission {
     // msg instances
     mavros_msgs::State drone_state;
     nav_msgs::Odometry drone_odom;
-    mdi_msgs::MissionStateStamped state;
     mdi_msgs::PointNormStamped position_error;
 
     // points

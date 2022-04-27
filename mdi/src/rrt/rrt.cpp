@@ -323,7 +323,7 @@ auto RRT::insert_node_(const vec3& pos, node_t* parent) -> node_t& {
                     auto generator = [this, start = start, end = end] {
                         assert(start < end);
                         assert(0 <= start && start < nodes_.size());
-                        assert(0 <= end && end < nodes_.size());
+                        // assert(0 <= end && end < nodes_.size());
                         auto it = std::next(nodes_.begin(), start);
                         // the lambda needs to bo mutable because we want a different output for each invocation.
                         // Otherwise the same output will be generated.
