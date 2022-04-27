@@ -5,8 +5,10 @@
 	<arg name="map_resolution" value="0.5"/>
 	<arg name="frame_id" value="map"/>
 	<arg name="pointcloud_topic" value="/cloud"/>
+	<arg name="bt_file" value="$(dirname)/../simple_tree.bt"/>
 
-	<node pkg="octomap_server" type="octomap_server_node" name="octomap_server">
+
+	<node pkg="octomap_server" type="octomap_server_node" name="octomap_server" output="screen" args="$(arg bt_file)">
 		<param name="resolution" value="$(arg map_resolution)"/>
 		<param name="frame_id" type="string" value="$(arg frame_id)"/>
 		<param name="sensor_model/hit" value="0.8"/>

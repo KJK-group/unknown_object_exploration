@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<launch>
+	<arg name="node" value="rrt_service"/>
+	<arg name="package" value="mdi"/>
+
+	<include file="$(dirname)/octomap_server.launch"/>
+	<node pkg="$(arg package)" type="$(arg node)" name="$(arg node)" output="screen"/>
+	<node name="rviz" pkg="rviz" type="rviz" output="log" respawn="false" respawn_delay="0" args="-d $(dirname)/../rviz/octomap.rviz"/>
+</launch>

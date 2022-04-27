@@ -30,8 +30,7 @@ class Octomap final {
     };  // BBX
 
    public:  // FRIENDS -------------------------------------------------------------------------------------------------
-    friend std::ostream& operator<<(std::ostream& os, const Octomap& octomap);
-
+            // friend std::ostream& operator<<(std::ostream& os, const Octomap& octomap);
    public:  // CONSTRUCTORS --------------------------------------------------------------------------------------------
     Octomap(double resolution) : octree_(resolution) {}
     // Octomap(octree_type&& tree) : octree_(tree) {}
@@ -144,20 +143,20 @@ class Octomap final {
     }
 };  // Octomap
 
-std::ostream& operator<<(std::ostream& os, const Octomap& octomap) {
-    os << "octomap:\n";
-    os << "  resolution: " << octomap.resolution() << '\n';
-    os << "  bbx:" << '\n';
-    os << "    max:" << '\n';
-    os << "      x:" << '\n';
-    os << "      y:" << '\n';
-    os << "      z:" << '\n';
-    os << "    min:" << '\n';
-    os << "      x:" << '\n';
-    os << "      y:" << '\n';
-    os << "      z:" << '\n';
-
-    return os;
-}
+// std::ostream& operator<<(std::ostream& os, const Octomap& octomap) {
+// os << "octomap:\n";
+// os << "  resolution: " << octomap.resolution() << '\n';
+// os << "  bbx:" << '\n';
+// os << "    max:" << '\n';
+// os << "      x:" << '\n';
+// os << "      y:" << '\n';
+// os << "      z:" << '\n';
+// os << "    min:" << '\n';
+// os << "      x:" << '\n';
+// os << "      y:" << '\n';
+// os << "      z:" << '\n';
+//
+// return os;
+// }
 
 }  // namespace mdi

@@ -118,11 +118,28 @@ target_sources(
 
 target_sources(pid_controller PUBLIC src/transformlistener.cpp)
 
+add_library(rrt)
+target_sources(rrt PUBLIC src/rrt/rrt.cpp)
+target_link_libraries(rrt ${catkin_LIBRARIES} fmt::fmt-header-only
+                      kdtree-header-only)
+
+function(add_ros_dependencies target)
+  add_dependencies(${target} ${${PROJECT_NAME}_EXPORTED_TARGETS}
+                   ${catkin_EXPORTED_TARGETS})
+endfunction(add_ros_dependencies)
+
+add_executable(rrt_service src/nodes/rrt_service.cpp)
+add_ros_dependencies(rrt_service)
+target_sources(rrt_service PRIVATE src/rrt/rrt.cpp)
+target_compile_options(rrt_service PRIVATE -O2 -Wall)
+target_link_libraries(rrt_service ${catkin_LIBRARIES} fmt::fmt-header-only
+                      kdtree-header-only ${OCTOMAP_LIBRARIES})
+
 # add_executable(test_octomap test/octomap.test.cpp)
 # add_dependencies(test_octomap ${${PROJECT_NAME}_EXPORTED_TARGETS}
-#                  ${catkin_EXPORTED_TARGETS})
-# target_link_libraries(test_octomap ${catkin_LIBRARIES} ${OCTOMAP_LIBRARIES})
-# target_compile_options(test_octomap PUBLIC -O2)
+# ${catkin_EXPORTED_TARGETS}) target_link_libraries(test_octomap
+# ${catkin_LIBRARIES} ${OCTOMAP_LIBRARIES}) target_compile_options(test_octomap
+# PUBLIC -O2)
 # ##############################################################################
 # Install ##
 # ##############################################################################
