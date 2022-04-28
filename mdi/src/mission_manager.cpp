@@ -69,20 +69,21 @@ auto main(int argc, char** argv) -> int {
                 break;
             case mdi::Mission::HOME:
                 mission.drone_takeoff();
-                if (error.norm < 0.2) {
-                    mission.state.state = mdi::Mission::EXPLORATION;
-                }
+                // std::cout << "error.norm: " << error.norm << std::endl;
+                // ros::Duration(5).sleep();
+                // std::cout << "error.norm: " << error.norm << std::endl;
+                // if (error.norm < 0.2) {
+                //     mission.state.state = mdi::Mission::EXPLORATION;
+                // }
                 break;
             case mdi::Mission::EXPLORATION:
-                if (ros::Time::now() - previous_request_time_mode > ros::Duration(mdi::utils::REQUEST_TIMEOUT)) {
-                    success = mission.drone_set_mode();
-                    print = success ? "mode set success" : "mode set failure";
-                    std::cout << print << std::endl;
-                    previous_request_time_mode = ros::Time::now();
-                }
-                if (mission.get_drone_state().mode == "OFFBOARD") {
-                    mission.exploration_step();
-                }
+                // if (ros::Time::now() - previous_request_time_mode > ros::Duration(mdi::utils::REQUEST_TIMEOUT)) {
+                //     success = mission.drone_set_mode();
+                //     print = success ? "mode set success" : "mode set failure";
+                //     std::cout << print << std::endl;
+                //     previous_request_time_mode = ros::Time::now();
+                // }
+                mission.exploration_step();
                 break;
             case mdi::Mission::INSPECTION:
                 inspection_complete = true;

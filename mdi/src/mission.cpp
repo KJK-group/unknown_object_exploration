@@ -56,18 +56,22 @@ auto Mission::get_spline() -> BezierSpline { return spline; }
  * @return false if request is rejected or a takeoff procedure is in progress
  */
 auto Mission::drone_takeoff(float altitude) -> bool {
-    expected_position = Eigen::Vector3f(0, 0, altitude);
-    // std::cout << "expected_position.z(): " << expected_position.z() << std::endl;
-    publish();
-    // if (drone_state.mode != "AUTO.TAKEOFF") {
-    //     mavros_msgs::CommandTOL takeoff_msg;
-    //     takeoff_msg.request.altitude = (altitude == 0) ? home_position.z() : altitude;
+    ros::Duration(5).sleep();
+    auto altitude_reached = false;
+    start_time = ros::Time::now();
 
-    //     return (client_land.call(takeoff_msg)) ? true : false;
-    // } else {
-    //     std::cout << "Already in AUTO.TAKEOFF" << std::endl;
-    //     return false;
-    // }
+    while (ros::ok() && ! altitude_reached && ! (position_error.norm < 0.15)) {
+        delta_time = ros::Time::now() - start_time;
+        auto altitude_progress = delta_time.toSec() * velocity_target;
+        if (altitude_progress > altitude) {
+            altitude_progress = altitude;
+            altitude_reached = true;
+        }
+        state.state = EXPLORATION;
+        expected_position = Eigen::Vector3f(0, 0, altitude_progress);
+        publish();
+    }
+    return altitude_reached;
 }
 /**
  * @brief requests px4 to land through mavros
@@ -82,7 +86,7 @@ auto Mission::drone_land() -> bool {
 
         return (client_land.call(land_msg)) ? true : false;
     } else {
-        std::cout << "Already in AUTO.LAND" << std::endl;
+        // std::cout << "Already in AUTO.LAND" << std::endl;
         return false;
     }
 }
@@ -93,7 +97,7 @@ auto Mission::drone_set_mode(std::string mode) -> bool {
     if (drone_state.mode != mode) {
         return (client_mode.call(mode_msg) && mode_msg.response.mode_sent) ? true : false;
     } else {
-        std::cout << "Already in " << mode << std::endl;
+        // std::cout << "Already in " << mode << std::endl;
         return false;
     }
 }
@@ -104,7 +108,7 @@ auto Mission::drone_arm() -> bool {
     if (! drone_state.armed) {
         return (client_arm.call(srv)) ? true : false;
     } else {
-        std::cout << "Already armed" << std::endl;
+        // std::cout << "Already armed" << std::endl;
         return false;
     }
 }
@@ -240,7 +244,7 @@ auto Mission::exploration_step() -> bool {
     // std::endl;
 
     // std::cout << "before if" << std::endl;
-    if (step_count == 0 || remaining_distance < velocity_target * 2 && position_error.norm < velocity_target * 2) {
+    if (step_count == 0 || remaining_distance < velocity_target && position_error.norm < velocity_target) {
         // std::cout << "inside if" << std::endl;
         auto start = interest_points[path_start_idx++];
         auto end = interest_points[path_end_idx++];
