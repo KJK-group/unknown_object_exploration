@@ -1,6 +1,7 @@
 #ifndef _MDI_MISSION_MANAGER_HPP_
 #define _MDI_MISSION_MANAGER_HPP_
 
+#include <geometry_msgs/PoseStamped.h>
 #include <mavros_msgs/CommandBool.h>
 #include <mavros_msgs/CommandTOL.h>
 #include <mavros_msgs/SetMode.h>
@@ -21,10 +22,10 @@
 #include "mdi_msgs/PointNormStamped.h"
 
 namespace mdi {
-
+constexpr auto INITIAL_ALTITUDE = 5;
 class Mission {
    public:
-    Mission(ros::NodeHandle* nh, float velocity_target = 1, Eigen::Vector3f home = {0, 0, 5});
+    Mission(ros::NodeHandle* nh, float velocity_target = 1, Eigen::Vector3f home = {0, 0, INITIAL_ALTITUDE});
     enum state { PASSIVE, HOME, EXPLORATION, INSPECTION, LAND };
     static auto state_to_string(enum state s) -> std::string;
     auto add_interest_point(Eigen::Vector3f interest_point) -> void;
@@ -32,7 +33,7 @@ class Mission {
     auto get_drone_state() -> mavros_msgs::State;
     auto get_spline() -> BezierSpline;
     auto exploration_step() -> bool;
-    auto drone_takeoff(float altitude = 0) -> bool;
+    auto drone_takeoff(float altitude = INITIAL_ALTITUDE) -> bool;
     auto drone_land() -> bool;
     auto drone_set_mode(std::string mode = "OFFBOARD") -> bool;
     auto drone_arm() -> bool;
@@ -52,6 +53,7 @@ class Mission {
     // publishers
     ros::Publisher pub_mission_state;
     ros::Publisher pub_visualise;
+    ros::Publisher pub_setpoint;
 
     // subscribers
     ros::Subscriber sub_drone_state;
@@ -85,6 +87,7 @@ class Mission {
 
     // state
     int seq_state;
+    int seq_point;
     int step_count;
 };
 }  // namespace mdi

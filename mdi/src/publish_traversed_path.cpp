@@ -2,6 +2,7 @@
 #include <nav_msgs/Path.h>
 #include <ros/ros.h>
 
+#include "mdi/utils/utils.hpp"
 #include "mdi_msgs/MissionStateStamped.h"
 
 auto main(int argc, char* argv[]) -> int {
@@ -11,14 +12,12 @@ auto main(int argc, char* argv[]) -> int {
 
     auto path_est = nav_msgs::Path{};
     auto path_target = nav_msgs::Path{};
-    path_est.header.frame_id = "world_enu";
-    path_target.header.frame_id = "world_enu";
+    path_est.header.frame_id = mdi::utils::FRAME_WORLD;
+    path_target.header.frame_id = mdi::utils::FRAME_WORLD;
 
     auto sub_odom = nh.subscribe<geometry_msgs::PoseStamped>(
         "/mavros/local_position/pose", 10,
-        [&path_est](const geometry_msgs::PoseStamped::ConstPtr& msg) {
-            path_est.poses.push_back(*msg);
-        });
+        [&path_est](const geometry_msgs::PoseStamped::ConstPtr& msg) { path_est.poses.push_back(*msg); });
     auto sub_target = nh.subscribe<mdi_msgs::MissionStateStamped>(
         "/mdi/state", 10, [&path_target](const mdi_msgs::MissionStateStamped::ConstPtr& msg) {
             geometry_msgs::PoseStamped pose;
@@ -36,7 +35,7 @@ auto main(int argc, char* argv[]) -> int {
         msg.header.seq = seq;
         msg.header.stamp = ros::Time::now();
         publisher.publish(msg);
-        ROS_INFO("published path_est");
+        ROS_INFO("published path");
         ros::spinOnce();
         spin_rate.sleep();
         // path_est.poses.clear();

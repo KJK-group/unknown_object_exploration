@@ -1,7 +1,6 @@
 #include "mdi/rrt/rrt.hpp"
 
 #include <fmt/core.h>
-#include <ros/console.h>
 
 #include <algorithm>
 #include <cassert>
@@ -21,12 +20,10 @@
 #include <utility>
 #include <vector>
 
-#include "Eigen/src/Core/Matrix.h"
 #include "mdi/rrt/rrt_builder.hpp"
 #include "mdi/utils/eigen.hpp"
 #include "mdi/utils/random.hpp"
 #include "mdi/utils/rosparam.hpp"
-#include "ros/param.h"
 
 namespace mdi::rrt {
 

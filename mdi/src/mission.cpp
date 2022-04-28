@@ -2,7 +2,9 @@
 
 namespace mdi {
 Mission::Mission(ros::NodeHandle* nh, float velocity_target, Eigen::Vector3f home)
-    : seq_state(0),
+    : step_count(0),
+      seq_point(0),
+      seq_state(0),
       path_start_idx(0),
       path_end_idx(1),
       velocity_target(velocity_target),
@@ -10,6 +12,7 @@ Mission::Mission(ros::NodeHandle* nh, float velocity_target, Eigen::Vector3f hom
     // publishers
     pub_mission_state = nh->advertise<mdi_msgs::MissionStateStamped>("/mdi/state", utils::DEFAULT_QUEUE_SIZE);
     pub_visualise = nh->advertise<visualization_msgs::Marker>("/mdi/visualisation_marker", utils::DEFAULT_QUEUE_SIZE);
+    pub_setpoint = nh->advertise<geometry_msgs::PoseStamped>("/mavros/setpoint_local/local", utils::DEFAULT_QUEUE_SIZE);
 
     // subscribers
     sub_drone_state =
@@ -53,14 +56,18 @@ auto Mission::get_spline() -> BezierSpline { return spline; }
  * @return false if request is rejected or a takeoff procedure is in progress
  */
 auto Mission::drone_takeoff(float altitude) -> bool {
-    if (drone_state.mode != "AUTO.LAND") {
-        mavros_msgs::CommandTOL takeoff_msg;
-        takeoff_msg.request.altitude = (altitude == 0) ? home_position.z() : altitude;
+    expected_position = Eigen::Vector3f(0, 0, altitude);
+    // std::cout << "expected_position.z(): " << expected_position.z() << std::endl;
+    publish();
+    // if (drone_state.mode != "AUTO.TAKEOFF") {
+    //     mavros_msgs::CommandTOL takeoff_msg;
+    //     takeoff_msg.request.altitude = (altitude == 0) ? home_position.z() : altitude;
 
-        return (client_land.call(takeoff_msg)) ? true : false;
-    } else {
-        return false;
-    }
+    //     return (client_land.call(takeoff_msg)) ? true : false;
+    // } else {
+    //     std::cout << "Already in AUTO.TAKEOFF" << std::endl;
+    //     return false;
+    // }
 }
 /**
  * @brief requests px4 to land through mavros
@@ -75,6 +82,7 @@ auto Mission::drone_land() -> bool {
 
         return (client_land.call(land_msg)) ? true : false;
     } else {
+        std::cout << "Already in AUTO.LAND" << std::endl;
         return false;
     }
 }
@@ -85,6 +93,7 @@ auto Mission::drone_set_mode(std::string mode) -> bool {
     if (drone_state.mode != mode) {
         return (client_mode.call(mode_msg) && mode_msg.response.mode_sent) ? true : false;
     } else {
+        std::cout << "Already in " << mode << std::endl;
         return false;
     }
 }
@@ -95,6 +104,7 @@ auto Mission::drone_arm() -> bool {
     if (! drone_state.armed) {
         return (client_arm.call(srv)) ? true : false;
     } else {
+        std::cout << "Already armed" << std::endl;
         return false;
     }
 }
@@ -102,9 +112,17 @@ auto Mission::drone_arm() -> bool {
 auto Mission::publish() -> void {
     state.header.seq = seq_state++;
     state.header.stamp = ros::Time::now();
+    state.target.position.x = expected_position.x();
+    state.target.position.y = expected_position.y();
+    state.target.position.z = expected_position.z();
+    // std::cout << "state.target.position.x: " << state.target.position.x << std::endl;
+    // std::cout << "state.target.position.y: " << state.target.position.y << std::endl;
+    // std::cout << "state.target.position.z: " << state.target.position.z << std::endl;
+    pub_mission_state.publish(state);
 }
 
 auto Mission::find_path(Eigen::Vector3f start, Eigen::Vector3f end) -> std::vector<Eigen::Vector3f> {
+    // std::cout << "Finding path from " << start << " to " << end << std::endl;
     const auto goal_tolerance = 2;
     auto rrt = mdi::rrt::RRT::from_builder()
                    .probability_of_testing_full_path_from_new_node_to_goal(0)
@@ -122,16 +140,6 @@ auto Mission::find_path(Eigen::Vector3f start, Eigen::Vector3f end) -> std::vect
                              .color({0, 1, 0, 1})
                              .build();
     arrow_msg_gen.header.frame_id = utils::FRAME_WORLD;
-
-    rrt.register_cb_for_event_on_new_node_created([&](const auto& parent, const auto& new_node) {
-        // std::cout << GREEN << parent << "\n" << MAGENTA << new_node << RESET << std::endl;
-        auto msg = arrow_msg_gen({parent, new_node});
-        msg.color.r = 0.5;
-        msg.color.g = 1;
-        msg.color.b = 0.9;
-        msg.color.a = 1;
-        pub_visualise.publish(msg);
-    });
 
     auto sphere_msg_gen = mdi::utils::rviz::sphere_msg_gen{};
     sphere_msg_gen.header.frame_id = utils::FRAME_WORLD;
@@ -178,6 +186,8 @@ auto Mission::find_path(Eigen::Vector3f start, Eigen::Vector3f end) -> std::vect
         opt = rrt.run();
     }
 
+    // std::cout << rrt << std::endl;
+
     const auto path = *opt;
 
     // visualize result
@@ -200,34 +210,57 @@ auto Mission::find_path(Eigen::Vector3f start, Eigen::Vector3f end) -> std::vect
 }
 
 auto Mission::exploration_step() -> bool {
+    if (step_count == 0) {
+        // std::cout << "resetting time" << std::endl;
+        start_time = ros::Time::now();
+    }
     delta_time = ros::Time::now() - start_time;
+    // std::cout << mdi::utils::GREEN << "Exploration step at: " << delta_time << mdi::utils::RESET << std::endl;
+    // std::cout << "step_count: " << step_count << std::endl;
 
     if (path_end_idx > interest_points.size()) {
+        // std::cout << path_end_idx << std::endl;
+        // std::cout << interest_points.size() << std::endl;
         state.state = INSPECTION;
         return false;
     }
 
+    // std::cout << "Interest points:" << std::endl;
+    // for (auto& ip : interest_points) {
+    //     std::cout << ip << std::endl;
+    // }
+
+    // std::cout << "start_idx: " << path_start_idx << std::endl;
+    // std::cout << "end_idx:   " << path_end_idx << std::endl;
+
     auto distance = delta_time.toSec() * velocity_target;
     auto remaining_distance = spline.get_length() - distance;
+    // std::cout << mdi::utils::MAGENTA << "distance: " << distance << mdi::utils::RESET << std::endl;
+    // std::cout << mdi::utils::MAGENTA << "remaining_distance: " << remaining_distance << mdi::utils::RESET <<
+    // std::endl;
 
-    if (step_count == 0 || (remaining_distance < velocity_target * 2 && position_error.norm < velocity_target * 2)) {
+    // std::cout << "before if" << std::endl;
+    if (step_count == 0 || remaining_distance < velocity_target * 2 && position_error.norm < velocity_target * 2) {
+        // std::cout << "inside if" << std::endl;
         auto start = interest_points[path_start_idx++];
         auto end = interest_points[path_end_idx++];
         auto path = find_path(start, end);
+
+        // for (auto& p : path) {
+        //     // std::cout << p << std::endl;
+        // }
+
         spline = mdi::BezierSpline(path);
         start_time = ros::Time::now();
         delta_time = ros::Time::now() - start_time;
     }
+    // std::cout << "after if" << std::endl;
 
-    std::cout << mdi::utils::GREEN << "delta_time: " << delta_time << mdi::utils::RESET << std::endl;
+    // std::cout << mdi::utils::GREEN << "delta_time: " << delta_time << mdi::utils::RESET << std::endl;
 
     // control the drone along the spline path
     distance = delta_time.toSec() * velocity_target;
-    auto expected_pos = spline.get_point_at_distance(distance);
-
-    state.target.position.x = expected_pos.x();
-    state.target.position.y = expected_pos.y();
-    state.target.position.z = expected_pos.z();
+    expected_position = spline.get_point_at_distance(distance);
 
     publish();
 
