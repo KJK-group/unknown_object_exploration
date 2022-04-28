@@ -244,12 +244,14 @@ auto main(int argc, char* argv[]) -> int {
     const auto resolution = 0.1f;
     auto tree = octomap::OcTree(resolution);
 
-    const auto width = 10;
+    const auto width = 20;
+    const auto depth = 1;
+    const auto height = 25;
     // insert some measurements of occupied cells
 
-    for (float x = 2; x < width; x += resolution) {
-        for (float y = 2; y < width; y += resolution) {
-            for (float z = 0; z < width; z += resolution) {
+    for (float x = 5; x < width + 5; x += resolution) {
+        for (float y = 17; y < 17 + depth; y += resolution) {
+            for (float z = 0; z < height; z += resolution) {
                 // octomap::point3d endpoint((float)x * resolution * 1, (float)y * resolution * 1,
                 //   (float)z * resolution * 1);
                 tree.updateNode(x, y, z, true);
@@ -327,7 +329,7 @@ auto main(int argc, char* argv[]) -> int {
     cout << endl;
     // tree.getRayIntersection(const point3d& origin, const point3d& direction, const point3d& center,
     // point3d& intersection)
-    tree.writeBinary("simple_tree.bt");
+    tree.writeBinary("data/simple_tree.bt");
     cout << "wrote example file simple_tree.bt" << endl << endl;
     cout << "now you can use octovis to visualize: octovis simple_tree.bt" << endl;
     cout << "Hint: hit 'F'-key in viewer to see the freespace" << endl << endl;
