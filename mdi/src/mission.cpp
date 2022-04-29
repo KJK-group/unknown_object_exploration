@@ -34,7 +34,7 @@ Mission::Mission(ros::NodeHandle& nh, ros::Rate& rate, float velocity_target, Ei
     delta_time = ros::Duration(0);
     timeout_delta_time = ros::Duration(0);
 
-    timeout = ros::Duration(120);
+    timeout = ros::Duration(40);
 
     // state
     state.header.frame_id = mdi::utils::FRAME_WORLD;
@@ -42,8 +42,6 @@ Mission::Mission(ros::NodeHandle& nh, ros::Rate& rate, float velocity_target, Ei
     state.target.position.x = home_position.x();
     state.target.position.y = home_position.y();
     state.target.position.z = home_position.z();
-
-    timeout = ros::Duration(120);
 
     // path
     interest_points.push_back(home_position);
@@ -341,10 +339,14 @@ auto Mission::spline_step() -> bool {
     }
     delta_time = ros::Time::now() - start_time;
     auto distance = delta_time.toSec() * velocity_target;
+    auto remaining_distance = spline.get_length() - distance;
     expected_position = spline.get_point_at_distance(distance);
-    if (position_error.norm < velocity_target) {
+    if (remaining_distance < velocity_target && position_error.norm < velocity_target) {
+        std::cout << "end reached!" << std::endl;
         return true;
     }
+    publish();
+    step_count++;
     return false;
 }
 
@@ -354,7 +356,12 @@ auto Mission::go_home() -> void {
     spline = mdi::BezierSpline(path);
 
     auto end_reached = false;
-    while (ros::ok() && ! spline_step()) {
+    step_count = 0;
+    while (ros::ok() && ! end_reached) {
+        end_reached = spline_step();
+        std::cout << "step_count: " << step_count << std::endl;
+        ros::spinOnce();
+        rate.sleep();
     }
 }
 
