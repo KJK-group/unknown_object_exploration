@@ -11,6 +11,8 @@
 #include <visualization_msgs/Marker.h>
 
 #include <eigen3/Eigen/Dense>
+#include <limits>
+#include <optional>
 #include <utility>
 
 #include "mdi/bezier_spline.hpp"
@@ -46,11 +48,12 @@ class Mission {
 
    private:
     auto find_path(Eigen::Vector3f start, Eigen::Vector3f end) -> std::vector<Eigen::Vector3f>;
-
+    auto fit_spline(vector<Eigen::Vector3f> path) -> std::optional<BezierSpline>;
     auto drone_set_mode(std::string mode = "OFFBOARD") -> bool;
 
     auto go_home() -> void;
     auto spline_step() -> bool;
+    auto explore() -> bool;
     auto exploration_step() -> bool;
     auto publish() -> void;
 
@@ -95,7 +98,7 @@ class Mission {
     ros::Duration timeout;
 
     // path
-    mdi::BezierSpline spline;
+    BezierSpline spline;
     int waypoint_idx;
 
     float velocity_target;

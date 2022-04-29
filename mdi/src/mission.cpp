@@ -121,6 +121,7 @@ auto Mission::drone_takeoff(float altitude) -> bool {
  * @return false if request is rejected
  */
 auto Mission::drone_land() -> bool {
+    std::cout << "Landing drone" << std::endl;
     auto previous_request_time = ros::Time(0);
     auto success = false;
 
@@ -269,6 +270,25 @@ auto Mission::find_path(Eigen::Vector3f start, Eigen::Vector3f end) -> std::vect
     return path;
 }
 
+auto Mission::fit_spline(vector<Eigen::Vector3f> path) -> std::optional<BezierSpline> {
+    std::cout << "found path" << std::endl;
+    for (auto& p : path) {
+        std::cout << p << std::endl;
+    }
+    if (path.size() > 1) {
+        auto valid = false;
+        for (int p = 1; p < path.size(); ++p) {
+            if ((path[0] - path[1]).norm() > std::numeric_limits<float>::epsilon()) {
+                valid = true;
+            }
+        }
+        if (valid) {
+            return std::optional<BezierSpline>{BezierSpline(path)};
+        }
+    }
+    return std::nullopt;
+}
+
 auto Mission::exploration_step() -> bool {
     auto success = true;
     if (step_count == 0) {
@@ -294,7 +314,8 @@ auto Mission::exploration_step() -> bool {
     // std::endl;
 
     // std::cout << "before if" << std::endl;
-    if (step_count == 0 || (remaining_distance < velocity_target && position_error.norm < velocity_target)) {
+    if (step_count == 0 || (remaining_distance < utils::SMALL_DISTANCE_TOLERANCE * 5 &&
+                            position_error.norm < utils::SMALL_DISTANCE_TOLERANCE * 5)) {
         // std::cout << "inside if" << std::endl;
         if (waypoint_idx >= interest_points.size()) {
             // std::cout << path_end_idx << std::endl;
@@ -311,7 +332,11 @@ auto Mission::exploration_step() -> bool {
             //     // std::cout << p << std::endl;
             // }
 
-            spline = mdi::BezierSpline(path);
+            if (auto spline_opt = fit_spline(path)) {
+                spline = *spline_opt;
+            } else {
+                success = false;
+            }
             start_time = ros::Time::now();
             delta_time = ros::Time::now() - start_time;
             waypoint_idx++;
@@ -322,12 +347,15 @@ auto Mission::exploration_step() -> bool {
     // std::cout << mdi::utils::GREEN << "delta_time: " << delta_time << mdi::utils::RESET << std::endl;
 
     // control the drone along the spline path
-    distance = delta_time.toSec() * velocity_target;
-    expected_position = spline.get_point_at_distance(distance);
+    // distance = delta_time.toSec() * velocity_target;
+    // expected_position = spline.get_point_at_distance(distance);
 
-    publish();
+    // publish();
+    if (success) {
+        spline_step();
+    }
 
-    step_count++;
+    // step_count++;
     return success;
 }
 
@@ -341,7 +369,8 @@ auto Mission::spline_step() -> bool {
     auto distance = delta_time.toSec() * velocity_target;
     auto remaining_distance = spline.get_length() - distance;
     expected_position = spline.get_point_at_distance(distance);
-    if (remaining_distance < velocity_target && position_error.norm < velocity_target) {
+    if (remaining_distance < utils::DEFAULT_DISTANCE_TOLERANCE * 3 &&
+        position_error.norm < utils::DEFAULT_DISTANCE_TOLERANCE * 3) {
         std::cout << "end reached!" << std::endl;
         return true;
     }
@@ -351,11 +380,19 @@ auto Mission::spline_step() -> bool {
 }
 
 auto Mission::go_home() -> void {
+    std::cout << "Going to home position" << std::endl;
     auto start = interest_points[waypoint_idx - 1];
     auto path = find_path(start, home_position);
-    spline = mdi::BezierSpline(path);
 
     auto end_reached = false;
+
+    if (auto spline_opt = fit_spline(path)) {
+        std::cout << "fitting spline" << std::endl;
+        spline = *spline_opt;
+    } else {
+        end_reached = true;
+    }
+
     step_count = 0;
     while (ros::ok() && ! end_reached) {
         end_reached = spline_step();
@@ -368,7 +405,7 @@ auto Mission::go_home() -> void {
 auto Mission::run_step() -> void {
     timeout_delta_time = ros::Time::now() - timeout_start_time;
     if (timeout_delta_time > timeout) {
-        std::cout << "Mission timeout reached" << std::endl;
+        std::cout << "Mission timed out" << std::endl;
         end();
     }
 
@@ -382,6 +419,7 @@ auto Mission::run_step() -> void {
             if (inspection_complete) {
                 go_home();
                 set_state(LAND);
+                std::cout << "state: " << state_to_string((enum state)state.state) << std::endl;
             } else {
                 drone_takeoff();
                 set_state(EXPLORATION);
@@ -389,13 +427,14 @@ auto Mission::run_step() -> void {
             break;
         case EXPLORATION:
             if (! exploration_step()) {
-                std::cout << timeout_delta_time << "waiting for new interest point..." << std::endl;
+                std::cout << timeout_delta_time.toSec() << " Waiting for new interest point..." << std::endl;
             }
             break;
         case INSPECTION:
             end();
             break;
         case LAND:
+            std::cout << "LANDING?" << std::endl;
             drone_land();
             break;
         default:
@@ -414,6 +453,9 @@ auto Mission::run() -> void {
 
 auto Mission::end() -> void {
     inspection_complete = true;
+    if (state.state == LAND) {
+        return;
+    }
     state.state = HOME;
 }
 

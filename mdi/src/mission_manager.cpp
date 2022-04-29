@@ -37,7 +37,7 @@ auto main(int argc, char** argv) -> int {
     // }
 
     auto idx = 0;
-    mission.add_interest_point(interest_points[idx++]);
+    // mission.add_interest_point(interest_points[idx++]);
 
     // wait for FCU connection
     while (ros::ok() && ! mission.get_drone_state().connected) {
@@ -59,7 +59,7 @@ auto main(int argc, char** argv) -> int {
 
     while (ros::ok()) {
         delta_time = ros::Time::now() - start_time;
-        if (delta_time.toSec() > 40 && ! point_added) {
+        if (delta_time.toSec() > 35 && (idx < 1)) {
             mission.add_interest_point(interest_points[idx++]);
             start_time = ros::Time::now();
         }
