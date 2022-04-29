@@ -19,9 +19,10 @@
 #include "ros/service_client.h"
 #include "ros/service_server.h"
 
+using namespace std::string_literals;
+
 using mdi::Octomap;
 
-std::unique_ptr<mdi::Octomap> voxelgrid{};
 // use ptr to forward declare cause otherwise we have to call their constructor,
 // which is not allowed before ros::init(...)
 std::unique_ptr<ros::ServiceClient> clear_octomap_client, clear_region_of_octomap_client, get_octomap_client;
@@ -85,6 +86,7 @@ auto rrt_find_path_handler(mdi_msgs::RrtFindPath::Request& request, mdi_msgs::Rr
     auto success = false;
 
     auto octomap_ptr = call_get_octomap();
+
     if (octomap_ptr != nullptr) {
         rrt.assign_octomap(octomap_ptr);
 
@@ -107,41 +109,29 @@ auto rrt_find_path_handler(mdi_msgs::RrtFindPath::Request& request, mdi_msgs::Rr
     return success;
 }
 
-// auto octomap_cb(const octomap_msgs::GetOctomap::ConstPtr& msg) -> void {
-//     // TODO: add flag to not update map while finding path.
-//     if (voxelgrid == nullptr) {
-//     }
-// }
-
 auto main(int argc, char* argv[]) -> int {
-    const auto name_of_node = "rrt_service";
+    const auto name_of_node = "rrt_service"s;
 
     ros::init(argc, argv, name_of_node);
     auto nh = ros::NodeHandle();
 
     get_octomap_client = std::make_unique<ros::ServiceClient>([&] {
-        const auto service_name = "/octomap_binary";
+        const auto service_name = "/octomap_binary"s;
         return nh.serviceClient<octomap_msgs::GetOctomap>(service_name);
     }());
 
     clear_octomap_client = std::make_unique<ros::ServiceClient>([&] {
-        const auto service_name = "/octomap_server/reset";
+        const auto service_name = "/octomap_server/reset"s;
         return nh.serviceClient<std_srvs::Empty>(service_name);
     }());
 
     clear_region_of_octomap_client = std::make_unique<ros::ServiceClient>([&] {
-        const auto service_name = "/octomap_server/clear_bbx";
+        const auto service_name = "/octomap_server/clear_bbx"s;
         return nh.serviceClient<octomap_msgs::BoundingBoxQuery>(service_name);
     }());
 
-    // auto octomap_server = [&] {
-    //     const auto topic_name = "/octomap_binary";
-    //     const auto queue_size = 10;
-    //     return nh.subscribe<octomap_msgs::Octomap>(topic_name, queue_size, octomap_cb);
-    // }();
-
     auto service = [&] {
-        const auto url = "/rrt_service/find_path";
+        const auto url = "/rrt_service/find_path"s;
         return nh.advertiseService(url, rrt_find_path_handler);
     }();
 
