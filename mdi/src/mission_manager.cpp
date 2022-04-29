@@ -12,7 +12,7 @@ auto main(int argc, char** argv) -> int {
     // ros
     ros::init(argc, argv, "mdi_mission_state");
     auto nh = ros::NodeHandle();
-    ros::Rate rate(20.0);
+    ros::Rate rate(mdi::utils::DEFAULT_LOOP_RATE);
 
     // state
     auto exploration_complete = false;
@@ -31,10 +31,13 @@ auto main(int argc, char** argv) -> int {
     if (argc > 1) velocity_target = std::stof(argv[1]);
 
     // mission instance
-    auto mission = mdi::Mission(&nh, velocity_target);
-    for (auto& p : interest_points) {
-        mission.add_interest_point(p);
-    }
+    auto mission = mdi::Mission(nh, rate, velocity_target);
+    // for (auto& p : interest_points) {
+    //     mission.add_interest_point(p);
+    // }
+
+    mission.add_interest_point(interest_points[0]);
+    mission.add_interest_point(interest_points[interest_points.size() - 1]);
 
     // wait for FCU connection
     while (ros::ok() && ! mission.get_drone_state().connected) {
@@ -50,62 +53,21 @@ auto main(int argc, char** argv) -> int {
     auto success = false;
     std::string print;
 
-    // control loop
+    auto start_time = ros::Time::now();
+    ros::Duration delta_time;
+    auto point_added = false;
+
     while (ros::ok()) {
-        // request to set drone mode to OFFBOARD every 5 seconds until successful
-        if (ros::Time::now() - previous_request_time_mode > ros::Duration(mdi::utils::REQUEST_TIMEOUT)) {
-            mission.drone_set_mode();
-            previous_request_time_mode = ros::Time::now();
+        delta_time = ros::Time::now() - start_time;
+        if (delta_time.toSec() > 120 && ! point_added) {
+            mission.add_interest_point(interest_points[1]);
+            point_added = true;
         }
-        // request to arm throttle every 5 seconds until succesful
-        if (ros::Time::now() - previous_request_time_arm > ros::Duration(mdi::utils::REQUEST_TIMEOUT)) {
-            mission.drone_arm();
-            previous_request_time_arm = ros::Time::now();
-        }
-
-        switch (mission.state.state) {
-            case mdi::Mission::PASSIVE:
-                mission.state.state = mdi::Mission::HOME;
-                break;
-            case mdi::Mission::HOME:
-                mission.drone_takeoff();
-                // std::cout << "error.norm: " << error.norm << std::endl;
-                // ros::Duration(5).sleep();
-                // std::cout << "error.norm: " << error.norm << std::endl;
-                // if (error.norm < 0.2) {
-                //     mission.state.state = mdi::Mission::EXPLORATION;
-                // }
-                break;
-            case mdi::Mission::EXPLORATION:
-                // if (ros::Time::now() - previous_request_time_mode > ros::Duration(mdi::utils::REQUEST_TIMEOUT)) {
-                //     success = mission.drone_set_mode();
-                //     print = success ? "mode set success" : "mode set failure";
-                //     std::cout << print << std::endl;
-                //     previous_request_time_mode = ros::Time::now();
-                // }
-                mission.exploration_step();
-                break;
-            case mdi::Mission::INSPECTION:
-                inspection_complete = true;
-                mission.state.state = mdi::Mission::HOME;
-                break;
-            case mdi::Mission::LAND:
-                // request to land every 5 seconds until drone is landing
-                if (ros::Time::now() - previous_request_time_land > ros::Duration(mdi::utils::REQUEST_TIMEOUT)) {
-                    success = mission.drone_land();
-                    print = success ? "land success" : "land failure";
-                    std::cout << print << std::endl;
-                    previous_request_time_land = ros::Time::now();
-                }
-                // turn off this node
-                break;
-            default:
-                ROS_WARN_STREAM("Unknown state");
-                break;
-        }
-
+        mission.run_step();
         ros::spinOnce();
         rate.sleep();
     }
+    // mission.run();
+
     return 0;
 }

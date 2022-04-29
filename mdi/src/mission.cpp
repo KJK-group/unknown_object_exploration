@@ -1,30 +1,33 @@
 #include "mdi/mission.hpp"
 
 namespace mdi {
-Mission::Mission(ros::NodeHandle* nh, float velocity_target, Eigen::Vector3f home)
-    : step_count(0),
+Mission::Mission(ros::NodeHandle& nh, ros::Rate& rate, float velocity_target, Eigen::Vector3f home)
+    : inspection_complete(false),
+      exploration_complete(false),
+      step_count(0),
       seq_point(0),
       seq_state(0),
       path_start_idx(0),
       path_end_idx(1),
       velocity_target(velocity_target),
+      rate(rate),
       home_position(std::move(home)) {
     // publishers
-    pub_mission_state = nh->advertise<mdi_msgs::MissionStateStamped>("/mdi/state", utils::DEFAULT_QUEUE_SIZE);
-    pub_visualise = nh->advertise<visualization_msgs::Marker>("/mdi/visualisation_marker", utils::DEFAULT_QUEUE_SIZE);
-    pub_setpoint = nh->advertise<geometry_msgs::PoseStamped>("/mavros/setpoint_local/local", utils::DEFAULT_QUEUE_SIZE);
+    pub_mission_state = nh.advertise<mdi_msgs::MissionStateStamped>("/mdi/state", utils::DEFAULT_QUEUE_SIZE);
+    pub_visualise = nh.advertise<visualization_msgs::Marker>("/mdi/visualisation_marker", utils::DEFAULT_QUEUE_SIZE);
+    pub_setpoint = nh.advertise<geometry_msgs::PoseStamped>("/mavros/setpoint_local/local", utils::DEFAULT_QUEUE_SIZE);
 
     // subscribers
     sub_drone_state =
-        nh->subscribe<mavros_msgs::State>("/mavros/state", utils::DEFAULT_QUEUE_SIZE, &Mission::state_cb, this);
+        nh.subscribe<mavros_msgs::State>("/mavros/state", utils::DEFAULT_QUEUE_SIZE, &Mission::state_cb, this);
     sub_position_error =
-        nh->subscribe<mdi_msgs::PointNormStamped>("/mdi/error", utils::DEFAULT_QUEUE_SIZE, &Mission::error_cb, this);
+        nh.subscribe<mdi_msgs::PointNormStamped>("/mdi/error", utils::DEFAULT_QUEUE_SIZE, &Mission::error_cb, this);
 
     // services
-    client_arm = nh->serviceClient<mavros_msgs::CommandBool>("/mavros/cmd/arming");
-    client_mode = nh->serviceClient<mavros_msgs::SetMode>("/mavros/set_mode");
-    client_land = nh->serviceClient<mavros_msgs::CommandTOL>("/mavros/cmd/land");
-    client_land = nh->serviceClient<mavros_msgs::CommandTOL>("/mavros/cmd/takeoff");
+    client_arm = nh.serviceClient<mavros_msgs::CommandBool>("/mavros/cmd/arming");
+    client_mode = nh.serviceClient<mavros_msgs::SetMode>("/mavros/set_mode");
+    client_land = nh.serviceClient<mavros_msgs::CommandTOL>("/mavros/cmd/land");
+    client_takeoff = nh.serviceClient<mavros_msgs::CommandTOL>("/mavros/cmd/takeoff");
 
     // time
     start_time = ros::Time::now();
@@ -43,10 +46,17 @@ Mission::Mission(ros::NodeHandle* nh, float velocity_target, Eigen::Vector3f hom
 
 auto Mission::state_cb(const mavros_msgs::State::ConstPtr& state) -> void { drone_state = *state; }
 auto Mission::error_cb(const mdi_msgs::PointNormStamped::ConstPtr& error) -> void { position_error = *error; }
+auto Mission::odom_cb(const nav_msgs::Odometry::ConstPtr& odom) -> void { drone_odom = *odom; }
 
 auto Mission::add_interest_point(Eigen::Vector3f interest_point) -> void { interest_points.push_back(interest_point); }
 auto Mission::get_drone_state() -> mavros_msgs::State { return drone_state; }
 auto Mission::get_spline() -> BezierSpline { return spline; }
+
+auto Mission::set_state(enum state s) -> void {
+    state.state = s;
+    publish();
+}
+auto Mission::get_state() -> enum state { return (enum state)state.state; }
 
 /**
  * @brief requests px4 to takeoff through mavros
@@ -56,21 +66,47 @@ auto Mission::get_spline() -> BezierSpline { return spline; }
  * @return false if request is rejected or a takeoff procedure is in progress
  */
 auto Mission::drone_takeoff(float altitude) -> bool {
-    ros::Duration(5).sleep();
+    // if (drone_state.mode != "AUTO.TAKEOFF") {
+    //     mavros_msgs::CommandTOL takeoff_msg;
+    //     takeoff_msg.request.altitude = home_position.z();
+
+    //     return (client_takeoff.call(takeoff_msg)) ? true : false;
+    // } else {
+    //     // std::cout << "Already in AUTO.LAND" << std::endl;
+    //     return false;
+    // }
+    ros::Duration(2).sleep();
+    while (ros::ok() && position_error.norm > utils::SMALL_DISTANCE_TOLERANCE) {
+        expected_position = Eigen::Vector3f(0, 0, utils::DEFAULT_DISTANCE_TOLERANCE);
+        publish();
+        ros::spinOnce();
+        rate.sleep();
+    }
+
     auto altitude_reached = false;
     start_time = ros::Time::now();
 
-    while (ros::ok() && ! altitude_reached && ! (position_error.norm < 0.15)) {
+    while (ros::ok() && ! altitude_reached) {
         delta_time = ros::Time::now() - start_time;
         auto altitude_progress = delta_time.toSec() * velocity_target;
         if (altitude_progress > altitude) {
             altitude_progress = altitude;
             altitude_reached = true;
         }
-        state.state = EXPLORATION;
         expected_position = Eigen::Vector3f(0, 0, altitude_progress);
         publish();
+        ros::spinOnce();
+        rate.sleep();
     }
+
+    while (ros::ok() && position_error.norm > utils::DEFAULT_DISTANCE_TOLERANCE) {
+        publish();
+        ros::spinOnce();
+        rate.sleep();
+    }
+
+    state.state = EXPLORATION;
+
     return altitude_reached;
 }
 /**
@@ -80,37 +116,50 @@ auto Mission::drone_takeoff(float altitude) -> bool {
  * @return false if request is rejected
  */
 auto Mission::drone_land() -> bool {
-    if (drone_state.mode != "AUTO.LAND") {
-        mavros_msgs::CommandTOL land_msg;
-        land_msg.request.altitude = 0;
+    auto previous_request_time = ros::Time(0);
+    auto success = false;
 
-        return (client_land.call(land_msg)) ? true : false;
-    } else {
-        // std::cout << "Already in AUTO.LAND" << std::endl;
-        return false;
+    state.state = LAND;
+    mavros_msgs::CommandTOL land_msg;
+
+    while (ros::ok() && drone_state.mode != "AUTO.LAND") {
+        success = (client_land.call(land_msg)) ? true : false;
+        publish();
+        ros::spinOnce();
+        rate.sleep();
     }
+
+    return success;
 }
 auto Mission::drone_set_mode(std::string mode) -> bool {
+    auto previous_request_time = ros::Time(0);
+    auto success = false;
+
     mavros_msgs::SetMode mode_msg{};
     mode_msg.request.custom_mode = mode;
 
-    if (drone_state.mode != mode) {
-        return (client_mode.call(mode_msg) && mode_msg.response.mode_sent) ? true : false;
-    } else {
-        // std::cout << "Already in " << mode << std::endl;
-        return false;
+    while (ros::ok() && drone_state.mode != mode) {
+        success = (client_mode.call(mode_msg) && mode_msg.response.mode_sent) ? true : false;
+        publish();
+        ros::spinOnce();
+        rate.sleep();
     }
+    return success;
 }
 auto Mission::drone_arm() -> bool {
+    auto previous_request_time = ros::Time(0);
+    auto success = false;
+
     mavros_msgs::CommandBool srv{};
     srv.request.value = true;
 
-    if (! drone_state.armed) {
-        return (client_arm.call(srv)) ? true : false;
-    } else {
-        // std::cout << "Already armed" << std::endl;
-        return false;
+    while (ros::ok() && ! drone_state.armed) {
+        success = (client_arm.call(srv)) ? true : false;
+        publish();
+        ros::spinOnce();
+        rate.sleep();
     }
+    return success;
 }
 
 auto Mission::publish() -> void {
@@ -188,6 +237,8 @@ auto Mission::find_path(Eigen::Vector3f start, Eigen::Vector3f end) -> std::vect
     while (! opt) {
         rrt.clear();
         opt = rrt.run();
+        ros::spinOnce();
+        rate.sleep();
     }
 
     // std::cout << rrt << std::endl;
@@ -216,6 +267,8 @@ auto Mission::find_path(Eigen::Vector3f start, Eigen::Vector3f end) -> std::vect
 auto Mission::exploration_step() -> bool {
     if (step_count == 0) {
         // std::cout << "resetting time" << std::endl;
+        path_start_idx = 0;
+        path_end_idx = 1;
         start_time = ros::Time::now();
     }
     delta_time = ros::Time::now() - start_time;
@@ -225,7 +278,8 @@ auto Mission::exploration_step() -> bool {
     if (path_end_idx > interest_points.size()) {
         // std::cout << path_end_idx << std::endl;
         // std::cout << interest_points.size() << std::endl;
-        state.state = INSPECTION;
+        // state.state = INSPECTION;
+        ros::Duration(1).sleep();
         return false;
     }
 
@@ -270,6 +324,53 @@ auto Mission::exploration_step() -> bool {
 
     step_count++;
     return true;
+}
+
+auto Mission::go_home() -> void {
+    auto start = interest_points[path_end_idx];
+    auto path = find_path(start, home_position);
+    spline = mdi::BezierSpline(path);
+}
+
+auto Mission::run_step() -> void {
+    switch (state.state) {
+        case PASSIVE:
+            drone_set_mode();
+            drone_arm();
+            set_state(HOME);
+            break;
+        case HOME:
+            if (inspection_complete) {
+                go_home();
+                set_state(LAND);
+            } else {
+                drone_takeoff();
+            }
+            break;
+        case EXPLORATION:
+            if (! exploration_step()) {
+                std::cout << "waiting for new interest point..." << std::endl;
+            }
+            break;
+        case INSPECTION:
+            inspection_complete = true;
+            set_state(HOME);
+            break;
+        case LAND:
+            drone_land();
+            break;
+        default:
+            ROS_WARN_STREAM("Unknown state");
+            break;
+    }
+}
+
+auto Mission::run() -> void {
+    while (ros::ok()) {
+        run_step();
+        ros::spinOnce();
+        rate.sleep();
+    }
 }
 
 auto Mission::state_to_string(enum state s) -> std::string {

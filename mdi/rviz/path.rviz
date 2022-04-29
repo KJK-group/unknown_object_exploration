@@ -6,7 +6,6 @@ Panels:
       Expanded:
         - /Global Options1
         - /Grid1
-        - /TF1
         - /TF1/Frames1
         - /Path1
         - /Path2
@@ -165,16 +164,7 @@ Visualization Manager:
       Marker Topic: /mdi/visualisation_marker
       Name: Marker
       Namespaces:
-        arrow/1650964016: true
-        arrow/1650964031: true
-        arrow/1650964032: true
-        arrow/1650964050: true
-        arrow/1650964051: true
-        sphere/1650964016: true
-        sphere/1650964031: true
-        sphere/1650964032: true
-        sphere/1650964050: true
-        sphere/1650964051: true
+        {}
       Queue Size: 100
       Value: true
   Enabled: true

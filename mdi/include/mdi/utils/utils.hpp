@@ -11,6 +11,10 @@ constexpr auto DEFAULT_QUEUE_SIZE = 10;
 constexpr auto FRAME_WORLD = "world_enu";          // world/global frame
 constexpr auto FRAME_BODY = "PX4/odom_local_ned";  // drone body frame
 constexpr auto REQUEST_TIMEOUT = 5;
+constexpr auto SMALL_DISTANCE_TOLERANCE = 0.1;
+constexpr auto DEFAULT_DISTANCE_TOLERANCE = 0.15;
+constexpr auto LARGE_DISTANCE_TOLERANCE = 0.2;
+constexpr auto DEFAULT_LOOP_RATE = 10;
 // escape codes
 constexpr auto MAGENTA = "\u001b[35m";
 constexpr auto GREEN = "\u001b[32m";

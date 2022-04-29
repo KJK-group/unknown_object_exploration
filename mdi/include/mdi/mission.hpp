@@ -20,12 +20,14 @@
 #include "mdi/utils/utils.hpp"
 #include "mdi_msgs/MissionStateStamped.h"
 #include "mdi_msgs/PointNormStamped.h"
+#include "nav_msgs/Odometry.h"
 
 namespace mdi {
 constexpr auto INITIAL_ALTITUDE = 5;
 class Mission {
    public:
-    Mission(ros::NodeHandle* nh, float velocity_target = 1, Eigen::Vector3f home = {0, 0, INITIAL_ALTITUDE});
+    Mission(ros::NodeHandle& nh, ros::Rate& rate, float velocity_target = 1,
+            Eigen::Vector3f home = {0, 0, INITIAL_ALTITUDE});
     enum state { PASSIVE, HOME, EXPLORATION, INSPECTION, LAND };
     static auto state_to_string(enum state s) -> std::string;
     auto add_interest_point(Eigen::Vector3f interest_point) -> void;
@@ -38,13 +40,21 @@ class Mission {
     auto drone_set_mode(std::string mode = "OFFBOARD") -> bool;
     auto drone_arm() -> bool;
     auto publish() -> void;
+    auto run() -> void;
+    auto run_step() -> void;
 
-    mdi_msgs::MissionStateStamped state;
+    auto set_state(state state) -> void;
+    auto get_state() -> state;
 
    private:
     auto find_path(Eigen::Vector3f start, Eigen::Vector3f end) -> std::vector<Eigen::Vector3f>;
+    auto go_home() -> void;
     auto state_cb(const mavros_msgs::State::ConstPtr& state) -> void;
     auto error_cb(const mdi_msgs::PointNormStamped::ConstPtr& error) -> void;
+    auto odom_cb(const nav_msgs::Odometry::ConstPtr& odom) -> void;
+
+    ros::Rate& rate;
+    mdi_msgs::MissionStateStamped state;
 
     vector<Eigen::Vector3f> interest_points;
 
@@ -89,6 +99,8 @@ class Mission {
     int seq_state;
     int seq_point;
     int step_count;
+    bool inspection_complete;
+    bool exploration_complete;
 };
 }  // namespace mdi
 #endif  // _MDI_MISSION_MANAGER_HPP_

@@ -31,3 +31,4 @@ kill_airsim() {
     fi
 }
 trap kill_airsim SIGINT
+trap kill_airsim EXIT
