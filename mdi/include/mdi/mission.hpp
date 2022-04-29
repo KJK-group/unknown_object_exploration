@@ -34,21 +34,26 @@ class Mission {
 
     auto get_drone_state() -> mavros_msgs::State;
     auto get_spline() -> BezierSpline;
-    auto exploration_step() -> bool;
     auto drone_takeoff(float altitude = INITIAL_ALTITUDE) -> bool;
     auto drone_land() -> bool;
-    auto drone_set_mode(std::string mode = "OFFBOARD") -> bool;
     auto drone_arm() -> bool;
-    auto publish() -> void;
     auto run() -> void;
     auto run_step() -> void;
+    auto end() -> void;
 
     auto set_state(state state) -> void;
     auto get_state() -> state;
 
    private:
     auto find_path(Eigen::Vector3f start, Eigen::Vector3f end) -> std::vector<Eigen::Vector3f>;
+
+    auto drone_set_mode(std::string mode = "OFFBOARD") -> bool;
+
     auto go_home() -> void;
+    auto spline_step() -> bool;
+    auto exploration_step() -> bool;
+    auto publish() -> void;
+
     auto state_cb(const mavros_msgs::State::ConstPtr& state) -> void;
     auto error_cb(const mdi_msgs::PointNormStamped::ConstPtr& error) -> void;
     auto odom_cb(const nav_msgs::Odometry::ConstPtr& odom) -> void;
@@ -57,8 +62,6 @@ class Mission {
     mdi_msgs::MissionStateStamped state;
 
     vector<Eigen::Vector3f> interest_points;
-
-    // ros::NodeHandle& node_handle;
 
     // publishers
     ros::Publisher pub_mission_state;
@@ -86,12 +89,14 @@ class Mission {
 
     // time
     ros::Time start_time;
+    ros::Time timeout_start_time;
     ros::Duration delta_time;
+    ros::Duration timeout_delta_time;
+    ros::Duration timeout;
 
     // path
     mdi::BezierSpline spline;
-    int path_start_idx;
-    int path_end_idx;
+    int waypoint_idx;
 
     float velocity_target;
 
