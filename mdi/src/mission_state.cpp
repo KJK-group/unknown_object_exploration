@@ -17,9 +17,10 @@
 #include "mdi/rrt/rrt_builder.hpp"
 #include "mdi/utils/rviz/rviz.hpp"
 #include "mdi/utils/transformlistener.hpp"
+#include "mdi/utils/utils.hpp"
 #include "mdi_msgs/MissionStateStamped.h"
 #include "mdi_msgs/PointNormStamped.h"
-#include "ros/init.h"
+#include "mdi_msgs/RrtFindPath.h"
 
 constexpr auto TOLERANCE_DISTANCE = 0.1;
 constexpr auto TARGET_VELOCITY = 1.f;              // move drone at TARGET_VELOCITY m/s
@@ -95,6 +96,7 @@ ros::Subscriber sub_error;
 ros::ServiceClient client_arm;
 ros::ServiceClient client_mode;
 ros::ServiceClient client_land;
+ros::ServiceClient client_rrt;
 
 // time
 ros::Time start_time;
@@ -107,19 +109,35 @@ mdi::BezierSpline spline;
 
 // Points of interest
 auto interest_points = std::vector<Eigen::Vector3f>{
-    Eigen::Vector3f(0, 0, 5),   Eigen::Vector3f(10, 10, 7),  Eigen::Vector3f(18, 9, 15), Eigen::Vector3f(20, 25, 20),
+    Eigen::Vector3f(0, 0, 5),   Eigen::Vector3f(12, 12, 7),  Eigen::Vector3f(18, 9, 15), Eigen::Vector3f(20, 25, 20),
     Eigen::Vector3f(7, 21, 13), Eigen::Vector3f(10, 10, 17), Eigen::Vector3f(0, 0, 5)};
 
 auto find_path(Eigen::Vector3f start, Eigen::Vector3f end) -> std::vector<Eigen::Vector3f> {
+    std::cout << "GOERJGEORJGERGOERGJ" << std::endl;
     const auto goal_tolerance = 2;
-    auto rrt = mdi::rrt::RRT::from_builder()
-                   .probability_of_testing_full_path_from_new_node_to_goal(0)
-                   .goal_bias(0.7)
-                   .max_dist_goal_tolerance(goal_tolerance)
-                   .start_and_goal_position(start, end)
-                   .max_iterations(10000)
-                   .step_size(2)
-                   .build();
+    auto rrt_msg = mdi_msgs::RrtFindPath{};
+    rrt_msg.request.probability_of_testing_full_path_from_new_node_to_goal = 0;
+    rrt_msg.request.goal_bias = 0.7;
+    rrt_msg.request.goal_tolerance = goal_tolerance;
+    rrt_msg.request.start.x = start.x();
+    rrt_msg.request.start.y = start.y();
+    rrt_msg.request.start.z = start.z();
+    rrt_msg.request.goal.x = end.x();
+    rrt_msg.request.goal.y = end.y();
+    rrt_msg.request.goal.z = end.z();
+    rrt_msg.request.max_iterations = 10000;
+    rrt_msg.request.step_size = 2;
+
+    std::vector<Eigen::Vector3f> path;
+    if (client_rrt.call(rrt_msg)) {
+        auto& waypoints = rrt_msg.response.waypoints;
+        // path = std::vector<Eigen::Vector3f>(waypoints.size());
+        std::cout << "before for loop" << std::endl;
+        for (auto& wp : waypoints) {
+            std::cout << wp << std::endl;
+            path.emplace_back(wp.x, wp.y, wp.z);
+        }
+    }
 
     auto arrow_msg_gen = mdi::utils::rviz::arrow_msg_gen::builder()
                              .arrow_head_width(0.05f)
@@ -127,17 +145,7 @@ auto find_path(Eigen::Vector3f start, Eigen::Vector3f end) -> std::vector<Eigen:
                              .arrow_width(0.05f)
                              .color({0, 1, 0, 1})
                              .build();
-    arrow_msg_gen.header.frame_id = "world_enu";
-
-    // rrt.register_cb_for_event_on_new_node_created([&](const auto& parent, const auto& new_node) {
-    //     // std::cout << GREEN << parent << "\n" << MAGENTA << new_node << RESET << std::endl;
-    //     auto msg = arrow_msg_gen({parent, new_node});
-    //     msg.color.r = 0.5;
-    //     msg.color.g = 1;
-    //     msg.color.b = 0.9;
-    //     msg.color.a = 1;
-    //     pub_visualize_rrt.publish(msg);
-    // });
+    arrow_msg_gen.header.frame_id = mdi::utils::FRAME_WORLD;
 
     auto sphere_msg_gen = mdi::utils::rviz::sphere_msg_gen{};
     sphere_msg_gen.header.frame_id = "world_enu";
@@ -176,19 +184,6 @@ auto find_path(Eigen::Vector3f start, Eigen::Vector3f end) -> std::vector<Eigen:
     msg.color.b = 1.f;
     msg.color.a = 0.2f;
     pub_visualize_rrt.publish(msg);
-
-    // ensure finding a path
-    auto opt = rrt.run();
-    while (! opt) {
-        rrt.clear();
-        opt = rrt.run();
-    }
-
-    const auto path = *opt;
-    spline = mdi::BezierSpline(path);
-
-    std::cout << "[DEBUG] " << __FILE__ << ":" << __LINE__ << " "
-              << " found a solution" << '\n';
 
     // visualize result
     arrow_msg_gen.color.r = 0.0f;
@@ -277,6 +272,7 @@ auto main(int argc, char** argv) -> int {
     client_mode = nh.serviceClient<mavros_msgs::SetMode>("/mavros/set_mode");
     // land service client
     client_land = nh.serviceClient<mavros_msgs::CommandTOL>("/mavros/cmd/land");
+    client_rrt = nh.serviceClient<mdi_msgs::RrtFindPath>("/mdi/rrt_service/find_path");
 
     //----------------------------------------------------------------------------------------------
     // wait for FCU connection

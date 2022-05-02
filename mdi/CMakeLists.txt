@@ -23,6 +23,7 @@ find_package(
              nav_msgs
              mavros_msgs
              octomap_msgs
+             octomap_ros
              mdi_msgs
              roscpp
              tf2
@@ -139,16 +140,11 @@ target_link_libraries(rrt_service ${catkin_LIBRARIES} fmt::fmt-header-only
 
 add_executable(octomap_test test/octomap.test.cpp)
 add_ros_dependencies(octomap_test)
-# target_sources(octomap_test PRIVATE src/rrt/rrt.cpp)
+target_sources(octomap_test PRIVATE src/rrt/rrt.cpp)
 target_compile_options(octomap_test PRIVATE -O2 -Wall)
 target_link_libraries(octomap_test ${catkin_LIBRARIES} fmt::fmt-header-only
                       kdtree-header-only ${OCTOMAP_LIBRARIES})
 
-# add_executable(test_octomap test/octomap.test.cpp)
-# add_dependencies(test_octomap ${${PROJECT_NAME}_EXPORTED_TARGETS}
-# ${catkin_EXPORTED_TARGETS}) target_link_libraries(test_octomap
-# ${catkin_LIBRARIES} ${OCTOMAP_LIBRARIES}) target_compile_options(test_octomap
-# PUBLIC -O2)
 # ##############################################################################
 # Install ##
 # ##############################################################################

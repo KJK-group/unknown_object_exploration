@@ -131,7 +131,7 @@ auto main(int argc, char* argv[]) -> int {
     }());
 
     auto service = [&] {
-        const auto url = "/rrt_service/find_path"s;
+        const auto url = "/mdi/rrt_service/find_path";
         return nh.advertiseService(url, rrt_find_path_handler);
     }();
 
