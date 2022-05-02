@@ -63,7 +63,7 @@ class Octomap final {
     // Octomap(OcTree&& tree) : octree_(std:Const:move(tree)) {}
 
    public:  // PUBLIC INTERFACE ----------------------------------------------------------------------------------------
-    auto raycast(const point_type& origin, const point_type& direction, double max_range,
+    auto raycast_in_direction(const point_type& origin, const point_type& direction, double max_range,
                  bool ignore_unknown_voxels = false) const -> std::optional<point_type> {
         return raycast_(origin, direction, max_range, ignore_unknown_voxels);
     }

@@ -112,7 +112,7 @@ auto main(int argc, char* argv[]) -> int {
         }());
     }
 
-    auto sphere_msg_gen = mdi::utils::rviz::sphere_msg_gen{};
+		auto sphere_msg_gen = mdi::utils::rviz::sphere_msg_gen{};
     auto sphere_tolerance_msg = sphere_msg_gen(goal);
     const auto goal_tolerance = [&]() {
         float goal_tolerance = 1.0f;

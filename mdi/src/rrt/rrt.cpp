@@ -217,9 +217,65 @@ auto RRT::bft_(const std::function<void(const vec3& parent_pt, const vec3& child
  */
 auto RRT::insert_node_(const vec3& pos, node_t* parent) -> node_t& {
     assert(parent != nullptr);
-    auto& node = nodes_.emplace_back(pos, parent);
-    parent->children.push_back(&node);
+    // TODO: this is different when rrt*
+    auto& node = nodes_.emplace_back(pos, parent);  // add vertex
+    parent->children.push_back(&node);              // add edge
     --remaining_iterations_;
+
+    // TODO: add star
+    // #ifdef USE_RRT_STAR
+
+    //     const auto near = [this](const auto& index) {
+    //         const auto dist = [](const vec3& a, const vec3& b) { return (b - a).norm(); };
+    //         const auto near_radius = 3.0f;
+    //         return dist(pos, nodes_[index].position_) <= near_radius;
+    //     };
+
+    //     auto near_nodes = std::vector<std::size_t>();
+
+    //     // find near neighbors in linear search region
+
+    //     for (std::size_t i = linear_search_start_index_; i < nodes_.size(); ++i) {
+    //         if (near(i)) {
+    //             near_nodes.push_back(i);
+    //         }
+    //     }
+
+    // #ifdef USE_KDTREE
+    //     // find near neighbors in kdtree search region
+
+    // #endif  // USE_KDTREE
+
+    //     auto x_min = parent;
+
+    //     auto c_min = cost(x_min) + (parent->position_ - pos).norm();
+    //     auto c_new = 2.0f;
+    //     // for all in near
+
+    //     for (auto idx : near_nodes) {
+    //         auto c_new = cost(nodes_[idx]) + (parent->position_ - pos).norm();
+    //         if (c_new < c_min && collision_free_(x_near, x_new)) {
+    //             x_min = x_near;
+    //             c_min = c_new;
+    //         }
+    //     }
+
+    //     // add edge (x_min, x_new)
+
+    //     // update edges
+    //     // n->parent_ = x_new
+
+    //     for (auto idx : near_nodes) {
+    //         const auto c_near = cost(nodes_[idx]);
+    //         auto c_new = cost(nodes_[x_new]) + (x_new - x_near).norm();
+    //         if (c_new < c_min && collision_free_(x_near, x_new)) {
+    //             auto x_parent = parent(x_near);
+    //             // remove edge (x_parent, x_near)
+    //             // add edge (x_new, x_near)
+    //         }
+    //     }
+
+    // #endif  // USE_RRT_STAR
 
 #ifdef USE_KDTREE
     {
@@ -339,7 +395,7 @@ auto RRT::insert_node_(const vec3& pos, node_t* parent) -> node_t& {
                         auto it = std::next(nodes_.begin(), start);
                         // the lambda needs to bo mutable because we want a different output for each invocation.
                         // Otherwise the same output will be generated.
-                        return [it, index = start]() mutable -> std::pair<kdtree3::point_type, std::size_t> {
+                        return [it, index = start]() mutable -> std::pair<kdtree3::Point, std::size_t> {
                             // get point and advance iterator
                             const auto pos = (*it++).position_;
                             return {pos, index++};
@@ -396,7 +452,8 @@ auto RRT::grow_() -> bool {
     x_new << x, y, z;
 
     // const auto edge_between_u_and_v_intersects_a_occupied_voxel = [this](const auto& u, const auto& v) {
-    //     const auto convert_to_pt = [](const auto& v) -> mdi::Octomap::point_type { return {v.x(), v.y(), v.z()}; };
+    //     const auto convert_to_pt = [](const auto& v) -> mdi::Octomap::point_type { return {v.x(), v.y(), v.z()};
+    //     };
     //     // if opt is the some variant, then it means that a occupied voxel was hit.
     //     // TODO: handle this case in an other way
     //     if (octomap_ == nullptr) {
@@ -646,7 +703,8 @@ auto RRT::optimize_waypoints_() -> void {
     //             to = to + 1;
     //         } while (to != *end);
 
-    //         std::stable_sort(edges.begin(), edges.end(), [](const auto& a, const auto& b) { return a.from < b.from;
+    //         std::stable_sort(edges.begin(), edges.end(), [](const auto& a, const auto& b) { return a.from <
+    //         b.from;
     //         });
     //         // auto it = std::adjacent_find(edges.begin(), edges.end(), std::less<std::size_t>());
 
@@ -695,33 +753,75 @@ auto RRT::backtrack_and_set_waypoints_starting_at_(node_t* start_node) -> bool {
     return true;
 }
 
-// TODO: implement
-auto RRT::collision_free_(const vec3& a, const vec3& b, float x, float y, float z, float padding,
+// TODO: change parameters
+auto RRT::collision_free_(const vec3& from, const vec3& to, float x, float y, float z, float padding,
                           float end_of_raycast_padding) const -> bool {
-    const auto raycast = [this](const auto& u, const auto& v) {
-        const auto convert_to_pt = [](const auto& v) -> mdi::Octomap::point_type { return {v.x(), v.y(), v.z()}; };
+    if (octomap_ == nullptr) {
+        std::cerr << "[INFO] no octomap available, assuming path is collision free" << '\n';
+        return true;
+    }
+    using std::cos, std::sin;
+    using mat3x3 = Eigen::Matrix3f;
+    using vec3 = Eigen::Vector3f;
+
+    mat3x3 Rx90;
+    Rx90 << 1.0f, 0.0f, 0.0f, 0.0f, cos(M_PI_2), sin(M_PI_2), 0.0f, -sin(M_PI_2), cos(M_PI_2);
+
+    const vec3 direction = (to - from);
+    const vec3 i_basis = direction.normalized();
+    // ensure j_basis orthonormal to i_basis by rotating 90 degrees around
+    const vec3 j_basis = Rx90 * i_basis;
+    // use cross product to find third orthogonal basis vector.
+    const vec3 k_basis = i_basis.cross(j_basis).normalized();
+    // T forms a orthonormal basis where i_basis is the direction of from -> to, and j_basis and k_basis
+    // span the plane to which i_basis is a normal vector.
+    mat3x3 T;
+    T.col(0) = i_basis;
+    T.col(1) = j_basis;
+    T.col(2) = k_basis;
+
+    // TODO: use parameter to determine the offset after the "to" point to cast raycast at.
+    const float raycast_length = direction.norm() + 2 * x;
+
+    const auto raycast = [&](const vec3& v) {
+        static constexpr auto convert_to_pt = [](const auto& v) -> mdi::Octomap::point_type {
+            return {v.x(), v.y(), v.z()};
+        };
+
+        const vec3 origin = T * v + from;
+        const vec3 target = origin + static_cast<vec3>((direction.normalized() * raycast_length));
+        const auto opt = octomap_->raycast_in_direction(origin, direction, raycast_length);
+
         // if opt is the some variant, then it means that a occupied voxel was hit.
-        const auto opt = octomap_->raycast(convert_to_pt(u), convert_to_pt(v));
         return opt.has_value();
     };
 
-    // // TODO: change raycast to take origin and direction
-
-    // float x1, y1, z1, x2, y2, z2, x3, y3, z3, x4, y4, z4;
-
-    // vec3 v1 = {x1, y1, z1};
-    // vec3 v2 = {x2, y2, z2};
-    // vec3 v3 = {x3, y3, z3};
-    // vec3 v4 = {x4, y4, z4};
-
-    // vec3 direction = {1, 0, 0};
-    // float max_range = 1.0f;
-
-    // const auto raycast2 = [&, max_range](const auto& v) { return raycast(v, direction, max_range); };
-
-    // // essentially project a plane, where v1, v2, v3, and v4 are the bounding corners of the plane.
-    // return raycast2(v1) && raycast2(v2) && raycast2(v3) && raycast2(v4);
-    return true;
+    // use short circuit evaluation && to lazy evaluate raycasts, so no unnecessary raycasts
+    // are performed when it is not needed.
+    //     /        /        /
+    //    /        /        /
+    //   /        /        /
+    //  /        /        /
+    // 5--------1--------6
+    // |   /    |   /    |   /
+    // |  /     |  /     |  /
+    // | /      | /      | /
+    // |/       |/       |/
+    // 3--------0--------4
+    // |   /    |   /    |   /
+    // |  /     |  /     |  /
+    // | /      | /      | /
+    // |/       |/       |/
+    // 7--------2--------8
+    return raycast(vec3{0, 0, 0})                // 0, center
+           || raycast(vec3{0, y / 2, 0})         // 3, left
+           || raycast(vec3{0, -y / 2, 0})        // 4, right
+           || raycast(vec3{0, 0, z / 2})         // 1, up
+           || raycast(vec3{0, 0, -z / 2})        // 2, down
+           || raycast(vec3{0, -y / 2, z / 2})    // 5, up left
+           || raycast(vec3{0, y / 2, z / 2})     // 6, up right
+           || raycast(vec3{0, y / 2, -z / 2})    // 7, down left
+           || raycast(vec3{0, -y / 2, -z / 2});  // 8, down right
 }
 
 auto RRT::call_cbs_for_event_on_new_node_created_(const vec3& parent_pt, const vec3& new_pt) const -> void {
