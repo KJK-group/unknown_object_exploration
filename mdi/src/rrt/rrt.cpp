@@ -27,6 +27,8 @@
 #include "mdi/utils/eigen.hpp"
 #include "mdi/utils/random.hpp"
 #include "mdi/utils/rosparam.hpp"
+#include "ros/duration.h"
+#include "ros/message.h"
 
 namespace mdi::rrt {
 
@@ -547,9 +549,9 @@ auto RRT::optimize_waypoints_() -> void {
         assert(0 <= w1_index && w1_index < waypoints_.size());
         assert(0 <= w2_index && w2_index < waypoints_.size());
         // assert(w1_index != w2_index);
-        if (w1_index == w2_index) {
-            return 0;
-        }
+        // if (w1_index == w2_index) {
+        //     return 0;
+        // }
         auto d = (waypoints_[w1_index] - waypoints_[w2_index]).norm();
         return d;
     };
@@ -598,8 +600,8 @@ auto RRT::optimize_waypoints_() -> void {
         };
 
         // TODO: maybe filter on turning angle
-        // w_neighbors <- { w_neighbor in W | cost(w, w_neighbor) <= search_radius /\ edge_is_collision_free(w,
-        // w_neighbor) }
+        // w_neighbors <- { w_neighbor in W | w != w_neighbor /\ cost(w, w_neighbor) <= search_radius /\
+        // edge_is_collision_free(w, w_neighbor) }
         auto w_neighbors = std::vector<std::size_t>();
         std::copy_if(indices.cbegin(), indices.cend(), std::back_inserter(w_neighbors),
                      [&](const std::size_t w_neighbor) {
@@ -626,7 +628,7 @@ auto RRT::optimize_waypoints_() -> void {
     }
 
     if (s.empty()) {
-        // std::cout << "nothing to do  ¯\\_(ツ)_/¯" << '\n';
+        std::cout << "nothing to do  ¯\\_(ツ)_/¯" << '\n';
         return;  // nothing to do  ¯\_(ツ)_/¯
     }
     std::vector<std::size_t> solution_indices;
@@ -650,9 +652,42 @@ auto RRT::optimize_waypoints_() -> void {
     }
 
     auto solution_waypoints = std::vector<waypoint_type>();
-    for (const auto i : solution_indices) {
-        solution_waypoints.push_back(waypoints_[i]);
+    // for (const auto i : solution_indices) {
+    //     solution_waypoints.push_back(waypoints_[i]);
+    // }
+
+    for (std::size_t i = 0; i < solution_indices.size() - 1; ++i) {
+        const auto& from = waypoints_[i];
+        const auto& to = waypoints_[i + 1];
+        solution_waypoints.push_back(from);
+
+        const auto edge_cost = cost(from, to);
+        const auto should_interpolate_along_edge = edge_cost > static_cast<double>(step_size_);
+        if (should_interpolate_along_edge) {
+            const double percentage_offset = 1 / (edge_cost / static_cast<double>(step_size_));
+            const auto steps = std::floor(edge_cost / static_cast<double>(step_size_));
+            const auto direction = to - from;
+            for (std::size_t n = 1; n <= s steps; ++n) {
+                solution_waypoints.push_back(from + i * percentage_offset * direction);
+            }
+        }
     }
+
+    // const double d_max = solution_waypoints_.size() * step_size_;
+    // const double d_max = [&] {
+    //     double sum = 0;
+    //     for (std::size_t i = 1; i < solution_indices_.size(); ++i) {
+    //         sum += cost(solution_indices[i - 1], solution_indices[i]);
+    //     }
+    //     return sum;
+    // }();
+    // const std::size_t n_interpolated_vertices = std::ceil(d_max / static_cast<double>(step_size_));
+    // const std::size_t edges = solution_indices.size() - 1;
+
+    // const int number_of_optimized_waypoint_lists = std::ceil(d_max / static_cast<double>(max_waypoints_));
+
+    // if (d_max / static_cast<double>(max_waypoints_) > step_size_) {
+    // }
 
     // TODO: interpolate points a long path so bezier spline interpolation is better
     waypoints_.clear();

@@ -81,6 +81,7 @@ auto rrt_find_path_handler(mdi_msgs::RrtFindPath::Request& request, mdi_msgs::Rr
                        request.probability_of_testing_full_path_from_new_node_to_goal)
                    .max_dist_goal_tolerance(request.goal_tolerance)
                    .step_size(request.step_size)
+                   .max_waypoints(request.max_waypoints)
                    .build();
 
     // rrt.register_cb_for_event_on_new_node_created(
