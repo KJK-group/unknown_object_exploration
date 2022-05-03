@@ -40,11 +40,6 @@ class RRTBuilder final {
         return *this;
     }
 
-    RRTBuilder& max_waypoints(std::size_t max_waypoints) {
-        rrt_.max_waypoints_ = max_waypoints;
-        return *this;
-    }
-
     RRTBuilder& max_dist_goal_tolerance(float max_dist_goal_tolerance) {
         if (max_dist_goal_tolerance < 0.f) {
             auto err_msg = "max_dist_goal_tolerance must be greater than 0.f";

@@ -219,7 +219,7 @@ auto Mission::find_path(Eigen::Vector3f start, Eigen::Vector3f end) -> std::vect
     auto sphere_msg_gen = mdi::utils::rviz::sphere_msg_gen{};
     sphere_msg_gen.header.frame_id = utils::FRAME_WORLD;
 
-    ros::Duration(1).sleep();
+    // ros::Duration(1).sleep();
     // publish starting position
     auto start_msg = sphere_msg_gen(start);
     start_msg.color.r = 0.5;

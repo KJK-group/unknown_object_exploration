@@ -656,22 +656,27 @@ auto RRT::optimize_waypoints_() -> void {
     //     solution_waypoints.push_back(waypoints_[i]);
     // }
 
+    // for (auto it = solution_indices.begin(); it != solution_indices.end() - 1)
     for (std::size_t i = 0; i < solution_indices.size() - 1; ++i) {
-        const auto& from = waypoints_[i];
-        const auto& to = waypoints_[i + 1];
+        const auto idx = solution_indices[i];
+        const auto next_idx = solution_indices[i + 1];
+        const auto& from = waypoints_[idx];
+        const auto& to = waypoints_[next_idx];
         solution_waypoints.push_back(from);
 
-        const auto edge_cost = cost(from, to);
+        const auto edge_cost = cost(idx, next_idx);
         const auto should_interpolate_along_edge = edge_cost > static_cast<double>(step_size_);
         if (should_interpolate_along_edge) {
+            std::cout << "interpolating" << std::endl;
             const double percentage_offset = 1 / (edge_cost / static_cast<double>(step_size_));
-            const auto steps = std::floor(edge_cost / static_cast<double>(step_size_));
+            const int steps = std::floor(edge_cost / static_cast<double>(step_size_));
             const auto direction = to - from;
-            for (std::size_t n = 1; n <= s steps; ++n) {
-                solution_waypoints.push_back(from + i * percentage_offset * direction);
+            for (std::size_t n = 1; n <= steps; ++n) {
+                solution_waypoints.emplace_back(from + n * percentage_offset * direction);
             }
         }
     }
+    solution_waypoints.push_back(waypoints_[solution_indices.back()]);
 
     // const double d_max = solution_waypoints_.size() * step_size_;
     // const double d_max = [&] {

@@ -247,7 +247,6 @@ class RRT {
      */
     std::size_t max_iterations_{};
     int remaining_iterations_{};
-    std::size_t max_waypoints_{};
     float max_dist_goal_tolerance_{};
     vec3 start_position_{};
     vec3 goal_position_{};
