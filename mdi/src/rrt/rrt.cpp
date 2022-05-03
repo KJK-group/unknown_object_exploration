@@ -530,19 +530,13 @@ auto RRT::grow_() -> bool {
     return false;
 }
 
-// TODO: discard edges which gives a sharp turning angle
 auto RRT::optimize_waypoints_() -> void {
     // cannot optimize
     if (waypoints_.size() <= 2) {
         return;
     }
 
-    std::cout << "before optimization" << std::endl;
-    for (auto& waypoint : waypoints_) {
-        std::cout << waypoint << std::endl;
-    }
-
-    // std::cout << "[INFO] optimize_waypoints ..." << '\n';
+    std::cerr << "[ INFO] optimize_waypoints: waypoints before = " << waypoints_.size() << '\n';
 
     // use euclidean distance for cost
     const auto cost = [this](const std::size_t w1_index, const std::size_t w2_index) -> double {
@@ -577,7 +571,8 @@ auto RRT::optimize_waypoints_() -> void {
     const auto w_goal = waypoints_.size() - 1;
     const auto w_start = 0;
 
-    auto solution = std::stack<edge>();
+    // auto solution = std::stack<edge>();
+    auto solution_indices = std::vector<std::size_t>();
     auto s = std::stack<edge>();
     s.emplace(w_start, w_start);
 
@@ -585,7 +580,7 @@ auto RRT::optimize_waypoints_() -> void {
     auto distances_to_w_goal = std::vector<float>();
     std::transform(indices.cbegin(), indices.cend(), std::back_inserter(distances_to_w_goal),
                    [&](const auto w) { return cost(w, w_goal); });
-    // TODO: not optimal
+    // TODO: not guaranteed optimal
     while (! s.empty()) {
         const auto [w_parent, w] = s.top();
         if (w == w_goal) {
@@ -611,7 +606,8 @@ auto RRT::optimize_waypoints_() -> void {
 
         // reject solution node if there are no valid neighbors
         if (w_neighbors.empty()) {
-            solution.pop();
+            // solution.pop();
+            solution_indices.pop_back();
             continue;
         }
 
@@ -624,20 +620,21 @@ auto RRT::optimize_waypoints_() -> void {
             s.emplace(w, w_neighbor);
         }
 
-        solution.push(s.top());
+        const auto [_, w_best] = s.top();
+        solution_indices.push_back(w_best);
     }
 
     if (s.empty()) {
         std::cout << "nothing to do  ¯\\_(ツ)_/¯" << '\n';
         return;  // nothing to do  ¯\_(ツ)_/¯
     }
-    std::vector<std::size_t> solution_indices;
+    // std::vector<std::size_t> solution_indices;
 
-    while (! solution.empty()) {
-        const auto [_, w] = solution.top();
-        solution.pop();
-        solution_indices.push_back(w);
-    }
+    // while (! solution.empty()) {
+    //     const auto [_, w] = solution.top();
+    //     solution.pop();
+    //     solution_indices.push_back(w);
+    // }
 
     // TODO: check if this is necessary
     if (solution_indices.back() != w_start) {
@@ -651,12 +648,10 @@ auto RRT::optimize_waypoints_() -> void {
         solution_indices.push_back(w_goal);
     }
 
-    auto solution_waypoints = std::vector<waypoint_type>();
-    // for (const auto i : solution_indices) {
-    //     solution_waypoints.push_back(waypoints_[i]);
-    // }
+    // TODO: maybe do start -> goal and goal -> start, and compare them
 
-    // for (auto it = solution_indices.begin(); it != solution_indices.end() - 1)
+    auto solution_waypoints = std::vector<waypoint_type>();
+    // interpolate points a long path so bezier spline interpolation is better
     for (std::size_t i = 0; i < solution_indices.size() - 1; ++i) {
         const auto idx = solution_indices[i];
         const auto next_idx = solution_indices[i + 1];
@@ -667,8 +662,9 @@ auto RRT::optimize_waypoints_() -> void {
         const auto edge_cost = cost(idx, next_idx);
         const auto should_interpolate_along_edge = edge_cost > static_cast<double>(step_size_);
         if (should_interpolate_along_edge) {
-            std::cout << "interpolating" << std::endl;
             const double percentage_offset = 1 / (edge_cost / static_cast<double>(step_size_));
+            // TODO: special case for edge_cost / static_cast<double>(step_size_) being an integer.
+            // then n <= steps should be n < steps
             const int steps = std::floor(edge_cost / static_cast<double>(step_size_));
             const auto direction = to - from;
             for (std::size_t n = 1; n <= steps; ++n) {
@@ -676,118 +672,13 @@ auto RRT::optimize_waypoints_() -> void {
             }
         }
     }
+    // the above loop does not iterate over the last optimized waypoint, so we have to add it.
     solution_waypoints.push_back(waypoints_[solution_indices.back()]);
 
-    // const double d_max = solution_waypoints_.size() * step_size_;
-    // const double d_max = [&] {
-    //     double sum = 0;
-    //     for (std::size_t i = 1; i < solution_indices_.size(); ++i) {
-    //         sum += cost(solution_indices[i - 1], solution_indices[i]);
-    //     }
-    //     return sum;
-    // }();
-    // const std::size_t n_interpolated_vertices = std::ceil(d_max / static_cast<double>(step_size_));
-    // const std::size_t edges = solution_indices.size() - 1;
-
-    // const int number_of_optimized_waypoint_lists = std::ceil(d_max / static_cast<double>(max_waypoints_));
-
-    // if (d_max / static_cast<double>(max_waypoints_) > step_size_) {
-    // }
-
-    // TODO: interpolate points a long path so bezier spline interpolation is better
+    std::cerr << "[ INFO] optimize_waypoints ... DONE: waypoints after "
+              << waypoints_.size() - solution_waypoints.size() << '\n';
     waypoints_.clear();
     waypoints_ = solution_waypoints;
-
-    std::cout << "after optimization" << std::endl;
-    for (auto& waypoint : waypoints_) {
-        std::cout << waypoint << std::endl;
-    }
-
-    // std::cout << "[INFO] optimize_waypoints ... DONE" << '\n';
-
-    // TODO: maybe do start -> goal and goal -> start, and compare them
-
-    // const auto cost = [](const coordinate_type& a, const coordinate_type& b) { return (a - b).norm(); };
-    // // no need to use this because of the Cauchy Schwartz inequality
-    // // https://en.wikipedia.org/wiki/Cauchy%E2%80%93Schwarz_inequality
-    // const auto better = [cost](const coordinate_type& a, const coordinate_type& b, const coordinate_type& c) {
-    //     // triangle inequality
-    //     // the direct path between a and c i.e. a -> c, is better than a -> b -> c
-    //     return cost(a, c) <= cost(a, b) + cost(b, c);
-    // };
-
-    // const auto minimal_cost = cost(start_position_, goal_position_);
-
-    // goal -> start
-    // {0, 2}
-    // {0, 3}
-    // {0, 4}
-    // {0, 5}
-    // {0, 6}
-    // {0, 7}
-    // {0, 8}
-    // {8, 10}
-    // {8, 11}
-    // partition on .from, max on .to
-    // {0, 8} -> {8, 11}
-    // optimized path is then {waypoints_[0], waypoints_[8], waypoints_[11]}
-    // start -> goal
-    // {11, 9}
-    // {11, 8}
-    // {11, 7}
-    // {11, 6}
-    // {6, 4}
-    // {6, 3}
-    // {6, 2}
-    // {6, 1}
-    // {6, 0}
-    // partition on .from, max on .to
-    // {11, 6} -> {6, 0}
-    // optimize path is then  {waypoints_[11], waypoints_[6], waypoints_[0]}
-    // return min(cost({waypoints_[11], waypoints_[6], waypoints_[0]}), cost({waypoints_[0], waypoints_[8],
-    // waypoints_[11]}))s
-
-    // const auto optimize =
-    //     [this, &](waypoints_type::iterator&& begin, waypoints_type::iterator&& end) {
-    //         auto it = begin;
-    //         auto offset = 1;  // offset = 2, makes edge cases harder to handle
-    //         std::size_t from = *it;
-    //         std::size_t to = (*it + offset);
-    //         edge e = {*it, (*it + offset)};
-
-    //         do {
-    //             if (! edge_is_collision_free({from, to})) {
-    //                 edges.emplace_back(from, to - 1);  // the previous to must be valid
-    //                 from = to - 1;
-    //             }
-    //             to = to + 1;
-    //         } while (to != *end);
-
-    //         std::stable_sort(edges.begin(), edges.end(), [](const auto& a, const auto& b) { return a.from <
-    //         b.from;
-    //         });
-    //         // auto it = std::adjacent_find(edges.begin(), edges.end(), std::less<std::size_t>());
-
-    //         auto spikes = std::vector<std::size_t>(edges.size());
-    //         std::adjacent_difference(edges.begin(), edges.end(), spikes.begin(),
-    //                                  [](const edge& a, const edge& b) { return a.from - b.from; });
-
-    //         auto ind = std::vector<std::size_t>();
-    //         ind.push_back(0);
-    //         for (auto i = 0; i < spikes.size(); ++i) {
-    //             if (spikes[i] != 0) {
-    //                 ind.push_back(i);
-    //             }
-    //         }
-    //     }
-
-    //  max on .to
-
-    // partition
-
-    // loop until edge{_, .to == *end}
-
-    // return edges;
 };
 
 auto RRT::backtrack_and_set_waypoints_starting_at_(node_t* start_node) -> bool {
