@@ -48,6 +48,7 @@ class Octomap final {
         auto data_stream = std::stringstream{};
         data_stream.write((const char*)&data[0], data.size());
         octree_.readBinaryData(data_stream);
+        std::cout << "read binary data into octree" << std::endl;
     }
 
     /**
@@ -64,11 +65,11 @@ class Octomap final {
 
    public:  // PUBLIC INTERFACE ----------------------------------------------------------------------------------------
     auto raycast_in_direction(const point_type& origin, const point_type& direction, double max_range,
-                 bool ignore_unknown_voxels = false) const -> std::optional<point_type> {
+                              bool ignore_unknown_voxels = true) const -> std::optional<point_type> {
         return raycast_(origin, direction, max_range, ignore_unknown_voxels);
     }
 
-    auto raycast(const point_type& origin, const point_type& end, bool ignore_unknown_voxels = false) const
+    auto raycast(const point_type& origin, const point_type& end, bool ignore_unknown_voxels = true) const
         -> std::optional<point_type> {
         const auto direction = end - origin;
         const auto max_range = direction.norm();
@@ -134,7 +135,7 @@ class Octomap final {
     // }
 
     auto raycast_(const point_type& origin, const point_type& direction, double max_range = -1,
-                  bool ignore_unknown_voxels = false) const -> std::optional<point_type> {
+                  bool ignore_unknown_voxels = true) const -> std::optional<point_type> {
         auto end = point_type{0, 0, 0};
         const auto intersected_occupied_voxel =
             octree_.castRay(origin, direction, end, ignore_unknown_voxels, max_range);

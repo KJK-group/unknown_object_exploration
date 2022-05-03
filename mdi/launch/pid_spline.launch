@@ -13,10 +13,12 @@
 
 	<rosparam command="load" file="$(dirname)/../rosparam/rrt.yaml"/>
 
+    <include file="$(arg package_path)/launch/rrt_service.launch" />
+
     <node
         pkg="$(arg package)"
-        type="mission_state"
-        name="mission_state"
+        type="mission_manager"
+        name="mission_manager"
         args="$(arg vel)"
         output="screen" />
     <node

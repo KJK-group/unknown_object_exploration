@@ -32,7 +32,7 @@ auto call_get_octomap() -> mdi::Octomap* {
     auto response = octomap_msgs::GetOctomap::Response{};
 
     get_octomap_client->call(request, response);
-    return new mdi::Octomap{response.map};
+    return response.map.data.size() == 0 ? nullptr : new mdi::Octomap{response.map};
 }
 
 /**
@@ -83,26 +83,31 @@ auto rrt_find_path_handler(mdi_msgs::RrtFindPath::Request& request, mdi_msgs::Rr
                    .step_size(request.step_size)
                    .build();
 
+    // rrt.register_cb_for_event_on_new_node_created(
+    // [](const auto& p1, const auto& p2) { std::cout << "New node created" << '\n'; });
+
     auto success = false;
 
     auto octomap_ptr = call_get_octomap();
 
     if (octomap_ptr != nullptr) {
         rrt.assign_octomap(octomap_ptr);
+    }
+    std::cout << "Running rrt" << '\n';
+    if (const auto opt = rrt.run()) {
+        const auto path = opt.value();
+        std::cout << "path.size() = " << path.size() << std::endl;
+        std::transform(path.begin(), path.end(), std::back_inserter(response.waypoints), [](const auto& pt) {
+            auto geo_pt = geometry_msgs::Point{};
+            geo_pt.x = pt.x();
+            geo_pt.y = pt.y();
+            geo_pt.z = pt.z();
+            return geo_pt;
+        });
 
-        if (const auto opt = rrt.run()) {
-            const auto path = opt.value();
-            std::transform(path.begin(), path.end(), std::back_inserter(response.waypoints), [](const auto& pt) {
-                auto geo_pt = geometry_msgs::Point{};
-                geo_pt.x = pt.x();
-                geo_pt.y = pt.y();
-                geo_pt.z = pt.z();
-                return geo_pt;
-            });
-
-            success = true;
-        }
-
+        success = true;
+    }
+    if (octomap_ptr != nullptr) {
         delete octomap_ptr;
     }
 

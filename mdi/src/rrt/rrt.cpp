@@ -27,7 +27,6 @@
 #include "mdi/utils/eigen.hpp"
 #include "mdi/utils/random.hpp"
 #include "mdi/utils/rosparam.hpp"
-#include "ros/param.h"
 
 namespace mdi::rrt {
 
@@ -391,7 +390,7 @@ auto RRT::insert_node_(const vec3& pos, node_t* parent) -> node_t& {
                     auto generator = [this, start = start, end = end] {
                         assert(start < end);
                         assert(0 <= start && start < nodes_.size());
-                        assert(0 <= end && end < nodes_.size());
+                        // assert(0 <= end && end < nodes_.size());
                         auto it = std::next(nodes_.begin(), start);
                         // the lambda needs to bo mutable because we want a different output for each invocation.
                         // Otherwise the same output will be generated.
@@ -472,6 +471,7 @@ auto RRT::grow_() -> bool {
     };
 
     if (edge_between_u_and_v_intersects_a_occupied_voxel((*v_near).position_, x_new)) {
+        // std::cout << "edge_between_u_and_v_intersects_a_occupied_voxel" << std::endl;
         return false;
     }
 
@@ -531,17 +531,25 @@ auto RRT::grow_() -> bool {
 // TODO: discard edges which gives a sharp turning angle
 auto RRT::optimize_waypoints_() -> void {
     // cannot optimize
-    if (waypoints_.size() < 2) {
+    if (waypoints_.size() <= 2) {
         return;
     }
 
-    std::cout << "[INFO] optimize_waypoints ..." << '\n';
+    std::cout << "before optimization" << std::endl;
+    for (auto& waypoint : waypoints_) {
+        std::cout << waypoint << std::endl;
+    }
+
+    // std::cout << "[INFO] optimize_waypoints ..." << '\n';
 
     // use euclidean distance for cost
-    const auto cost = [this](const std::size_t w1_index, const std::size_t w2_index) {
+    const auto cost = [this](const std::size_t w1_index, const std::size_t w2_index) -> double {
         assert(0 <= w1_index && w1_index < waypoints_.size());
         assert(0 <= w2_index && w2_index < waypoints_.size());
-        assert(w1_index != w2_index);
+        // assert(w1_index != w2_index);
+        if (w1_index == w2_index) {
+            return 0;
+        }
         auto d = (waypoints_[w1_index] - waypoints_[w2_index]).norm();
         return d;
     };
@@ -552,7 +560,6 @@ auto RRT::optimize_waypoints_() -> void {
     };
 
     const auto edge_is_collision_free = [this](const edge& e) -> bool {
-        // TODO: raycast
         const auto [from, to] = e;
         assert(0 <= from && from < waypoints_.size());
         assert(0 <= to && to < waypoints_.size());
@@ -575,7 +582,7 @@ auto RRT::optimize_waypoints_() -> void {
     // distances does not change so we compute them once
     auto distances_to_w_goal = std::vector<float>();
     std::transform(indices.cbegin(), indices.cend(), std::back_inserter(distances_to_w_goal),
-                   [&](const auto i) { return cost(i, w_goal); });
+                   [&](const auto w) { return cost(w, w_goal); });
     // TODO: not optimal
     while (! s.empty()) {
         const auto [w_parent, w] = s.top();
@@ -596,7 +603,8 @@ auto RRT::optimize_waypoints_() -> void {
         auto w_neighbors = std::vector<std::size_t>();
         std::copy_if(indices.cbegin(), indices.cend(), std::back_inserter(w_neighbors),
                      [&](const std::size_t w_neighbor) {
-                         return within_relevant_search_radius(w_neighbor) && edge_is_collision_free({w, w_neighbor});
+                         return w != w_neighbor && within_relevant_search_radius(w_neighbor) &&
+                                edge_is_collision_free({w, w_neighbor});
                      });
 
         // reject solution node if there are no valid neighbors
@@ -618,16 +626,23 @@ auto RRT::optimize_waypoints_() -> void {
     }
 
     if (s.empty()) {
-        std::cout << "nothing to do  ¯\\_(ツ)_/¯" << '\n';
+        // std::cout << "nothing to do  ¯\\_(ツ)_/¯" << '\n';
         return;  // nothing to do  ¯\_(ツ)_/¯
     }
-    std::vector<std::size_t> solution_indices = {w_start};
+    std::vector<std::size_t> solution_indices;
 
     while (! solution.empty()) {
         const auto [_, w] = solution.top();
         solution.pop();
         solution_indices.push_back(w);
     }
+
+    // TODO: check if this is necessary
+    if (solution_indices.back() != w_start) {
+        solution_indices.push_back(w_start);
+    }
+
+    std::reverse(solution_indices.begin(), solution_indices.end());
 
     // TODO: check if this is necessary
     if (solution_indices.back() != w_goal) {
@@ -643,7 +658,12 @@ auto RRT::optimize_waypoints_() -> void {
     waypoints_.clear();
     waypoints_ = solution_waypoints;
 
-    std::cout << "[INFO] optimize_waypoints ... DONE" << '\n';
+    std::cout << "after optimization" << std::endl;
+    for (auto& waypoint : waypoints_) {
+        std::cout << waypoint << std::endl;
+    }
+
+    // std::cout << "[INFO] optimize_waypoints ... DONE" << '\n';
 
     // TODO: maybe do start -> goal and goal -> start, and compare them
 
@@ -760,6 +780,7 @@ auto RRT::collision_free_(const vec3& from, const vec3& to, float x, float y, fl
         std::cerr << "[INFO] no octomap available, assuming path is collision free" << '\n';
         return true;
     }
+
     using std::cos, std::sin;
     using mat3x3 = Eigen::Matrix3f;
     using vec3 = Eigen::Vector3f;
@@ -789,9 +810,12 @@ auto RRT::collision_free_(const vec3& from, const vec3& to, float x, float y, fl
         };
 
         const vec3 origin = T * v + from;
-        const vec3 target = origin + static_cast<vec3>((direction.normalized() * raycast_length));
-        const auto opt = octomap_->raycast_in_direction(origin, direction, raycast_length);
+        // const vec3 target = origin + static_cast<vec3>((direction.normalized() * raycast_length));
+        const auto opt =
+            octomap_->raycast_in_direction(convert_to_pt(origin), convert_to_pt(direction), raycast_length);
 
+        // std::cout << "origin: " << origin << " direction: " << direction << "opt.has_value " << opt.has_value()
+        //   << std::endl;
         // if opt is the some variant, then it means that a occupied voxel was hit.
         return opt.has_value();
     };
@@ -813,15 +837,15 @@ auto RRT::collision_free_(const vec3& from, const vec3& to, float x, float y, fl
     // | /      | /      | /
     // |/       |/       |/
     // 7--------2--------8
-    return raycast(vec3{0, 0, 0})                // 0, center
-           || raycast(vec3{0, y / 2, 0})         // 3, left
-           || raycast(vec3{0, -y / 2, 0})        // 4, right
-           || raycast(vec3{0, 0, z / 2})         // 1, up
-           || raycast(vec3{0, 0, -z / 2})        // 2, down
-           || raycast(vec3{0, -y / 2, z / 2})    // 5, up left
-           || raycast(vec3{0, y / 2, z / 2})     // 6, up right
-           || raycast(vec3{0, y / 2, -z / 2})    // 7, down left
-           || raycast(vec3{0, -y / 2, -z / 2});  // 8, down right
+    return ! (raycast(vec3{0, 0, 0})                 // 0, center
+              || raycast(vec3{0, y / 2, 0})          // 3, left
+              || raycast(vec3{0, -y / 2, 0})         // 4, right
+              || raycast(vec3{0, 0, z / 2})          // 1, up
+              || raycast(vec3{0, 0, -z / 2})         // 2, down
+              || raycast(vec3{0, -y / 2, z / 2})     // 5, up left
+              || raycast(vec3{0, y / 2, z / 2})      // 6, up right
+              || raycast(vec3{0, y / 2, -z / 2})     // 7, down left
+              || raycast(vec3{0, -y / 2, -z / 2}));  // 8, down right
 }
 
 auto RRT::call_cbs_for_event_on_new_node_created_(const vec3& parent_pt, const vec3& new_pt) const -> void {

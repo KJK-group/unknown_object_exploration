@@ -220,14 +220,14 @@ class RRT {
     auto collision_free_(const vec3& a, const vec3& b, float x, float y, float z, float padding,
                          float end_of_raycast_padding = 1.0f) const -> bool;
     inline auto collision_free_(const vec3& a, const vec3& b, float r, float padding,
-                         float end_of_raycast_padding = 1.0f) const -> bool {
+                                float end_of_raycast_padding = 1.0f) const -> bool {
         return collision_free_(a, b, r, r, r, padding, end_of_raycast_padding);
     }
     inline auto collision_free_(const vec3& a, const vec3& b) const -> bool {
         return collision_free_(a, b, drone_radius_, padding_, end_of_raycast_padding_);
     }
 
-    float drone_radius_ = 0.0f;
+    float drone_radius_ = 1.0f;
     float padding_ = 0.1f;
     float end_of_raycast_padding_ = 1.0f;
 

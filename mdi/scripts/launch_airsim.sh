@@ -25,5 +25,10 @@ kill_airsim() {
     fi
     if fuser -k 14540/udp; then echo "killed"
     fi
+    if killall Blocks-Linux-Debug;
+    then echo "killed simulation succesfully"
+    else echo "failed killing simulation"
+    fi
 }
 trap kill_airsim SIGINT
+trap kill_airsim EXIT

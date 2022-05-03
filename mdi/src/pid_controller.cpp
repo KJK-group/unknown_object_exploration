@@ -7,6 +7,7 @@
 
 #include "boost/format.hpp"
 #include "mdi/utils/transformlistener.hpp"
+#include "mdi/utils/utils.hpp"
 #include "mdi_msgs/MissionStateStamped.h"
 #include "mdi_msgs/PointNormStamped.h"
 
@@ -94,7 +95,7 @@ auto main(int argc, char** argv) -> int {
     // ROS initialisations
     ros::init(argc, argv, "mdi_pid_controller");
     auto nh = ros::NodeHandle();
-    ros::Rate rate(20.0);
+    ros::Rate rate(mdi::utils::DEFAULT_LOOP_RATE * 2);
 
     //----------------------------------------------------------------------------------------------
     // transform utilities
@@ -135,7 +136,10 @@ auto main(int argc, char** argv) -> int {
         auto command_velocity = pid_command_from_error(error);
 
         // publish velocity control command
-        pub_velocity.publish(command_velocity);
+        if (state.state == 0 || state.state == 1 || state.state == 2 || state.state == 3) {
+            pub_velocity.publish(command_velocity);
+        }
+        // pub_velocity.publish(command_velocity);
         // publish error
         mdi_msgs::PointNormStamped error_msg;
         error_msg.header.seq = seq_error++;

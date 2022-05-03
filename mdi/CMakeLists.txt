@@ -98,7 +98,6 @@ target_compile_definitions(test_rrt PUBLIC USE_KDTREE)
 add_ros_executable(test_controller src/test_controller.cpp)
 add_ros_executable(trajectory_follower src/trajectory_follower.cpp)
 # add_ros_executable(spline_tester src/spline_tester.cpp)
-add_ros_executable(mission_state src/mission_state.cpp)
 add_ros_executable(pid_controller src/pid_controller.cpp)
 add_ros_executable(publish_traversed_path src/publish_traversed_path.cpp)
 
@@ -106,25 +105,47 @@ add_ros_executable(visualize_raycast test/visualize_raycast.cpp)
 
 # target_sources( spline_tester PUBLIC src/bezier_spline.cpp PUBLIC
 # src/math.cpp)
+add_library(bezier_spline SHARED src/bezier_spline.cpp)
+target_sources(bezier_spline PUBLIC src/math.cpp)
+add_library(rrt SHARED src/rrt/rrt.cpp)
+target_link_libraries(rrt   ${catkin_LIBRARIES} fmt::fmt-header-only
+                      kdtree-header-only) 
+
+add_library(mission SHARED src/mission.cpp)
+target_link_libraries(mission bezier_spline rrt)
+
+
+
+# add_ros_executable(mission_manager src/mission_manager.cpp)
+add_executable(mission_manager src/mission_manager.cpp)
+add_dependencies(mission_manager ${${PROJECT_NAME}_EXPORTED_TARGETS}
+${catkin_EXPORTED_TARGETS})
+target_link_libraries(mission_manager ${catkin_LIBRARIES} bezier_spline rrt mission fmt::fmt-header-only)
+target_compile_options(mission_manager PRIVATE -g)
 
 target_sources(
   trajectory_follower
   PUBLIC src/bezier_spline.cpp
   PUBLIC src/math.cpp)
 
-target_sources(
-  mission_state
-  PUBLIC src/bezier_spline.cpp
-  PUBLIC src/transformlistener.cpp
-  PUBLIC src/math.cpp
-  PUBLIC src/rrt/rrt.cpp)
+
+
+
+# target_sources(
+#   mission_manager
+#   # PUBLIC src/bezier_spline.cpp
+  
+#   # PUBLIC src/rrt/rrt.cpp
+#   # PUBLIC src/mission.cpp
+  
+#   )
 
 target_sources(pid_controller PUBLIC src/transformlistener.cpp)
 
-add_library(rrt)
-target_sources(rrt PUBLIC src/rrt/rrt.cpp)
-target_link_libraries(rrt ${catkin_LIBRARIES} fmt::fmt-header-only
-                      kdtree-header-only)
+# add_library(rrt)
+# target_sources(rrt PUBLIC src/rrt/rrt.cpp)
+# target_link_libraries(rrt ${catkin_LIBRARIES} fmt::fmt-header-only
+#                       kdtree-header-only)
 
 function(add_ros_dependencies target)
   add_dependencies(${target} ${${PROJECT_NAME}_EXPORTED_TARGETS}

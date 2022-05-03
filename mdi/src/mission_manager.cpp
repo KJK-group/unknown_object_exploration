@@ -1,125 +1,73 @@
-#include "mdi/mission_manager.hpp"
+#include <ros/ros.h>
 
-namespace mdi {
-MissionManager::MissionManager(ros::NodeHandle& nh, float velocity_target, Eigen::Vector3f home = {0, 0, 5})
-    : node_handle(nh), velocity_target(velocity_target), home_position(std::move(home)) {
-    // publishers
-    pub_mission_state = node_handle.advertise<mdi_msgs::MissionStateStamped>("/mdi/state", utils::DEFAULT_QUEUE_SIZE);
-    pub_visualise =
-        node_handle.advertise<visualization_msgs::Marker>("/mdi/visualisation_marker", utils::DEFAULT_QUEUE_SIZE);
+#include <eigen3/Eigen/Dense>
+#include <vector>
 
-    // subscribers
-    sub_drone_state = node_handle.subscribe<mavros_msgs::State>(
-        "/mavros/state", utils::DEFAULT_QUEUE_SIZE,
-        [&](const mavros_msgs::State::ConstPtr& state) { drone_state = *state; });
-    sub_position_error = node_handle.subscribe<mdi_msgs::PointNormStamped>(
-        "/mdi/error", utils::DEFAULT_QUEUE_SIZE,
-        [&](const mdi_msgs::PointNormStamped::ConstPtr& error) { position_error = *error; });
+#include "mdi/mission.hpp"
 
-    // services
-    client_arm = nh.serviceClient<mavros_msgs::CommandBool>("/mavros/cmd/arming");
-    client_mode = nh.serviceClient<mavros_msgs::SetMode>("/mavros/set_mode");
-    client_land = nh.serviceClient<mavros_msgs::CommandTOL>("/mavros/cmd/land");
-    client_land = nh.serviceClient<mavros_msgs::CommandTOL>("/mavros/cmd/takeoff");
+mdi_msgs::PointNormStamped error;
+auto error_cb(const mdi_msgs::PointNormStamped::ConstPtr& msg) { error = *msg; }
 
-    // time
-    start_time = ros::Time::now();
-    delta_time = ros::Duration(0);
-}
+auto main(int argc, char** argv) -> int {
+    // ros
+    ros::init(argc, argv, "mdi_mission_state");
+    auto nh = ros::NodeHandle();
+    ros::Rate rate(mdi::utils::DEFAULT_LOOP_RATE);
 
-auto MissionManager::find_path(Eigen::Vector3f start, Eigen::Vector3f end) -> std::vector<Eigen::Vector3f> {
-    const auto goal_tolerance = 2;
-    auto rrt = mdi::rrt::RRT::from_builder()
-                   .probability_of_testing_full_path_from_new_node_to_goal(0)
-                   .goal_bias(0.7)
-                   .max_dist_goal_tolerance(goal_tolerance)
-                   .start_and_goal_position(start, end)
-                   .max_iterations(10000)
-                   .step_size(2)
-                   .build();
+    // state
+    auto exploration_complete = false;
+    auto inspection_complete = false;
+    auto first_exploration_iteration = true;
 
-    auto arrow_msg_gen = mdi::utils::rviz::arrow_msg_gen::builder()
-                             .arrow_head_width(0.05f)
-                             .arrow_length(0.05f)
-                             .arrow_width(0.05f)
-                             .color({0, 1, 0, 1})
-                             .build();
-    arrow_msg_gen.header.frame_id = utils::FRAME_WORLD;
+    auto sub_error = nh.subscribe("/mdi/error", mdi::utils::DEFAULT_QUEUE_SIZE, error_cb);
 
-    // rrt.register_cb_for_event_on_new_node_created([&](const auto& parent, const auto& new_node) {
-    //     // std::cout << GREEN << parent << "\n" << MAGENTA << new_node << RESET << std::endl;
-    //     auto msg = arrow_msg_gen({parent, new_node});
-    //     msg.color.r = 0.5;
-    //     msg.color.g = 1;
-    //     msg.color.b = 0.9;
-    //     msg.color.a = 1;
-    //     pub_visualize_rrt.publish(msg);
-    // });
+    // Points of interest
+    const auto interest_points = std::vector<Eigen::Vector3f>{Eigen::Vector3f(10, 10, 7),  Eigen::Vector3f(18, 9, 15),
+                                                              Eigen::Vector3f(20, 25, 20), Eigen::Vector3f(7, 21, 13),
+                                                              Eigen::Vector3f(10, 10, 17), Eigen::Vector3f(0, 0, 5)};
 
-    auto sphere_msg_gen = mdi::utils::rviz::sphere_msg_gen{};
-    sphere_msg_gen.header.frame_id = utils::FRAME_WORLD;
+    // pass in arguments
+    auto velocity_target = 0.f;
+    if (argc > 1) velocity_target = std::stof(argv[1]);
 
-    ros::Duration(1).sleep();
-    // publish starting position
-    auto start_msg = sphere_msg_gen(start);
-    start_msg.color.r = 0.5;
-    start_msg.color.g = 1;
-    start_msg.color.b = 0.9;
-    start_msg.color.a = 1;
-    start_msg.scale.x = 0.2;
-    start_msg.scale.y = 0.2;
-    start_msg.scale.z = 0.2;
-    pub_visualise.publish(start_msg);
-    // publish goal position
-    auto goal_msg = sphere_msg_gen(end);
-    goal_msg.color.r = 0;
-    goal_msg.color.g = 1;
-    goal_msg.color.b = 0;
-    goal_msg.color.a = 1;
-    goal_msg.scale.x = 0.2;
-    goal_msg.scale.y = 0.2;
-    goal_msg.scale.z = 0.2;
-    pub_visualise.publish(goal_msg);
+    // mission instance
+    auto mission = mdi::Mission(nh, rate, velocity_target);
+    // for (auto& p : interest_points) {
+    //     mission.add_interest_point(p);
+    // }
 
-    // visualise end tolerance
-    auto sphere_tolerance_msg = sphere_msg_gen(end);
+    auto idx = 0;
+    // mission.add_interest_point(interest_points[idx++]);
 
-    auto msg = sphere_msg_gen(end);
-    msg.scale.x = goal_tolerance * 2;
-    msg.scale.y = goal_tolerance * 2;
-    msg.scale.z = goal_tolerance * 2;
-    msg.color.r = 1.f;
-    msg.color.g = 1.f;
-    msg.color.b = 1.f;
-    msg.color.a = 0.2f;
-    pub_visualise.publish(msg);
-
-    // ensure finding a path
-    auto opt = rrt.run();
-    while (! opt) {
-        rrt.clear();
-        opt = rrt.run();
+    // wait for FCU connection
+    while (ros::ok() && ! mission.get_drone_state().connected) {
+        ros::spinOnce();
+        rate.sleep();
     }
 
-    const auto path = *opt;
+    auto previous_request_time_mode = ros::Time(0);
+    auto previous_request_time_arm = ros::Time(0);
+    auto previous_request_time_takeoff = ros::Time(0);
+    auto previous_request_time_land = ros::Time(0);
 
-    // visualize result
-    arrow_msg_gen.color.r = 0.0f;
-    arrow_msg_gen.color.g = 1.0f;
-    arrow_msg_gen.color.b = 0.0f;
-    arrow_msg_gen.scale.x = 0.05f;
-    arrow_msg_gen.scale.y = 0.05f;
-    arrow_msg_gen.scale.z = 0.05f;
-    int i = 1;
-    while (ros::ok() && i < path.size()) {
-        auto& p1 = path[i - 1];
-        auto& p2 = path[i];
-        auto arrow = arrow_msg_gen({p1, p2});
-        pub_visualize_rrt.publish(arrow);
-        ++i;
+    auto success = false;
+    std::string print;
+
+    auto start_time = ros::Time::now();
+    ros::Duration delta_time;
+    auto point_added = false;
+
+    while (ros::ok()) {
+        delta_time = ros::Time::now() - start_time;
+        if (delta_time.toSec() > 10 && (idx < interest_points.size())) {
+            mission.add_interest_point(interest_points[idx++]);
+            start_time = ros::Time::now();
+        }
+        mission.run_step();
+        ros::spinOnce();
+        rate.sleep();
     }
+    // mission.run();
 
-    return path;
+    return 0;
 }
-
-}  // namespace mdi
