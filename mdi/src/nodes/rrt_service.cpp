@@ -4,8 +4,10 @@
 #include <octomap_msgs/Octomap.h>
 #include <ros/ros.h>
 #include <std_srvs/Empty.h>
+#include <visualization_msgs/Marker.h>
 
 #include <algorithm>
+#include <functional>
 #include <iterator>
 #include <memory>
 
@@ -13,19 +15,29 @@
 #include "mdi/octomap.hpp"
 #include "mdi/rrt/rrt.hpp"
 #include "mdi/rrt/rrt_builder.hpp"
+#include "mdi/utils/rviz/rviz.hpp"
 #include "mdi_msgs/RrtFindPath.h"
 #include "octomap/octomap_types.h"
+#include "ros/duration.h"
 #include "ros/init.h"
+#include "ros/publisher.h"
 #include "ros/service_client.h"
 #include "ros/service_server.h"
 
 using namespace std::string_literals;
+using vec3 = Eigen::Vector3f;
 
 using mdi::Octomap;
 
 // use ptr to forward declare cause otherwise we have to call their constructor,
 // which is not allowed before ros::init(...)
 std::unique_ptr<ros::ServiceClient> clear_octomap_client, clear_region_of_octomap_client, get_octomap_client;
+std::unique_ptr<ros::Publisher> waypoints_path_pub;
+using waypoint_cb = std::function<void(const vec3&, const vec3&)>;
+using raycast_cb = std::function<void(const vec3&, const vec3&, const float, bool)>;
+waypoint_cb before_waypoint_optimization;
+waypoint_cb after_waypoint_optimization;
+raycast_cb raycast;
 
 auto call_get_octomap() -> mdi::Octomap* {
     auto request = octomap_msgs::GetOctomap::Request{};  // empty request
@@ -86,6 +98,10 @@ auto rrt_find_path_handler(mdi_msgs::RrtFindPath::Request& request, mdi_msgs::Rr
     // rrt.register_cb_for_event_on_new_node_created(
     // [](const auto& p1, const auto& p2) { std::cout << "New node created" << '\n'; });
 
+    rrt.register_cb_for_event_before_optimizing_waypoints(before_waypoint_optimization);
+    rrt.register_cb_for_event_after_optimizing_waypoints(after_waypoint_optimization);
+    rrt.register_cb_for_event_on_raycast(raycast);
+
     auto success = false;
 
     auto octomap_ptr = call_get_octomap();
@@ -119,6 +135,60 @@ auto main(int argc, char* argv[]) -> int {
 
     ros::init(argc, argv, name_of_node);
     auto nh = ros::NodeHandle();
+    auto rate = ros::Rate(10);
+
+    waypoints_path_pub = std::make_unique<ros::Publisher>([&] {
+        const auto service_name = "/visualization_marker"s;
+        return nh.advertise<visualization_msgs::Marker>(service_name, 10);
+    }());
+
+    auto before_waypoint_optimization_arrow_msg_gen = mdi::utils::rviz::arrow_msg_gen::builder()
+                                                          .arrow_head_width(0.02f)
+                                                          .arrow_length(0.02f)
+                                                          .arrow_width(0.02f)
+                                                          .color({0, 1, 0, 1})
+                                                          .build();
+
+    before_waypoint_optimization = [&](const vec3& from, const vec3& to) {
+        auto msg = before_waypoint_optimization_arrow_msg_gen({from, to});
+        waypoints_path_pub->publish(msg);
+        rate.sleep();
+        ros::spinOnce();
+    };
+
+    ros::Duration(2).sleep();
+
+    auto after_waypoint_optimization_arrow_msg_gen = mdi::utils::rviz::arrow_msg_gen::builder()
+                                                         .arrow_head_width(0.5f)
+                                                         .arrow_length(0.02f)
+                                                         .arrow_width(1.f)
+                                                         .color({0, 0, 1, 1})
+                                                         .build();
+
+    after_waypoint_optimization = [&](const vec3& from, const vec3& to) {
+        auto msg = after_waypoint_optimization_arrow_msg_gen({from, to});
+        waypoints_path_pub->publish(msg);
+        rate.sleep();
+        ros::spinOnce();
+    };
+
+    auto raycast_arrow_msg_gen = mdi::utils::rviz::arrow_msg_gen::builder()
+                                     .arrow_head_width(0.15f)
+                                     .arrow_length(0.3f)
+                                     .arrow_width(0.05f)
+                                     .color({0, 1, 0, 1})
+                                     .build();
+
+    raycast = [&](const vec3& origin, const vec3& direction, const float length, bool did_hit) {
+        auto msg = raycast_arrow_msg_gen({origin, origin + direction.normalized() * length});
+        if (did_hit) {
+            msg.color.r = 1;
+            msg.color.g = 0;
+        }
+        waypoints_path_pub->publish(msg);
+        rate.sleep();
+        ros::spinOnce();
+    };
 
     get_octomap_client = std::make_unique<ros::ServiceClient>([&] {
         const auto service_name = "/octomap_binary"s;

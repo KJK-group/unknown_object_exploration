@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<launch>
+	<arg name="node" value="test_rrt_service"/>
+	<arg name="package" value="mdi"/>
+	<arg name="package_path" value="$(find mdi)"/>
+	<arg name="launch-prefix" default="kitty lldb"/>
+	<!-- <arg name="launch-prefix" value=""/> -->
+
+	<include file="$(arg package_path)/launch/rrt_service.launch"/>
+	<!-- <node pkg="rviz" type="rviz" name="rviz" args=""/> -->
+	<node pkg="rviz" type="rviz" name="rviz" args="-d $(arg package_path)/rviz/$(arg node).rviz"/>
+	<node pkg="$(arg package)" type="$(arg node)" name="$(arg node)" output="screen" launch-prefix="$(arg launch-prefix)"/>
+</launch>

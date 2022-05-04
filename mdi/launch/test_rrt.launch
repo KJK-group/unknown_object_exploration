@@ -3,7 +3,7 @@
 	<arg name="node" value="test_rrt"/>
 	<arg name="package" value="mdi"/>
 	<!-- <arg name="launch-prefix" default="valgrind \-\-leak-check=full"/> -->
-	<!-- <arg name="launch-prefix" default="kitty lldb"/> -->
+	<!-- <arg name="launch-prefix" defaurlt="kitty lldb"/> -->
 	<!-- <arg name="launch-prefix" default="perf stat -e cache-misses -e branch-misses"/> -->
 	<!-- <arg name="launch-prefix" default="perf stat"/> -->
 	<arg name="launch-prefix" value=""/>
