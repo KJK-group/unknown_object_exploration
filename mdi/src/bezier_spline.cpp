@@ -181,6 +181,9 @@ auto BezierSpline::get_point_at_distance(float distance) -> Vector3f {
     if (distance < 0) {
         distance = 0;
     }
+    if (distance > this->distance_lut.back()) {
+        distance = this->distance_lut.back();
+    }
     // std::cout << "distance = " << distance << std::endl;
     auto t_idx = this->get_time_idx(distance);
     // std::cout << "t_idx = " << t_idx << std::endl;
