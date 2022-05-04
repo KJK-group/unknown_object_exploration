@@ -2,7 +2,10 @@
 #define _MDI_UTILS_HPP_
 
 #include <cassert>
+#include <cmath>
+#include <iostream>
 #include <numeric>
+#include <tuple>
 #include <vector>
 
 namespace mdi::utils {
@@ -22,6 +25,21 @@ constexpr auto RESET = "\u001b[0m";
 constexpr auto BOLD = "\u001b[1m";
 constexpr auto ITALIC = "\u001b[3m";
 constexpr auto UNDERLINE = "\u001b[4m";
+
+auto hsb_to_rgb(float h, float s, float b) -> std::tuple<float, float, float> {
+    assert(h >= 0 && h <= 360);
+    assert(s >= 0 && s <= 100);
+    assert(b >= 0 && b <= 100);
+
+    std::cout << "h: " << h << " s: " << s << " b: " << b << std::endl;
+
+    s /= 100;
+    b /= 100;
+
+    const auto k = [&](float n) { return std::fmod((n + h / 60), 6); };
+    const auto f = [&](float n) { return b * (1 - s * std::max(0.0, std::min(std::min(k(n), 4 - k(n)), 1.0))); };
+    return std::make_tuple(255 * f(5), 255 * f(3), 255 * f(1));
+}
 
 auto range(int end) -> std::vector<int> {
     auto result = std::vector<int>(end);

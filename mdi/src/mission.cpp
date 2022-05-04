@@ -195,7 +195,7 @@ auto Mission::find_path(Eigen::Vector3f start, Eigen::Vector3f end) -> std::vect
     rrt_msg.request.goal.y = end.y();
     rrt_msg.request.goal.z = end.z();
     rrt_msg.request.max_iterations = 10000;
-    rrt_msg.request.step_size = 2;
+    rrt_msg.request.step_size = 1.5;
 
     std::vector<Eigen::Vector3f> path;
     if (client_rrt.call(rrt_msg)) {

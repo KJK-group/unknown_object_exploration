@@ -113,7 +113,8 @@ target_link_libraries(rrt   ${catkin_LIBRARIES} fmt::fmt-header-only
 
 add_library(mission SHARED src/mission.cpp)
 target_link_libraries(mission bezier_spline rrt)
-
+add_library(trajectory SHARED src/trajectory.cpp)
+target_link_libraries(trajectory bezier_spline rrt)
 
 
 # add_ros_executable(mission_manager src/mission_manager.cpp)
@@ -165,6 +166,10 @@ target_sources(octomap_test PRIVATE src/rrt/rrt.cpp)
 target_compile_options(octomap_test PRIVATE -O2 -Wall)
 target_link_libraries(octomap_test ${catkin_LIBRARIES} fmt::fmt-header-only
                       kdtree-header-only ${OCTOMAP_LIBRARIES})
+
+add_executable(trajectory_test test/trajectory.test.cpp)
+add_ros_dependencies(trajectory_test)
+target_link_libraries(trajectory_test ${catkin_LIBRARIES} trajectory)
 
 # ##############################################################################
 # Install ##
