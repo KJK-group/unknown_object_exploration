@@ -600,6 +600,11 @@ auto RRT::optimize_waypoints_() -> void {
             break;
         }
         s.pop();
+        // will be false on iteration 1
+        // if (w_parent != w && ! edge_is_collision_free({w_parent, w})) {
+        // 	// TODO: some more...
+        //     continue;
+        // }
 
         const auto search_radius = cost(w, w_goal);
         std::cout << "search radius " << search_radius << '\n';
@@ -613,23 +618,24 @@ auto RRT::optimize_waypoints_() -> void {
         auto w_neighbors = std::vector<std::size_t>();
         std::copy_if(indices.cbegin(), indices.cend(), std::back_inserter(w_neighbors),
                      [&](const std::size_t w_neighbor) {
-                         return w != w_neighbor && within_relevant_search_radius(w_neighbor) &&
-                                edge_is_collision_free({w, w_neighbor});
+                         return w != w_neighbor && within_relevant_search_radius(w_neighbor) /*&&
+                                edge_is_collision_free({w, w_neighbor}) */
+                             ;
                      });
 
         std::cout << "w_neighbors.size() = " << w_neighbors.size() << '\n';
         // reject solution node if there are no valid neighbors
-        if (w_neighbors.empty()) {
-            // solution.pop();
-            solution_indices.pop_back();
-            std::cout << "popping solution stack:" << '\n';
-            for (std::size_t i = 0; i < solution_indices.size(); ++i) {
-                const auto& wp = waypoints_[solution_indices[i]];
-                std::cout << "[" << i << "] " << fmt_vec3(wp) << '\n';
-            }
-            std::cout << "\n\n";
-            continue;
-        }
+        // if (w_neighbors.empty()) {
+        //     // solution.pop();
+        //     solution_indices.pop_back();
+        //     std::cout << "popping solution stack:" << '\n';
+        //     for (std::size_t i = 0; i < solution_indices.size(); ++i) {
+        //         const auto& wp = waypoints_[solution_indices[i]];
+        //         std::cout << "[" << i << "] " << fmt_vec3(wp) << '\n';
+        //     }
+        //     std::cout << "\n\n";
+        //     continue;
+        // }
 
         // sort based on highest cost since we insert into a stack, and want the lowest cost first.
         std::sort(w_neighbors.begin(), w_neighbors.end(), [&](const std::size_t w1, const std::size_t w2) {
@@ -638,9 +644,23 @@ auto RRT::optimize_waypoints_() -> void {
         std::cout << "diff " << distances_to_w_goal[w_neighbors[0]] << "  " << distances_to_w_goal[w_neighbors[1]]
                   << '\n';
 
-        // for (const auto w_neighbor : w_neighbors) {
+        bool w_has_neighbors_of_interest = false;
         for (auto it = w_neighbors.rbegin(); it != w_neighbors.rend(); ++it) {
-            s.emplace(w, *it);
+            const auto w_neighbor = *it;
+            if (edge_is_collision_free({w, w_neighbor})) {
+                s.emplace(w, w_neighbor);
+                w_has_neighbors_of_interest = true;
+            }
+        }
+
+        if (! w_has_neighbors_of_interest) {
+            solution_indices.pop_back();
+            std::cout << "popping solution stack:" << '\n';
+            for (std::size_t i = 0; i < solution_indices.size(); ++i) {
+                const auto& wp = waypoints_[solution_indices[i]];
+                std::cout << "[" << i << "] " << fmt_vec3(wp) << '\n';
+            }
+            std::cout << "\n\n";
         }
 
         const auto [_, w_best] = s.top();
