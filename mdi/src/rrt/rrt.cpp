@@ -32,14 +32,41 @@
 
 namespace mdi::rrt {
 
+#ifdef USE_RRT_STAR
+
 auto RRT::run() -> std::optional<waypoints_type> {
-    // TODO: enable
-    // if (collision_free_(start_position_, goal_position_)) {
-    //     // we might get lucky here, and a direct path between start and goal exists :-)
-    //     waypoints_.push_back(goal_position_);
-    //     waypoints_.push_back(start_position_);
-    //     return {waypoints_};
-    // }
+    while (remaining_iterations_ > 0) {
+        grow_();
+    }
+
+    // TODO: use kdtree range query
+
+    const auto const auto within_goal_tolerance =
+        [&](const std::size_t x) {
+            return;
+            ;
+        }
+
+    auto Xnear = std::vector<std::size_t>();
+
+    for (std::size_t i = linear_search_start_index_; i < nodes_.size(); ++i) {
+    }
+    std::copy_if(indices.cbegin(), indices.cend(), std::back_inserter(w_neighbors), [&](const std::size_t w_neighbor) {
+        return w != w_neighbor && within_relevant_search_radius(w_neighbor) && edge_is_collision_free({w, w_neighbor});
+    });
+
+    return {};
+}
+
+#else
+
+auto RRT::run() -> std::optional<waypoints_type> {
+    if (collision_free_(start_position_, goal_position_)) {
+        // we might get lucky here, and a direct path between start and goal exists :-)
+        waypoints_.push_back(goal_position_);
+        waypoints_.push_back(start_position_);
+        return {waypoints_};
+    }
 
     while (remaining_iterations_ > 0) {
         if (grow_()) {
@@ -49,6 +76,7 @@ auto RRT::run() -> std::optional<waypoints_type> {
 
     return {};
 }
+#endif  // USE_RRT_STAR
 
 auto RRT::growN(int n) -> bool {
     if (n < 0) {
@@ -157,8 +185,8 @@ auto RRT::find_nearest_neighbor_(const vec3& pt) -> RRT::node_t* {
         std::size_t index{0};
         auto shortest_distance = std::numeric_limits<double>::max();
         for (std::size_t i = linear_search_start_index_; i < nodes_.size(); ++i) {
-            // TODO: use squared distance instead of sqrt distance. as the size is not of interest, but only relative
-            // ordering of distances between points.
+            // TODO: use squared distance instead of sqrt distance. as the size is not of interest, but only
+            // relative ordering of distances between points.
             const auto distance = (nodes_[i].position_ - pt).norm();
             if (distance < shortest_distance) {
                 shortest_distance = distance;
@@ -251,6 +279,10 @@ auto RRT::insert_node_(const vec3& pos, node_t* parent) -> node_t& {
 
     //     auto c_min = cost(x_min) + (parent->position_ - pos).norm();
     //     auto c_new = 2.0f;
+    // const bool an_edge_between_x_near_and_x_new_reduces_the_cost = c < cost(x_new);
+    // if (an_edge_between_x_near_and_x_new_reduces_the_cost) {
+    //     x_min = x_near;
+    // }
     //     // for all in near
 
     //     for (auto idx : near_nodes) {
@@ -424,7 +456,7 @@ auto RRT::insert_node_(const vec3& pos, node_t* parent) -> node_t& {
 #endif  // USE_KDTREE
 
     return node;
-}
+}  // namespace mdi::rrt
 
 auto RRT::grow_() -> bool {
     if (! (remaining_iterations_ > 0)) {
@@ -496,6 +528,7 @@ auto RRT::grow_() -> bool {
 
     call_cbs_for_event_on_new_node_created_(v_near->position_, inserted_node.position_);
 
+#infdef USE_RRT_STAR
     const auto reached_goal = (inserted_node.position_ - goal_position_).norm() <= max_dist_goal_tolerance_;
 
     if (reached_goal) {
@@ -526,6 +559,7 @@ auto RRT::grow_() -> bool {
             return true;
         }
     }
+#endif  // USE_RRT_STAR
 
     return false;
 }
@@ -696,10 +730,13 @@ auto RRT::backtrack_and_set_waypoints_starting_at_(node_t* start_node) -> bool {
         ptr = ptr->parent;
     } while (ptr != nullptr);
 
-    const auto should_optimize_waypoints = true;
-    if (should_optimize_waypoints) {
-        optimize_waypoints_();
-    }
+    // const auto should_optimize_waypoints = true;
+    // if (should_optimize_waypoints) {
+    // }
+
+#ifndef USE_RRT_STAR
+    optimize_waypoints_();
+#endif  // USE_RRT_STAR
 
     return true;
 }

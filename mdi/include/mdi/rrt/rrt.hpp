@@ -176,11 +176,14 @@ class RRT {
 
     struct node_t {
        public:
+        // TODO: add cost somehow
         node_t(vec3 pos, node_t* parent_ = nullptr) : parent(parent_), children{}, position_(std::move(pos)) {}
 
         node_t* parent = nullptr;
         std::vector<node_t*> children{};
+        // TODO: change to position
         vec3 position_{};
+        double cost = 0.0;
 
         [[nodiscard]] auto is_leaf() const -> bool { return children.empty(); }
         [[nodiscard]] auto is_root() const -> bool { return parent == nullptr; }
@@ -190,6 +193,7 @@ class RRT {
             ostream << "RRT::node:\n";
             ostream << "  root: " << (n.is_root() ? "true" : "false") << '\n';
             ostream << "  leaf: " << (n.is_leaf() ? "true" : "false") << '\n';
+            ostream << "  cost: " << n.cost << '\n';
             ostream << "  position:\n";
             ostream << "    x: " << n.position_.x() << '\n';
             ostream << "    y: " << n.position_.y() << '\n';
