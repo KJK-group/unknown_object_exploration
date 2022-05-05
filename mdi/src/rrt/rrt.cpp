@@ -551,10 +551,6 @@ auto RRT::optimize_waypoints_() -> void {
     const auto cost = [this](const std::size_t w1_index, const std::size_t w2_index) -> double {
         assert(0 <= w1_index && w1_index < waypoints_.size());
         assert(0 <= w2_index && w2_index < waypoints_.size());
-        // assert(w1_index != w2_index);
-        // if (w1_index == w2_index) {
-        //     return 0;
-        // }
         auto d = (waypoints_[w1_index] - waypoints_[w2_index]).norm();
         return d;
     };
@@ -572,33 +568,19 @@ auto RRT::optimize_waypoints_() -> void {
         return collision_free_(waypoints_[from], waypoints_[to]);
     };
 
-    // create a range [0, |W| - 1]
-    auto indices = std::vector<std::size_t>(waypoints_.size());
-    std::iota(indices.begin(), indices.end(), 0);
-
-    const auto w_goal = waypoints_.size() - 1;
-    const auto w_start = 0;
-
-    // auto solution = std::stack<edge>();
-    auto solution_indices = std::vector<int>();
-    // solution_indices.push_back(w_start);
-
-    auto s = std::stack<edge>();
-    s.emplace(w_start, w_start);
     const auto fmt_vec3 = [](const vec3& v) {
         return "[" + std::to_string(v.x()) + ", " + std::to_string(v.y()) + ", " + std::to_string(v.z()) + "]";
     };
     // distances does not change so we compute them once
 
-    // using waypoint_cost = std::pair<std::size_t, double>;
-    struct waypoint_cost {
-        waypoint_cost(std::size_t i, double c) : index{i}, cost{c} {}
-        std::size_t index;
-        double cost;
-    };
+    // struct waypoint_cost {
+    //     waypoint_cost(std::size_t i, double c) : index{i}, cost{c} {}
+    //     std::size_t index;
+    //     double cost;
+    // };
 
     // first index is vertex id (a), second is vertex id (b) of a vertex that it forms
-    // a edge with (a,b)
+    // an edge with (a,b)
     using graph = std::vector<std::vector<std::size_t>>;
     const auto visited = [](const graph& g, const edge& e) -> bool {
         const auto [u, v] = e;
@@ -634,39 +616,34 @@ auto RRT::optimize_waypoints_() -> void {
         return true;
     };
 
-    const auto print_graph = [](const graph& g) {
-        for (std::size_t u = 0; u < g.size(); ++u) {
-            std::cout << "[ ";
-            for (std::size_t v = 0; v < g[u].size(); ++v) {
-                std::cout << "(" << u << ", " << v << "), ";
-            }
-            std::cout << " ]" << std::endl;
-        }
-        std::cout << "\n\n";
-    };
+    // const auto print_graph = [](const graph& g) {
+    //     for (std::size_t u = 0; u < g.size(); ++u) {
+    //         std::cout << "[ ";
+    //         for (std::size_t v = 0; v < g[u].size(); ++v) {
+    //             std::cout << "(" << u << ", " << v << "), ";
+    //         }
+    //         std::cout << " ]" << std::endl;
+    //     }
+    //     std::cout << "\n\n";
+    // };
+
+    // create a range [0, |W| - 1]
+    auto wps = std::vector<std::size_t>(waypoints_.size());
+    std::iota(wps.begin(), wps.end(), 0);
+
+    const auto w_goal = waypoints_.size() - 1;
+    const auto w_start = 0;
+
+    auto solution_indices = std::vector<std::size_t>();
+
+    auto s = std::stack<edge>();
+    s.emplace(w_start, w_start);
 
     graph g(waypoints_.size());
 
-    auto cost_of_waypoints_to_w_goal = std::vector<waypoint_cost>();
-    std::transform(indices.cbegin(), indices.cend(), std::back_inserter(cost_of_waypoints_to_w_goal),
-                   [&](const auto w) {
-                       return waypoint_cost{w, cost(w, w_goal)};
-                   });
-
-    // sorting makes it easier to filter by cost radius
-    std::sort(cost_of_waypoints_to_w_goal.begin(), cost_of_waypoints_to_w_goal.end(),
-              [](const waypoint_cost& a, const waypoint_cost& b) { return a.cost < b.cost; });
-
-    // auto distances_to_w_goal = std::vector<float>();
-    // std::transform(indices.cbegin(), indices.cend(), std::back_inserter(distances_to_w_goal),
-    //    [&](const auto w) { return cost(w, w_goal); });
-
-    // TODO: start greedy and then if not feasible shift strategy to inclusive
-
-    // TODO: not guaranteed optimal
+    // not guaranteed optimal. use a greedy algorithm approach to be efficient.
     while (! s.empty()) {
         const auto [w_parent, w] = s.top();
-        std::cout << "w_parent = " << w_parent << " w " << w << '\n';
         s.pop();
         // will be false on iteration 1
         if (w_parent != w && ! edge_is_collision_free({w_parent, w})) {
@@ -675,26 +652,14 @@ auto RRT::optimize_waypoints_() -> void {
                 const auto [next_w_parent, _] = s.top();
                 // if we have exhausted the candidates where w_parent is the parent,
                 // then we need to drop it from the solution
-                // FIXME: this is wrong, and creates inf loop
                 if (next_w_parent != w_parent) {
-                    std::cout << "time to pop size is " << solution_indices.size() << std::endl;
                     solution_indices.pop_back();
                 }
             }
             // acts as backtracking
             continue;
         } else {
-            std::cout << "pushing " << w << " onto solution_indices" << std::endl;
-            std::cout << "poshing solution stack: size before = " << solution_indices.size() << '\n';
             solution_indices.emplace_back(w);
-            std::cout << "poshing solution stack: size = " << solution_indices.size() << '\n';
-            for (std::size_t i = 0; i < solution_indices.size(); ++i) {
-                const auto idx = solution_indices[i];
-                std::cout << "idx: " << idx << '\n';
-                const auto& wp = waypoints_[solution_indices[i]];
-                std::cout << "[" << i << "] " << fmt_vec3(wp) << '\n';
-            }
-            std::cout << "\n\n";
         }
 
         // base case
@@ -702,87 +667,12 @@ auto RRT::optimize_waypoints_() -> void {
             break;
         }
 
-        // we could look it up in "cost_of_waypoints_to_w_goal" but it is cheaper to just compute again.
-        const double search_radius = cost(w, w_goal);
-        std::cout << "search radius " << search_radius << '\n';
-        // const auto within_relevant_search_radius = [&distances_to_w_goal, search_radius](const std::size_t
-        // w_neighbor) { return distances_to_w_goal[w_neighbor] <= search_radius;
-        // };
-
-        // TODO: maybe fiwaypo lter on turning angle
-        // w_neighbors <- { w_neighbor in W | w != w_neighbor /\ cost(w, w_neighbor) <= search_radius /\
-        // edge_is_collision_free(w, w_neighbor) }
-        auto w_neighbors = std::vector<std::size_t>();
-        auto split = std::find_if(cost_of_waypoints_to_w_goal.begin(), cost_of_waypoints_to_w_goal.end(),
-                                  [&](const waypoint_cost& wp_cost) { return wp_cost.cost > search_radius; });
-
-        // std::copy(cost_of_waypoints_to_w_goal.begin(), split, std::back_inserter(w_neighbors));
-
-        // consider all the waypoints no matter their distance
-        // for (auto it = cost_of_waypoints_to_w_goal.begin(); it != cost_of_waypoints_to_w_goal.end(); ++it) {
-        for (auto it = cost_of_waypoints_to_w_goal.begin(); it != split; ++it) {
-            w_neighbors.push_back(it->index);
-        }
-
-        // std::copy_if(indices.cbegin(), indices.cend(), std::back_inserter(w_neighbors),
-        //              [&](const std::size_t w_neighbor) {
-        //                  return w != w_neighbor && within_relevant_search_radius(w_neighbor) /*&&
-        //                         edge_is_collision_free({w, w_neighbor}) */
-        //                      ;
-        //              });
-
-        std::cout << "w_neighbors.size() = " << w_neighbors.size() << '\n';
-        // reject solution node if there are no valid neighbors
-        // if (w_neighbors.empty()) {
-        //     // solution.pop();
-        //     solution_indices.pop_back();
-        //     std::cout << "popping solution stack:" << '\n';
-        //     for (std::size_t i = 0; i < solution_indices.size(); ++i) {
-        //         const auto& wp = waypoints_[solution_indices[i]];
-        //         std::cout << "[" << i << "] " << fmt_vec3(wp) << '\n';
-        //     }
-        //     std::cout << "\n\n";
-        //     continue;
-        // }
-
-        // sort based on highest cost since we insert into a stack, and want the lowest cost first.
-        // std::sort(w_neighbors.begin(), w_neighbors.end(), [&](const std::size_t w1, const std::size_t w2) {
-        // return distances_to_w_goal[w1] < distances_to_w_goal[w2];
-        // });
-        // std::cout << "diff " << distances_to_w_goal[w_neighbors[0]] << "  " <<
-        // distances_to_w_goal[w_neighbors[1]]
-        //   << '\n';
-        //
-        bool w_has_neighbors_of_interest = false;
-        for (auto it = w_neighbors.rbegin(); it != w_neighbors.rend(); ++it) {
+        for (auto it = wps.cbegin(); it != wps.cend(); ++it) {
             const auto w_neighbor = *it;
             if (w != w_neighbor && mark_as_visited(g, edge{w, w_neighbor})) {
-                // print_graph(g);
                 s.emplace(w, w_neighbor);
             }
-            // w_has_neighbors_of_interest = true;
-            // if (edge_is_collision_free({w, w_neighbor})) {
-            // }
         }
-
-        // if (! w_has_neighbors_of_interest) {
-        //     solution_indices.pop_back();
-        //     std::cout << "popping solution stack:" << '\n';
-        //     for (std::size_t i = 0; i < solution_indices.size(); ++i) {
-        //         const auto& wp = waypoints_[solution_indices[i]];
-        //         std::cout << "[" << i << "] " << fmt_vec3(wp) << '\n';
-        //     }
-        //     std::cout << "\n\n";
-        // }
-
-        // const auto [_, w_best] = s.top();
-        // solution_indices.push_back(w_best);
-        // std::cout << "poshing solution stack:" << '\n';
-        // for (std::size_t i = 0; i < solution_indices.size(); ++i) {
-        //     const auto& wp = waypoints_[solution_indices[i]];
-        //     std::cout << "[" << i << "] " << fmt_vec3(wp) << '\n';
-        // }
-        // std::cout << "\n\n";
     }
 
     if (s.empty()) {
@@ -792,15 +682,13 @@ auto RRT::optimize_waypoints_() -> void {
         return;  // nothing to do  ¯\_(ツ)_/¯
     }
 
-    // TODO: maybe do start -> goal and goal -> start, and compare them
+    // std::cout << "solution_waypoints before interpolation " << solution_indices.size() << '\n';
 
-    std::cout << "solution_waypoints before interpolation " << solution_indices.size() << '\n';
-
-    for (std::size_t i = 0; i < solution_indices.size(); ++i) {
-        const auto& wp = waypoints_[solution_indices[i]];
-        std::cout << "[" << i << "] " << fmt_vec3(wp) << '\n';
-    }
-    std::cout << "\n\n";
+    // for (std::size_t i = 0; i < solution_indices.size(); ++i) {
+    //     const auto& wp = waypoints_[solution_indices[i]];
+    //     std::cout << "[" << i << "] " << fmt_vec3(wp) << '\n';
+    // }
+    // std::cout << "\n\n";
 
     auto solution_waypoints = std::vector<waypoint_type>();
     // interpolate points a long path so bezier spline interpolation is better
@@ -826,9 +714,10 @@ auto RRT::optimize_waypoints_() -> void {
     }
     // the above loop does not iterate over the last optimized waypoint, so we have to add it.
     solution_waypoints.push_back(waypoints_[solution_indices.back()]);
-    std::cout << "solution_waypoints after interpolation " << solution_waypoints.size() << '\n';
-    std::cout << "interpolated waypoints added "
-              << static_cast<int>(solution_waypoints.size()) - static_cast<int>(solution_indices.size()) << '\n';
+
+    // std::cout << "solution_waypoints after interpolation " << solution_waypoints.size() << '\n';
+    // std::cout << "interpolated waypoints added "
+    //           << static_cast<int>(solution_waypoints.size()) - static_cast<int>(solution_indices.size()) << '\n';
 
     for (std::size_t i = 0; i < solution_waypoints.size() - 1; ++i) {
         const auto& from = solution_waypoints[i];
@@ -836,15 +725,15 @@ auto RRT::optimize_waypoints_() -> void {
         call_cbs_for_event_after_optimizing_waypoints_(from, to);
     }
 
-    for (std::size_t i = 0; i < solution_waypoints.size(); ++i) {
-        const auto& wp = solution_waypoints[i];
-        std::cout << "[" << i << "] " << fmt_vec3(wp) << '\n';
-    }
+    // for (std::size_t i = 0; i < solution_waypoints.size(); ++i) {
+    //     const auto& wp = solution_waypoints[i];
+    //     std::cout << "[" << i << "] " << fmt_vec3(wp) << '\n';
+    // }
 
     waypoints_.clear();
     waypoints_ = solution_waypoints;
     disable_cbs_for_event_on_raycast();
-};  // namespace mdi::rrt
+}
 
 auto RRT::backtrack_and_set_waypoints_starting_at_(node_t* start_node) -> bool {
     if (start_node == nullptr) {
