@@ -31,7 +31,7 @@ auto main(int argc, char** argv) -> int {
     if (argc > 1) velocity_target = std::stof(argv[1]);
 
     // mission instance
-    auto mission = mdi::Mission(nh, rate, velocity_target);
+    auto mission = mdi::Mission(nh, rate, velocity_target, {0, 0, 5}, true);
     // for (auto& p : interest_points) {
     //     mission.add_interest_point(p);
     // }
@@ -59,7 +59,7 @@ auto main(int argc, char** argv) -> int {
 
     while (ros::ok()) {
         delta_time = ros::Time::now() - start_time;
-        if (delta_time.toSec() > 35 && (idx < interest_points.size())) {
+        if (delta_time.toSec() > 10 && (idx < interest_points.size())) {
             mission.add_interest_point(interest_points[idx++]);
             start_time = ros::Time::now();
         }

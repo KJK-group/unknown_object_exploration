@@ -1,7 +1,7 @@
 #include "mdi/mission.hpp"
 
 namespace mdi {
-Mission::Mission(ros::NodeHandle& nh, ros::Rate& rate, float velocity_target, Eigen::Vector3f home)
+Mission::Mission(ros::NodeHandle& nh, ros::Rate& rate, float velocity_target, Eigen::Vector3f home, bool visualise)
     : inspection_complete(false),
       exploration_complete(false),
       step_count(0),
@@ -12,7 +12,9 @@ Mission::Mission(ros::NodeHandle& nh, ros::Rate& rate, float velocity_target, Ei
       rate(rate),
       nh(nh),
       home_position(std::move(home)),
-      trajectory({nh, rate, {{0, 0, 0}, home_position}}) {
+      marker_scale(0.1),
+      visualise(visualise),
+      trajectory({nh, rate, {{0, 0, 0}, home_position}, visualise}) {
     // publishers
     pub_mission_state = nh.advertise<mdi_msgs::MissionStateStamped>("/mdi/state", utils::DEFAULT_QUEUE_SIZE);
     pub_visualise = nh.advertise<visualization_msgs::Marker>("/mdi/visualisation_marker", utils::DEFAULT_QUEUE_SIZE);
@@ -85,7 +87,7 @@ auto Mission::drone_takeoff(float altitude) -> bool {
     ros::Duration(2).sleep();
     while (ros::ok() && position_error.norm > utils::SMALL_DISTANCE_TOLERANCE) {
         expected_position = Eigen::Vector3f(0, 0, utils::DEFAULT_DISTANCE_TOLERANCE);
-        std::cout << expected_position << std::endl;
+        // std::cout << expected_position << std::endl;
         publish();
         ros::spinOnce();
         rate.sleep();
@@ -102,7 +104,7 @@ auto Mission::drone_takeoff(float altitude) -> bool {
             altitude_reached = true;
         }
         expected_position = Eigen::Vector3f(0, 0, altitude_progress);
-        std::cout << expected_position << std::endl;
+        // std::cout << expected_position << std::endl;
         publish();
         ros::spinOnce();
         rate.sleep();
@@ -125,7 +127,7 @@ auto Mission::drone_takeoff(float altitude) -> bool {
  * @return false if request is rejected
  */
 auto Mission::drone_land() -> bool {
-    std::cout << "Landing drone" << std::endl;
+    // std::cout << "Landing drone" << std::endl;
     auto previous_request_time = ros::Time(0);
     auto success = false;
 
@@ -178,14 +180,14 @@ auto Mission::publish() -> void {
     state.target.position.x = expected_position.x();
     state.target.position.y = expected_position.y();
     state.target.position.z = expected_position.z();
-    std::cout << "state.target.position.x: " << state.target.position.x << std::endl;
-    std::cout << "state.target.position.y: " << state.target.position.y << std::endl;
-    std::cout << "state.target.position.z: " << state.target.position.z << std::endl;
+    // std::cout << "state.target.position.x: " << state.target.position.x << std::endl;
+    // std::cout << "state.target.position.y: " << state.target.position.y << std::endl;
+    // std::cout << "state.target.position.z: " << state.target.position.z << std::endl;
     pub_mission_state.publish(state);
 }
 
 auto Mission::find_path(Eigen::Vector3f start, Eigen::Vector3f end) -> std::vector<Eigen::Vector3f> {
-    std::cout << "Finding path from " << start << " to " << end << std::endl;
+    // std::cout << "Finding path from " << start << " to " << end << std::endl;
     const auto goal_tolerance = 2;
     auto rrt_msg = mdi_msgs::RrtFindPath{};
     rrt_msg.request.probability_of_testing_full_path_from_new_node_to_goal = 0;
@@ -206,7 +208,7 @@ auto Mission::find_path(Eigen::Vector3f start, Eigen::Vector3f end) -> std::vect
         // path = std::vector<Eigen::Vector3f>(waypoints.size());
         // std::cout << "before for loop" << std::endl;
         for (auto& wp : waypoints) {
-            std::cout << wp << std::endl;
+            // std::cout << wp << std::endl;
             path.emplace_back(wp.x, wp.y, wp.z);
         }
     }
@@ -277,10 +279,10 @@ auto Mission::find_path(Eigen::Vector3f start, Eigen::Vector3f end) -> std::vect
 }
 
 auto Mission::fit_trajectory(std::vector<Eigen::Vector3f> path) -> std::optional<trajectory::CompoundTrajectory> {
-    std::cout << "found path" << std::endl;
-    for (auto& p : path) {
-        std::cout << p << std::endl;
-    }
+    // std::cout << "found path" << std::endl;
+    // for (auto& p : path) {
+    //     std::cout << p << std::endl;
+    // }
     if (path.size() > 1) {
         auto valid = false;
         for (int p = 1; p < path.size(); ++p) {
@@ -289,7 +291,7 @@ auto Mission::fit_trajectory(std::vector<Eigen::Vector3f> path) -> std::optional
             }
         }
         if (valid) {
-            return trajectory::CompoundTrajectory(nh, rate, path);
+            return trajectory::CompoundTrajectory(nh, rate, path, visualise);
         }
     }
     return {};
@@ -298,44 +300,45 @@ auto Mission::fit_trajectory(std::vector<Eigen::Vector3f> path) -> std::optional
 auto Mission::exploration_step() -> bool {
     auto success = true;
     if (step_count == 0) {
-        std::cout << "resetting time" << std::endl;
+        // std::cout << "resetting time" << std::endl;
         waypoint_idx = 1;
         start_time = ros::Time::now();
     }
     delta_time = ros::Time::now() - start_time;
-    std::cout << mdi::utils::GREEN << "Exploration step at: " << delta_time << mdi::utils::RESET << std::endl;
-    std::cout << "step_count: " << step_count << std::endl;
+    // std::cout << mdi::utils::GREEN << "Exploration step at: " << delta_time << mdi::utils::RESET << std::endl;
+    // std::cout << "step_count: " << step_count << std::endl;
 
-    std::cout << "Interest points:" << std::endl;
-    for (auto& ip : interest_points) {
-        std::cout << ip << std::endl;
-    }
+    // std::cout << "Interest points:" << std::endl;
+    // for (auto& ip : interest_points) {
+    // std::cout << ip << std::endl;
+    // }
 
-    std::cout << "waypoint_idx: " << waypoint_idx << std::endl;
+    // std::cout << "waypoint_idx: " << waypoint_idx << std::endl;
 
     auto distance = delta_time.toSec() * velocity_target;
     auto remaining_distance = trajectory.get_length() - distance;
-    std::cout << mdi::utils::MAGENTA << "distance: " << distance << mdi::utils::RESET << std::endl;
-    std::cout << mdi::utils::MAGENTA << "remaining_distance: " << remaining_distance << mdi::utils::RESET << std::endl;
+    // std::cout << mdi::utils::MAGENTA << "distance: " << distance << mdi::utils::RESET << std::endl;
+    // std::cout << mdi::utils::MAGENTA << "remaining_distance: " << remaining_distance << mdi::utils::RESET <<
+    // std::endl;
 
-    std::cout << "before if" << std::endl;
+    // std::cout << "before if" << std::endl;
     if (step_count == 0 || (remaining_distance < utils::SMALL_DISTANCE_TOLERANCE * 5 &&
                             position_error.norm < utils::SMALL_DISTANCE_TOLERANCE * 5)) {
-        std::cout << "inside if" << std::endl;
+        // std::cout << "inside if" << std::endl;
         if (waypoint_idx >= interest_points.size()) {
-            std::cout << waypoint_idx << std::endl;
-            std::cout << interest_points.size() << std::endl;
+            // std::cout << waypoint_idx << std::endl;
+            // std::cout << interest_points.size() << std::endl;
             // state.state = INSPECTION;
-            ros::Duration(1).sleep();
+            ros::Duration(0.5).sleep();
             success = false;
         } else {
             auto start = interest_points[waypoint_idx - 1];
             auto end = interest_points[waypoint_idx];
             auto path = find_path(start, end);
 
-            for (auto& p : path) {
-                std::cout << p << std::endl;
-            }
+            // for (auto& p : path) {
+            // // std::cout << p << std::endl;
+            // }
 
             if (auto trajectory_opt = fit_trajectory(path)) {
                 trajectory = *trajectory_opt;
@@ -347,9 +350,9 @@ auto Mission::exploration_step() -> bool {
             waypoint_idx++;
         }
     }
-    std::cout << "after if" << std::endl;
+    // std::cout << "after if" << std::endl;
 
-    std::cout << mdi::utils::GREEN << "delta_time: " << delta_time << mdi::utils::RESET << std::endl;
+    // std::cout << mdi::utils::GREEN << "delta_time: " << delta_time << mdi::utils::RESET << std::endl;
 
     // control the drone along the spline path
     // distance = delta_time.toSec() * velocity_target;
@@ -357,7 +360,7 @@ auto Mission::exploration_step() -> bool {
 
     // publish();
     if (success) {
-        std::cout << "SUCCESS" << std::endl;
+        // std::cout << "SUCCESS" << std::endl;
         trajectory_step();
     }
 
@@ -374,23 +377,23 @@ auto Mission::trajectory_step() -> bool {
     delta_time = ros::Time::now() - start_time;
     auto distance = delta_time.toSec() * velocity_target;
     auto remaining_distance = trajectory.get_length() - distance;
-    std::cout << mdi::utils::GREEN << "distance: " << distance << mdi::utils::RESET << std::endl;
-    std::cout << mdi::utils::GREEN << "remaining_distance: " << remaining_distance << mdi::utils::RESET << std::endl;
+    // std::cout << mdi::utils::GREEN << "distance: " << distance << mdi::utils::RESET << std::endl;
+    // std::cout << mdi::utils::GREEN << "remaining_distance: " << remaining_distance << mdi::utils::RESET << std::endl;
 
     if (remaining_distance < utils::DEFAULT_DISTANCE_TOLERANCE * 3 &&
         position_error.norm < utils::DEFAULT_DISTANCE_TOLERANCE * 3) {
-        std::cout << "end reached!" << std::endl;
+        // std::cout << "end reached!" << std::endl;
         return true;
     }
     expected_position = trajectory.get_point_at_distance(distance);
-    std::cout << "Got point " << expected_position << std::endl;
+    // std::cout << "Got point " << expected_position << std::endl;
     publish();
     step_count++;
     return false;
 }
 
 auto Mission::go_home() -> void {
-    std::cout << "Going to home position" << std::endl;
+    // std::cout << "Going to home position" << std::endl;
     auto start = interest_points[waypoint_idx - 1];
     auto path = find_path(start, home_position);
 
@@ -405,7 +408,7 @@ auto Mission::go_home() -> void {
     step_count = 0;
     while (ros::ok() && ! end_reached) {
         end_reached = trajectory_step();
-        std::cout << "step_count: " << step_count << std::endl;
+        // std::cout << "step_count: " << step_count << std::endl;
         ros::spinOnce();
         rate.sleep();
     }
@@ -414,7 +417,7 @@ auto Mission::go_home() -> void {
 auto Mission::run_step() -> void {
     timeout_delta_time = ros::Time::now() - timeout_start_time;
     if (timeout_delta_time > timeout) {
-        std::cout << "Mission timed out" << std::endl;
+        // std::cout << "Mission timed out" << std::endl;
         end();
     }
 
@@ -428,7 +431,7 @@ auto Mission::run_step() -> void {
             if (inspection_complete) {
                 go_home();
                 set_state(LAND);
-                std::cout << "state: " << state_to_string((enum state)state.state) << std::endl;
+                // std::cout << "state: " << state_to_string((enum state)state.state) << std::endl;
             } else {
                 drone_takeoff();
                 set_state(EXPLORATION);
@@ -436,14 +439,15 @@ auto Mission::run_step() -> void {
             break;
         case EXPLORATION:
             if (! exploration_step()) {
-                std::cout << timeout_delta_time.toSec() << " Waiting for new interest point..." << std::endl;
+                std::cout << std::setw(5) << (timeout - timeout_delta_time).toSec()
+                          << " Waiting for new interest point..." << std::endl;
             }
             break;
         case INSPECTION:
             end();
             break;
         case LAND:
-            std::cout << "LANDING?" << std::endl;
+            // std::cout << "LANDING?" << std::endl;
             drone_land();
             break;
         default:

@@ -31,7 +31,7 @@ auto hsb_to_rgb(float h, float s, float b) -> std::tuple<float, float, float> {
     assert(s >= 0 && s <= 100);
     assert(b >= 0 && b <= 100);
 
-    std::cout << "h: " << h << " s: " << s << " b: " << b << std::endl;
+    // std::cout << "h: " << h << " s: " << s << " b: " << b << std::endl;
 
     s /= 100;
     b /= 100;

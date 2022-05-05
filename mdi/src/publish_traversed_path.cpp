@@ -8,7 +8,7 @@
 auto main(int argc, char* argv[]) -> int {
     ros::init(argc, argv, "publish_traversed_path");
     auto nh = ros::NodeHandle();
-    auto spin_rate = ros::Rate(10);
+    auto spin_rate = ros::Rate(mdi::utils::DEFAULT_LOOP_RATE);
 
     auto path_est = nav_msgs::Path{};
     auto path_target = nav_msgs::Path{};

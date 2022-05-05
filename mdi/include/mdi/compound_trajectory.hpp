@@ -23,7 +23,7 @@ using Trajectory = std::variant<BezierSpline, LinearTrajectory>;
 
 class CompoundTrajectory {
    public:
-    CompoundTrajectory(ros::NodeHandle& nh, ros::Rate& rate, std::vector<Eigen::Vector3f> path,
+    CompoundTrajectory(ros::NodeHandle& nh, ros::Rate& rate, std::vector<Eigen::Vector3f> path, bool visualise = false,
                        float marker_scale = MARKER_SCALE);
     auto get_point_at_distance(float distance) -> Eigen::Vector3f;
     auto get_length() -> float;

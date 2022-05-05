@@ -2,7 +2,7 @@
 
 namespace mdi::trajectory {
 CompoundTrajectory::CompoundTrajectory(ros::NodeHandle& nh, ros::Rate& rate, std::vector<Eigen::Vector3f> path,
-                                       float marker_scale)
+                                       bool visualise, float marker_scale)
     : seq_marker(0), rate(rate) {
     pub_visualisation = nh.advertise<visualization_msgs::MarkerArray>("/mdi/visualisation", utils::DEFAULT_QUEUE_SIZE);
 
@@ -11,31 +11,31 @@ CompoundTrajectory::CompoundTrajectory(ros::NodeHandle& nh, ros::Rate& rate, std
     std::adjacent_difference(path.begin(), path.end(), std::back_inserter(vectors));
     vectors.erase(vectors.begin());
 
-    std::cout << "VECTORS: " << std::endl;
-    for (auto& v : vectors) {
-        std::cout << v << "\n" << std::endl;
-    }
+    // std::cout << "VECTORS: " << std::endl;
+    // for (auto& v : vectors) {
+    //     std::cout << v << "\n" << std::endl;
+    // }
 
     // find angle betweeen each ordered pair of vectors
     vector<float> angles;
     std::transform(vectors.begin(), vectors.end() - 1, std::next(vectors.begin()), std::back_inserter(angles),
                    [](auto v1, auto v2) {
-                       std::cout << "v1: " << v1 << "\n"
-                                 << "v2: " << v2 << "\n"
-                                 << std::endl;
+                       //    std::cout << "v1: " << v1 << "\n"
+                       //              << "v2: " << v2 << "\n"
+                       //              << std::endl;
                        auto dot = v1.dot(v2);
                        auto n1 = v1.norm();
                        auto n2 = v2.norm();
                        if (std::isnan(dot)) {
-                           dot = 0;
+                           return 0.f;
                        }
                        return (dot) / (n1 * n2);
                    });
     angles.push_back(1);
-    std::cout << "ANGLES:" << std::endl;
-    for (auto& a : angles) {
-        std::cout << a << std::endl;
-    }
+    // std::cout << "ANGLES:" << std::endl;
+    // for (auto& a : angles) {
+    //     std::cout << a << std::endl;
+    // }
 
     // find splitting indices for each section of the path
     // splitting one path point before the point where a!=180
@@ -66,15 +66,15 @@ CompoundTrajectory::CompoundTrajectory(ros::NodeHandle& nh, ros::Rate& rate, std
     // splits.push_back(angles.size());
     // splits.push_back(path.size() - 1);
 
-    std::cout << "STRAIGHT:" << std::endl;
-    for (int s = 0; s < straight.size(); s++) {
-        std::cout << straight[s] << std::endl;
-    }
+    // std::cout << "STRAIGHT:" << std::endl;
+    // for (int s = 0; s < straight.size(); s++) {
+    //     std::cout << straight[s] << std::endl;
+    // }
 
-    std::cout << "SPLITS:" << std::endl;
-    for (auto& s : splits) {
-        std::cout << s << std::endl;
-    }
+    // std::cout << "SPLITS:" << std::endl;
+    // for (auto& s : splits) {
+    //     std::cout << s << std::endl;
+    // }
 
     // uses each pair of splitting indices to slice the path into sections,
     // including points at starting and ending indices
@@ -88,14 +88,14 @@ CompoundTrajectory::CompoundTrajectory(ros::NodeHandle& nh, ros::Rate& rate, std
                        return section;
                    });
 
-    std::cout << "SECTIONS" << std::endl;
-    for (int s = 0; s < sections.size(); s++) {
-        std::cout << "section " << s << std::endl;
-        std::cout << "straight: " << straight[s] << std::endl;
-        for (auto& s : sections[s]) {
-            std::cout << s << std::endl;
-        }
-    }
+    // std::cout << "SECTIONS" << std::endl;
+    // for (int s = 0; s < sections.size(); s++) {
+    //     std::cout << "section " << s << std::endl;
+    //     std::cout << "straight: " << straight[s] << std::endl;
+    //     for (auto& s : sections[s]) {
+    //         std::cout << s << std::endl;
+    //     }
+    // }
 
     // create list of trajectories
     std::transform(sections.begin(), sections.end(), straight.begin(), std::back_inserter(trajectories),
@@ -116,19 +116,27 @@ CompoundTrajectory::CompoundTrajectory(ros::NodeHandle& nh, ros::Rate& rate, std
         distance_lut.push_back(a);
     }
 
-    visualise(marker_scale);
+    // visualise in rviz if specified
+    // std::cout << "visualise bool = " << visualise << std::endl;
+    if (visualise) {
+        this->visualise(marker_scale);
+    }
 }
 
 auto CompoundTrajectory::visualise(float scale) -> void {
     visualization_msgs::MarkerArray ma;
     for (int s = 0; s < trajectories.size(); s++) {
         float r = 255, g = 255, b = 255;
-        std::tie(r, g, b) = utils::hsb_to_rgb((float)s / (float)trajectories.size() * 360.f, 80, 80);
+        auto hue = (float)s / (float)trajectories.size() * 360.f + 180;
+        if (hue > 360) {
+            hue -= 360;
+        }
+        std::tie(r, g, b) = utils::hsb_to_rgb(hue, 80, 80);
         r /= 255;
         g /= 255;
         b /= 255;
 
-        std::cout << "r: " << r << ", g: " << g << ", b: " << b << std::endl;
+        // std::cout << "r: " << r << ", g: " << g << ", b: " << b << std::endl;
 
         visualization_msgs::Marker m;
         m.header.frame_id = utils::FRAME_WORLD;
@@ -141,7 +149,7 @@ auto CompoundTrajectory::visualise(float scale) -> void {
         auto t = trajectories[s];
         auto t_length = std::visit([](auto& t) { return t.get_length(); }, t);
 
-        for (float d = 0; t_length - d > 0; d += 0.01) {
+        for (float d = 0; t_length - d > 0; d += 0.05) {
             m.header.seq = seq_marker++;
             m.header.stamp = ros::Time::now();
             m.id = seq_marker++;
@@ -184,23 +192,23 @@ auto CompoundTrajectory::visualise(float scale) -> void {
 
     ros::spinOnce();
     rate.sleep();
-    ros::Duration(2).sleep();
+    // ros::Duration(2).sleep();
     pub_visualisation.publish(ma);
     ros::spinOnce();
     rate.sleep();
 }
 
 auto CompoundTrajectory::get_length() -> float {
-    std::cout << "get_length" << std::endl;
+    // std::cout << "get_length" << std::endl;
     return distance_lut.back();
 }
 
 auto CompoundTrajectory::get_point_at_distance(float distance) -> Eigen::Vector3f {
-    std::cout << "get_point_at_distance" << std::endl;
+    // std::cout << "get_point_at_distance" << std::endl;
     assert(distance >= 0);
     int trajectory_idx = 0;
     for (trajectory_idx = 0; trajectory_idx < distance_lut.size(); trajectory_idx++) {
-        std::cout << "distance_lut[" << trajectory_idx << "] = " << distance_lut[trajectory_idx] << std::endl;
+        // std::cout << "distance_lut[" << trajectory_idx << "] = " << distance_lut[trajectory_idx] << std::endl;
         if (distance < distance_lut[trajectory_idx]) {
             break;
         }
@@ -208,7 +216,7 @@ auto CompoundTrajectory::get_point_at_distance(float distance) -> Eigen::Vector3
     if (trajectory_idx >= distance_lut.size()) {
         trajectory_idx = distance_lut.size() - 1;
     }
-    std::cout << "found index: " << trajectory_idx << std::endl;
+    // std::cout << "found index: " << trajectory_idx << std::endl;
 
     auto t = trajectories[trajectory_idx];
     auto t_length = std::visit([](auto& t) { return t.get_length(); }, t);

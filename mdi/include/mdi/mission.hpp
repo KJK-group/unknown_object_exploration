@@ -30,7 +30,7 @@ constexpr auto INITIAL_ALTITUDE = 5;
 class Mission {
    public:
     Mission(ros::NodeHandle& nh, ros::Rate& rate, float velocity_target = 1,
-            Eigen::Vector3f home = {0, 0, INITIAL_ALTITUDE});
+            Eigen::Vector3f home = {0, 0, INITIAL_ALTITUDE}, bool visualise = false);
     enum state { PASSIVE, HOME, EXPLORATION, INSPECTION, LAND };
     static auto state_to_string(enum state s) -> std::string;
     auto add_interest_point(Eigen::Vector3f interest_point) -> void;
@@ -112,6 +112,10 @@ class Mission {
     int step_count;
     bool inspection_complete;
     bool exploration_complete;
+
+    // visualisation
+    float marker_scale;
+    bool visualise;
 };
 }  // namespace mdi
 #endif  // _MDI_MISSION_MANAGER_HPP_

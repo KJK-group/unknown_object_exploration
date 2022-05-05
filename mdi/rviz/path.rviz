@@ -117,7 +117,7 @@ Visualization Manager:
     - Alpha: 1
       Buffer Length: 1
       Class: rviz/Path
-      Color: 255; 0; 0
+      Color: 255; 255; 255
       Enabled: true
       Head Diameter: 0.30000001192092896
       Head Length: 0.20000000298023224
@@ -142,7 +142,7 @@ Visualization Manager:
       Buffer Length: 1
       Class: rviz/Path
       Color: 255; 255; 255
-      Enabled: true
+      Enabled: false
       Head Diameter: 0.30000001192092896
       Head Length: 0.20000000298023224
       Length: 0.30000001192092896
@@ -161,7 +161,7 @@ Visualization Manager:
       Shaft Length: 0.10000000149011612
       Topic: /mdi/paths/target
       Unreliable: false
-      Value: true
+      Value: false
     - Class: rviz/Marker
       Enabled: false
       Marker Topic: /mdi/visualisation_marker
@@ -234,9 +234,9 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.38479965925216675
+      Pitch: 0.3897995948791504
       Target Frame: world_view
-      Yaw: 3.1823089122772217
+      Yaw: 3.322296142578125
     Saved: ~
 Window Geometry:
   Displays:
