@@ -15,7 +15,7 @@
 #include <optional>
 #include <utility>
 
-#include "mdi/bezier_spline.hpp"
+#include "mdi/compound_trajectory.hpp"
 #include "mdi/rrt/rrt.hpp"
 #include "mdi/rrt/rrt_builder.hpp"
 #include "mdi/utils/rviz/rviz.hpp"
@@ -36,7 +36,7 @@ class Mission {
     auto add_interest_point(Eigen::Vector3f interest_point) -> void;
 
     auto get_drone_state() -> mavros_msgs::State;
-    auto get_spline() -> trajectory::BezierSpline;
+    auto get_trajectory() -> trajectory::CompoundTrajectory;
     auto drone_takeoff(float altitude = INITIAL_ALTITUDE) -> bool;
     auto drone_land() -> bool;
     auto drone_arm() -> bool;
@@ -49,11 +49,11 @@ class Mission {
 
    private:
     auto find_path(Eigen::Vector3f start, Eigen::Vector3f end) -> std::vector<Eigen::Vector3f>;
-    auto fit_spline(std::vector<Eigen::Vector3f> path) -> std::optional<trajectory::BezierSpline>;
+    auto fit_trajectory(std::vector<Eigen::Vector3f> path) -> std::optional<trajectory::CompoundTrajectory>;
     auto drone_set_mode(std::string mode = "OFFBOARD") -> bool;
 
     auto go_home() -> void;
-    auto spline_step() -> bool;
+    auto trajectory_step() -> bool;
     auto explore() -> bool;
     auto exploration_step() -> bool;
     auto publish() -> void;
@@ -62,6 +62,7 @@ class Mission {
     auto error_cb(const mdi_msgs::PointNormStamped::ConstPtr& error) -> void;
     auto odom_cb(const nav_msgs::Odometry::ConstPtr& odom) -> void;
 
+    ros::NodeHandle& nh;
     ros::Rate& rate;
     mdi_msgs::MissionStateStamped state;
 
@@ -100,7 +101,7 @@ class Mission {
     ros::Duration timeout;
 
     // path
-    trajectory::BezierSpline spline;
+    trajectory::CompoundTrajectory trajectory;
     int waypoint_idx;
 
     float velocity_target;

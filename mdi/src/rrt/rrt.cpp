@@ -702,7 +702,7 @@ auto RRT::optimize_waypoints_() -> void {
         const auto edge_cost = cost(idx, next_idx);
         const auto should_interpolate_along_edge = edge_cost > static_cast<double>(step_size_);
         if (should_interpolate_along_edge) {
-            const double percentage_offset = 1 / (edge_cost / static_cast<double>(step_size_));
+            const double percentage_offset = 1 / std::ceil(edge_cost / static_cast<double>(step_size_));
             // TODO: special case for edge_cost / static_cast<double>(step_size_) being an integer.
             // then n <= steps should be n < steps
             const int steps = std::floor(edge_cost / static_cast<double>(step_size_));

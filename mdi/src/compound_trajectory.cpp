@@ -18,8 +18,19 @@ CompoundTrajectory::CompoundTrajectory(ros::NodeHandle& nh, ros::Rate& rate, std
 
     // find angle betweeen each ordered pair of vectors
     vector<float> angles;
-    std::transform(vectors.begin(), vectors.end() - 1, vectors.begin() + 1, std::back_inserter(angles),
-                   [](auto v1, auto v2) { return (v1.dot(v2)) / (v1.norm() * v2.norm()); });
+    std::transform(vectors.begin(), vectors.end() - 1, std::next(vectors.begin()), std::back_inserter(angles),
+                   [](auto v1, auto v2) {
+                       std::cout << "v1: " << v1 << "\n"
+                                 << "v2: " << v2 << "\n"
+                                 << std::endl;
+                       auto dot = v1.dot(v2);
+                       auto n1 = v1.norm();
+                       auto n2 = v2.norm();
+                       if (std::isnan(dot)) {
+                           dot = 0;
+                       }
+                       return (dot) / (n1 * n2);
+                   });
     angles.push_back(1);
     std::cout << "ANGLES:" << std::endl;
     for (auto& a : angles) {
@@ -39,7 +50,7 @@ CompoundTrajectory::CompoundTrajectory(ros::NodeHandle& nh, ros::Rate& rate, std
         // std::cout << "angle_before: " << angle_before << std::endl;
         // std::cout << "angle_current: " << angle_current << std::endl;
         // std::cout << "angle_before: " << angle_after << std::endl;
-        static constexpr auto float_eps = std::numeric_limits<float>::epsilon();
+        static constexpr auto float_eps = std::numeric_limits<float>::epsilon() * 2;
         if (std::abs(angle_current - 1) < float_eps) {
             if (std::abs(angle_before - 1) > float_eps) {
                 splits.push_back(i + 1);
@@ -179,20 +190,29 @@ auto CompoundTrajectory::visualise(float scale) -> void {
     rate.sleep();
 }
 
-auto CompoundTrajectory::get_length() -> float { return distance_lut.back(); }
+auto CompoundTrajectory::get_length() -> float {
+    std::cout << "get_length" << std::endl;
+    return distance_lut.back();
+}
 
 auto CompoundTrajectory::get_point_at_distance(float distance) -> Eigen::Vector3f {
+    std::cout << "get_point_at_distance" << std::endl;
     assert(distance >= 0);
-    int spline_idx = 0;
-    for (spline_idx = 0; spline_idx < distance_lut.size(); spline_idx++) {
-        if (distance < distance_lut[spline_idx]) {
+    int trajectory_idx = 0;
+    for (trajectory_idx = 0; trajectory_idx < distance_lut.size(); trajectory_idx++) {
+        std::cout << "distance_lut[" << trajectory_idx << "] = " << distance_lut[trajectory_idx] << std::endl;
+        if (distance < distance_lut[trajectory_idx]) {
             break;
         }
     }
+    if (trajectory_idx >= distance_lut.size()) {
+        trajectory_idx = distance_lut.size() - 1;
+    }
+    std::cout << "found index: " << trajectory_idx << std::endl;
 
-    auto t = trajectories[spline_idx];
+    auto t = trajectories[trajectory_idx];
     auto t_length = std::visit([](auto& t) { return t.get_length(); }, t);
-    auto distance_in_spline = t_length - (distance - distance_lut[spline_idx - 1]);
+    auto distance_in_spline = t_length - (distance - distance_lut[trajectory_idx - 1]);
     return std::visit([&](auto& t) { return t.get_point_at_distance(distance_in_spline); }, t);
 }
 }  // namespace mdi::trajectory

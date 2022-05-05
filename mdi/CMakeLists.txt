@@ -112,17 +112,16 @@ add_library(rrt SHARED src/rrt/rrt.cpp)
 target_link_libraries(rrt ${catkin_LIBRARIES} fmt::fmt-header-only
                       kdtree-header-only)
 
-add_library(mission SHARED src/mission.cpp)
-target_link_libraries(mission bezier_spline rrt)
 add_library(compound_trajectory SHARED src/compound_trajectory.cpp)
 target_link_libraries(compound_trajectory bezier_spline linear_trajectory rrt)
-
+add_library(mission SHARED src/mission.cpp)
+target_link_libraries(mission compound_trajectory rrt)
 
 # add_ros_executable(mission_manager src/mission_manager.cpp)
 add_executable(mission_manager src/mission_manager.cpp)
 add_dependencies(mission_manager ${${PROJECT_NAME}_EXPORTED_TARGETS}
                  ${catkin_EXPORTED_TARGETS})
-target_link_libraries(mission_manager ${catkin_LIBRARIES} bezier_spline rrt
+target_link_libraries(mission_manager ${catkin_LIBRARIES} compound_trajectory rrt
                       mission fmt::fmt-header-only)
 target_compile_options(mission_manager PRIVATE -g)
 

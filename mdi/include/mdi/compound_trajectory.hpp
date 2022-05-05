@@ -5,6 +5,7 @@
 #include <visualization_msgs/MarkerArray.h>
 
 #include <algorithm>
+#include <cmath>
 #include <eigen3/Eigen/Dense>
 #include <limits>
 #include <numeric>

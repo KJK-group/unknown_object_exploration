@@ -59,7 +59,7 @@ auto main(int argc, char** argv) -> int {
 
     while (ros::ok()) {
         delta_time = ros::Time::now() - start_time;
-        if (delta_time.toSec() > 10 && (idx < interest_points.size())) {
+        if (delta_time.toSec() > 35 && (idx < interest_points.size())) {
             mission.add_interest_point(interest_points[idx++]);
             start_time = ros::Time::now();
         }
