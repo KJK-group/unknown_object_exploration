@@ -54,7 +54,7 @@ auto Mission::odom_cb(const nav_msgs::Odometry::ConstPtr& odom) -> void { drone_
 
 auto Mission::add_interest_point(Eigen::Vector3f interest_point) -> void { interest_points.push_back(interest_point); }
 auto Mission::get_drone_state() -> mavros_msgs::State { return drone_state; }
-auto Mission::get_spline() -> BezierSpline { return spline; }
+auto Mission::get_spline() -> trajectory::BezierSpline { return spline; }
 
 auto Mission::set_state(enum state s) -> void {
     state.state = s;
@@ -273,7 +273,7 @@ auto Mission::find_path(Eigen::Vector3f start, Eigen::Vector3f end) -> std::vect
     return path;
 }
 
-auto Mission::fit_spline(vector<Eigen::Vector3f> path) -> std::optional<BezierSpline> {
+auto Mission::fit_spline(std::vector<Eigen::Vector3f> path) -> std::optional<trajectory::BezierSpline> {
     std::cout << "found path" << std::endl;
     for (auto& p : path) {
         std::cout << p << std::endl;
@@ -286,7 +286,7 @@ auto Mission::fit_spline(vector<Eigen::Vector3f> path) -> std::optional<BezierSp
             }
         }
         if (valid) {
-            return std::optional<BezierSpline>{BezierSpline(path)};
+            return std::optional<trajectory::BezierSpline>{trajectory::BezierSpline(path)};
         }
     }
     return std::nullopt;

@@ -2,7 +2,8 @@
 <launch>
     <arg name="p" value="mdi"/>
     <arg name="pp" value="$(find mdi)"/>
+    <arg name="launchp" value=" "/>
 
     <node type="rviz" name="rviz" pkg="rviz" args="-d $(arg pp)/rviz/trajectory.rviz" />
-    <node pkg="$(arg p)" type="trajectory_test" name="trajectory_test" output="screen" />
+    <node pkg="$(arg p)" type="trajectory_test" name="trajectory_test" output="screen" launch-prefix="$(arg launchp)" />
 </launch>

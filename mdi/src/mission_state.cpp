@@ -105,7 +105,7 @@ ros::Time start_time;
 tf2_ros::Buffer tf_buffer;
 
 // Bezier Spline
-mdi::BezierSpline spline;
+mdi::trajectory::BezierSpline spline;
 
 // Points of interest
 auto interest_points = std::vector<Eigen::Vector3f>{
@@ -233,7 +233,7 @@ auto main(int argc, char** argv) -> int {
     // pass in arguments
     if (argc > 1) velocity_target = std::stof(argv[1]);
 
-    mdi::BezierSpline spline;  // = mdi::BezierSpline(spline_input_points);
+    mdi::trajectory::BezierSpline spline;  // = mdi::trajectory::BezierSpline(spline_input_points);
 
     //----------------------------------------------------------------------------------------------
     // mavros state subscriber
@@ -367,7 +367,7 @@ auto main(int argc, char** argv) -> int {
                     start = interest_points[start_idx++];
                     end = interest_points[end_idx++];
                     path = find_path(start, end);
-                    spline = mdi::BezierSpline(path);
+                    spline = mdi::trajectory::BezierSpline(path);
                     start_time = ros::Time::now();
                     delta_time = ros::Time::now() - start_time;
                 }

@@ -6,7 +6,7 @@
 
 #include "mdi/bezier_spline.hpp"
 
-using mdi::BezierSpline;
+using mdi::trajectory::BezierSpline;
 using std::abs;
 
 ros::Publisher pub_line;

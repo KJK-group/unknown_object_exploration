@@ -107,14 +107,15 @@ add_ros_executable(visualize_raycast test/visualize_raycast.cpp)
 # src/math.cpp)
 add_library(bezier_spline SHARED src/bezier_spline.cpp)
 target_sources(bezier_spline PUBLIC src/math.cpp)
+add_library(linear_trajectory SHARED src/linear_trajectory.cpp)
 add_library(rrt SHARED src/rrt/rrt.cpp)
 target_link_libraries(rrt   ${catkin_LIBRARIES} fmt::fmt-header-only
                       kdtree-header-only) 
 
 add_library(mission SHARED src/mission.cpp)
 target_link_libraries(mission bezier_spline rrt)
-add_library(trajectory SHARED src/trajectory.cpp)
-target_link_libraries(trajectory bezier_spline rrt)
+add_library(compound_trajectory SHARED src/compound_trajectory.cpp)
+target_link_libraries(compound_trajectory bezier_spline linear_trajectory rrt)
 
 
 # add_ros_executable(mission_manager src/mission_manager.cpp)
@@ -169,7 +170,8 @@ target_link_libraries(octomap_test ${catkin_LIBRARIES} fmt::fmt-header-only
 
 add_executable(trajectory_test test/trajectory.test.cpp)
 add_ros_dependencies(trajectory_test)
-target_link_libraries(trajectory_test ${catkin_LIBRARIES} trajectory)
+target_link_libraries(trajectory_test ${catkin_LIBRARIES} compound_trajectory)
+target_compile_options(trajectory_test PUBLIC -O0 -g)
 
 # ##############################################################################
 # Install ##

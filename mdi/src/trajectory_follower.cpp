@@ -30,7 +30,7 @@ using boost::format;
 using boost::io::group;
 using Eigen::Vector2f;
 using Eigen::Vector3f;
-using mdi::BezierSpline;
+using mdi::trajectory::BezierSpline;
 
 // escape codes
 auto magenta = "\u001b[35m";

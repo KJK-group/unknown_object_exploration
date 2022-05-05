@@ -36,7 +36,7 @@ class Mission {
     auto add_interest_point(Eigen::Vector3f interest_point) -> void;
 
     auto get_drone_state() -> mavros_msgs::State;
-    auto get_spline() -> BezierSpline;
+    auto get_spline() -> trajectory::BezierSpline;
     auto drone_takeoff(float altitude = INITIAL_ALTITUDE) -> bool;
     auto drone_land() -> bool;
     auto drone_arm() -> bool;
@@ -49,7 +49,7 @@ class Mission {
 
    private:
     auto find_path(Eigen::Vector3f start, Eigen::Vector3f end) -> std::vector<Eigen::Vector3f>;
-    auto fit_spline(vector<Eigen::Vector3f> path) -> std::optional<BezierSpline>;
+    auto fit_spline(std::vector<Eigen::Vector3f> path) -> std::optional<trajectory::BezierSpline>;
     auto drone_set_mode(std::string mode = "OFFBOARD") -> bool;
 
     auto go_home() -> void;
@@ -65,7 +65,7 @@ class Mission {
     ros::Rate& rate;
     mdi_msgs::MissionStateStamped state;
 
-    vector<Eigen::Vector3f> interest_points;
+    std::vector<Eigen::Vector3f> interest_points;
 
     // publishers
     ros::Publisher pub_mission_state;
@@ -100,7 +100,7 @@ class Mission {
     ros::Duration timeout;
 
     // path
-    BezierSpline spline;
+    trajectory::BezierSpline spline;
     int waypoint_idx;
 
     float velocity_target;

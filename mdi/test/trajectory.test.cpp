@@ -2,7 +2,7 @@
 
 #include <vector>
 
-#include "mdi/trajectory.hpp"
+#include "mdi/compound_trajectory.hpp"
 
 auto main(int argc, char* argv[]) -> int {
     ros::init(argc, argv, "mdi_trajectory_tester");
@@ -17,7 +17,7 @@ auto main(int argc, char* argv[]) -> int {
         {2, 2, 2},      {3, 3, 3},      {4, 4, 4},       {4.5, 6, 3.5},   {3.5, 5, 4.5},  {2.5, 4, 3.5},
         {1.5, 3, 2.5},  {2, 3.5, 4.5},  {3, 3, 6},       {4, 2.5, 7.5},   {5, 2, 9},      {6, 1.5, 10.5},
         {3, 1.5, 10.5}, {0, 1.5, 10.5}, {-3, 1.5, 10.5}, {-3, -2.5, 9.5}, {-3, -2.5, 6.5}};
-    auto t = mdi::Trajectory(nh, rate, path, marker_scale);
+    auto t = mdi::trajectory::CompoundTrajectory(nh, rate, path, marker_scale);
 
     std::cout << "total length = " << t.get_length() << std::endl;
 
@@ -30,7 +30,7 @@ auto main(int argc, char* argv[]) -> int {
     m.header.frame_id = mdi::utils::FRAME_WORLD;
     m.header.stamp = ros::Time::now();
     m.type = visualization_msgs::Marker::SPHERE;
-    m.color.a = 1;
+    m.color.a = 0.3;
     m.color.r = 1;
     m.color.g = 1;
     m.color.b = 1;
