@@ -136,6 +136,15 @@ class RRT {
     auto register_cb_for_event_on_new_node_created(std::function<void(const vec3&, const vec3&)> cb) -> void {
         on_new_node_created_cb_list.push_back(cb);
     }
+
+    auto register_cb_for_event_before_optimizing_waypoints(std::function<void(const vec3&, const vec3&)> cb) -> void {
+        before_optimizing_waypoints_cb_list.push_back(cb);
+    }
+
+    auto register_cb_for_event_after_optimizing_waypoints(std::function<void(const vec3&, const vec3&)> cb) -> void {
+        after_optimizing_waypoints_cb_list.push_back(cb);
+    }
+
     auto register_cb_for_event_on_goal_reached(std::function<void(const vec3&, size_t)> cb) -> void {
         on_goal_reached_cb_list.push_back(cb);
     }
@@ -146,18 +155,63 @@ class RRT {
         on_clearing_nodes_in_tree_cb_list.push_back(cb);
     }
 
+    auto register_cb_for_event_on_raycast(std::function<void(const vec3&, const vec3&, const float, bool)> cb) -> void {
+        on_raycast_cb_list.push_back(cb);
+    }
+
     auto unregister_cbs_for_event_on_new_node_created() -> void { on_new_node_created_cb_list.clear(); }
-
     auto unregister_cbs_for_event_on_trying_full_path() -> void { on_trying_full_path_cb_list.clear(); }
-
+    auto unregister_cbs_for_event_before_optimizing_waypoints() -> void { before_optimizing_waypoints_cb_list.clear(); }
+    auto unregister_cbs_for_event_after_optimizing_waypoints() -> void { after_optimizing_waypoints_cb_list.clear(); }
     auto unregister_cbs_for_event_on_goal_reached() -> void { on_goal_reached_cb_list.clear(); }
     auto unregister_cbs_for_event_on_clearing_nodes_in_tree() -> void { on_clearing_nodes_in_tree_cb_list.clear(); }
+    auto unregister_cbs_for_event_on_raycast() -> void { on_raycast_cb_list.clear(); }
+
     auto unregister_cbs_for_all_events() -> void {
         unregister_cbs_for_event_on_new_node_created();
         unregister_cbs_for_event_on_goal_reached();
         unregister_cbs_for_event_on_trying_full_path();
         unregister_cbs_for_event_on_clearing_nodes_in_tree();
+        unregister_cbs_for_event_after_optimizing_waypoints();
+        unregister_cbs_for_event_before_optimizing_waypoints();
+        unregister_cbs_for_event_on_raycast();
     }
+
+    auto enable_cbs_for_event_on_new_node_created() -> void { on_new_node_created_status_ = true; }
+    auto enable_cbs_for_event_before_optimizing_waypoints() -> void { before_optimizing_waypoints_status_ = true; }
+    auto enable_cbs_for_event_after_optimizing_waypoints() -> void { after_optimizing_waypoints_status_ = true; }
+    auto enable_cbs_for_event_on_goal_reached() -> void { on_goal_reached_status_ = true; }
+    auto enable_cbs_for_event_on_trying_full_path() -> void { on_trying_full_path_status_ = true; }
+    auto enable_cbs_for_event_on_clearing_nodes_in_tree() -> void { on_clearing_nodes_in_tree_status_ = true; }
+    auto enable_cbs_for_event_on_raycast() -> void { on_raycast_status_ = true; }
+
+    auto disable_cbs_for_event_on_new_node_created() -> void { on_new_node_created_status_ = false; }
+    auto disable_cbs_for_event_before_optimizing_waypoints() -> void { before_optimizing_waypoints_status_ = false; }
+    auto disable_cbs_for_event_after_optimizing_waypoints() -> void { after_optimizing_waypoints_status_ = false; }
+    auto disable_cbs_for_event_on_goal_reached() -> void { on_goal_reached_status_ = false; }
+    auto disable_cbs_for_event_on_trying_full_path() -> void { on_trying_full_path_status_ = false; }
+    auto disable_cbs_for_event_on_clearing_nodes_in_tree() -> void { on_clearing_nodes_in_tree_status_ = false; }
+    auto disable_cbs_for_event_on_raycast() -> void { on_raycast_status_ = false; }
+
+    auto toggle_cbs_for_event_on_new_node_created() -> void {
+        on_new_node_created_status_ = ! on_new_node_created_status_;
+    }
+    auto toggle_cbs_for_event_before_optimizing_waypoints() -> void {
+        before_optimizing_waypoints_status_ = ! before_optimizing_waypoints_status_;
+    }
+    auto toggle_cbs_for_event_after_optimizing_waypoints() -> void {
+        after_optimizing_waypoints_status_ = ! after_optimizing_waypoints_status_;
+    }
+    auto toggle_cbs_for_event_on_goal_reached() -> void { on_goal_reached_status_ = ! on_goal_reached_status_; }
+    auto toggle_cbs_for_event_on_trying_full_path() -> void {
+        on_trying_full_path_status_ = ! on_trying_full_path_status_;
+    }
+    auto toggle_cbs_for_event_on_clearing_nodes_in_tree() -> void {
+        on_clearing_nodes_in_tree_status_ = ! on_clearing_nodes_in_tree_status_;
+    }
+
+    auto toggle_cbs_for_event_on_raycast() -> void { on_raycast_status_ = ! on_clearing_nodes_in_tree_status_; }
+
     [[nodiscard]] auto empty() const -> bool { return nodes_.empty(); }
     [[nodiscard]] auto size() const -> std::size_t { return nodes_.size(); };
     [[nodiscard]] auto remaining_iterations() const -> int { return remaining_iterations_; }
@@ -339,11 +393,25 @@ class RRT {
     auto call_cbs_for_event_on_goal_reached_(const vec3&) const -> void;
     auto call_cbs_for_event_on_trying_full_path_(const vec3&, const vec3&) const -> void;
     auto call_cbs_for_event_on_clearing_nodes_in_tree_() const -> void;
+    auto call_cbs_for_event_after_optimizing_waypoints_(const vec3&, const vec3&) const -> void;
+    auto call_cbs_for_event_before_optimizing_waypoints_(const vec3&, const vec3&) const -> void;
+    auto call_cbs_for_event_on_raycast_(const vec3&, const vec3&, const float, bool) const -> void;
 
     std::vector<std::function<void(const vec3&, const vec3&)>> on_new_node_created_cb_list{};
     std::vector<std::function<void(const vec3&, size_t)>> on_goal_reached_cb_list{};
     std::vector<std::function<void(const vec3&, const vec3&)>> on_trying_full_path_cb_list{};
     std::vector<std::function<void()>> on_clearing_nodes_in_tree_cb_list{};
+    std::vector<std::function<void(const vec3&, const vec3&)>> before_optimizing_waypoints_cb_list{};
+    std::vector<std::function<void(const vec3&, const vec3&)>> after_optimizing_waypoints_cb_list{};
+    std::vector<std::function<void(const vec3&, const vec3&, const float, bool)>> on_raycast_cb_list{};
+
+    bool on_new_node_created_status_ = true;
+    bool on_goal_reached_status_ = true;
+    bool on_trying_full_path_status_ = true;
+    bool on_clearing_nodes_in_tree_status_ = true;
+    bool before_optimizing_waypoints_status_ = true;
+    bool after_optimizing_waypoints_status_ = true;
+    bool on_raycast_status_ = false;
 
 #ifdef MEASURE_PERF
     bool log_perf_measurements_enabled_ = false;

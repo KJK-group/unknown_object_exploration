@@ -3,7 +3,7 @@
 	<arg name="node" value="octomap_server"/>
 	<arg name="package" value="mdi"/>
 	<arg name="map_resolution" value="0.5"/>
-	<arg name="frame_id" value="world_enu"/>
+	<arg name="frame_id" default="world_enu"/>
 	<arg name="pointcloud_topic" value="/cloud"/>
 	<arg name="bt_file" value="$(dirname)/../data/simple_tree.bt"/>
 

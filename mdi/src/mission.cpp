@@ -269,7 +269,7 @@ auto Mission::find_path(Eigen::Vector3f start, Eigen::Vector3f end) -> std::vect
         pub_visualise.publish(arrow);
         ++i;
     }
-
+    std::reverse(path.begin(), path.end());
     return path;
 }
 
