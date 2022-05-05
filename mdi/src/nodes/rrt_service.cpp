@@ -172,6 +172,7 @@ auto main(int argc, char* argv[]) -> int {
         ros::spinOnce();
     };
 
+    ros::Duration(2).sleep();
     auto raycast_arrow_msg_gen = mdi::utils::rviz::arrow_msg_gen::builder()
                                      .arrow_head_width(0.15f)
                                      .arrow_length(0.3f)
