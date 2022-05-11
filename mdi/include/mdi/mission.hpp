@@ -8,6 +8,7 @@
 #include <mavros_msgs/State.h>
 #include <nav_msgs/Odometry.h>
 #include <ros/ros.h>
+#include <tf2/LinearMath/Quaternion.h>
 #include <visualization_msgs/Marker.h>
 
 #include <eigen3/Eigen/Dense>
@@ -62,11 +63,15 @@ class Mission {
     auto error_cb(const mdi_msgs::PointNormStamped::ConstPtr& error) -> void;
     auto odom_cb(const nav_msgs::Odometry::ConstPtr& odom) -> void;
 
+    auto get_attitude() -> tf2::Quaternion;
+    auto visualise() -> void;
+
     ros::NodeHandle& nh;
     ros::Rate& rate;
     mdi_msgs::MissionStateStamped state;
 
     std::vector<Eigen::Vector3f> interest_points;
+    std::vector<Eigen::Vector2f> target_points;
 
     // publishers
     ros::Publisher pub_mission_state;
@@ -76,6 +81,7 @@ class Mission {
     // subscribers
     ros::Subscriber sub_drone_state;
     ros::Subscriber sub_position_error;
+    ros::Subscriber sub_odom;
 
     // services
     ros::ServiceClient client_arm;
@@ -92,6 +98,8 @@ class Mission {
     // points
     Eigen::Vector3f home_position;
     Eigen::Vector3f expected_position;
+    Eigen::Vector2f target;
+    tf2::Quaternion expected_attitude;
 
     // time
     ros::Time start_time;
@@ -109,13 +117,14 @@ class Mission {
     // state
     int seq_state;
     int seq_point;
+    int seq_vis;
     int step_count;
     bool inspection_complete;
     bool exploration_complete;
 
     // visualisation
     float marker_scale;
-    bool visualise;
+    bool should_visualise;
 };
 }  // namespace mdi
 #endif  // _MDI_MISSION_MANAGER_HPP_
