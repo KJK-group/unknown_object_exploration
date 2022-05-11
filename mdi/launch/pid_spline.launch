@@ -23,12 +23,12 @@
         type="mission_manager"
         name="mission_manager"
         args="$(arg vel)"
-        output="screen"
         launch-prefix="$(arg lp)" />
     <node
         pkg="$(arg package)"
         type="pid_controller"
         name="pid_controller"
+        output="screen"
         args="$(arg krp) $(arg kri) $(arg krd) $(arg kap) $(arg kai) $(arg kad)" />
     <node
         pkg="$(arg package)"
