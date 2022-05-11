@@ -6,6 +6,11 @@ CompoundTrajectory::CompoundTrajectory(ros::NodeHandle& nh, ros::Rate& rate, std
     : seq_marker(0), rate(rate) {
     pub_visualisation = nh.advertise<visualization_msgs::MarkerArray>("/mdi/visualisation", utils::DEFAULT_QUEUE_SIZE);
 
+    // std::cout << "PATH: " << std::endl;
+    // for (auto& p : path) {
+    // std::cout << p << "\n" << std::endl;
+    // }
+
     // treat difference between each point in path as a vector
     vector<Eigen::Vector3f> vectors;
     std::adjacent_difference(path.begin(), path.end(), std::back_inserter(vectors));
@@ -34,7 +39,7 @@ CompoundTrajectory::CompoundTrajectory(ros::NodeHandle& nh, ros::Rate& rate, std
     angles.push_back(1);
     // std::cout << "ANGLES:" << std::endl;
     // for (auto& a : angles) {
-    //     std::cout << a << std::endl;
+    // std::cout << a << std::endl;
     // }
 
     // find splitting indices for each section of the path
@@ -68,12 +73,12 @@ CompoundTrajectory::CompoundTrajectory(ros::NodeHandle& nh, ros::Rate& rate, std
 
     // std::cout << "STRAIGHT:" << std::endl;
     // for (int s = 0; s < straight.size(); s++) {
-    //     std::cout << straight[s] << std::endl;
+    // std::cout << straight[s] << std::endl;
     // }
 
     // std::cout << "SPLITS:" << std::endl;
     // for (auto& s : splits) {
-    //     std::cout << s << std::endl;
+    // std::cout << s << std::endl;
     // }
 
     // uses each pair of splitting indices to slice the path into sections,
@@ -90,11 +95,11 @@ CompoundTrajectory::CompoundTrajectory(ros::NodeHandle& nh, ros::Rate& rate, std
 
     // std::cout << "SECTIONS" << std::endl;
     // for (int s = 0; s < sections.size(); s++) {
-    //     std::cout << "section " << s << std::endl;
-    //     std::cout << "straight: " << straight[s] << std::endl;
-    //     for (auto& s : sections[s]) {
-    //         std::cout << s << std::endl;
-    //     }
+    // std::cout << "section " << s << std::endl;
+    // std::cout << "straight: " << straight[s] << std::endl;
+    // for (auto& s : sections[s]) {
+    // std::cout << s << std::endl;
+    // }
     // }
 
     // create list of trajectories

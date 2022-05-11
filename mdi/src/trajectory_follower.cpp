@@ -84,9 +84,9 @@ auto k_rho_d = 1.f;
 auto k_alpha = 0.f;
 
 // errors for PID
-auto error_integral = Vector3f(0, 0, 0);
+auto error_position_integral = Vector3f(0, 0, 0);
 auto error_derivative = Vector3f(0, 0, 0);
-auto error_previous = Vector3f(0, 0, 0);
+auto error_position_previous = Vector3f(0, 0, 0);
 
 // utility for PID
 // auto previous_velocity = Vector3f(0, 0, 0);
@@ -291,9 +291,9 @@ auto main(int argc, char** argv) -> int {
         auto error = Vector3f(expected_pos_body.y(), expected_pos_body.x(), expected_pos_body.z());
         // only accumulate error if the drone is in the air
         if (pos.z > 0.1) {
-            error_integral += error;
+            error_position_integral += error;
         }
-        error_derivative = error - error_previous;
+        error_derivative = error - error_position_previous;
 
         // auto error_x = expected_pos(0) - pos.x;
         // auto error_y = expected_pos(1) - pos.y;
@@ -305,7 +305,7 @@ auto main(int argc, char** argv) -> int {
         //----------------------------------------------------------------------------------------------
         // controller
         auto omega = k_alpha * error_heading;
-        auto control_vel = k_rho_p * error + k_rho_i * error_integral + k_rho_d * error_derivative;
+        auto control_vel = k_rho_p * error + k_rho_i * error_position_integral + k_rho_d * error_derivative;
         // auto x_vel = k_rho * error_x;
         // auto y_vel = k_rho * error_y;
         // auto z_vel = k_rho * error_z;
