@@ -29,19 +29,19 @@ auto make_transform(Eigen::Vector3f translation, Eigen::Vector3f euler_rotation)
     return transform;
 }
 
-auto transform_vec3(Eigen::Vector3f point, geometry_msgs::TransformStamped transform) -> Eigen::Vector3f {
-    geometry_msgs::PointStamped point_in;
-    point_in.header.frame_id = transform.header.frame_id;
-    point_in.point.x = point.x();
-    point_in.point.y = point.y();
-    point_in.point.z = point.z();
+// auto transform_vec3(Eigen::Vector3f point, geometry_msgs::TransformStamped transform) -> Eigen::Vector3f {
+//     geometry_msgs::PointStamped point_in;
+//     point_in.header.frame_id = transform.header.frame_id;
+//     point_in.point.x = point.x();
+//     point_in.point.y = point.y();
+//     point_in.point.z = point.z();
 
-    geometry_msgs::PointStamped point_out;
-    point_out.header.frame_id = transform.child_frame_id;
+//     geometry_msgs::PointStamped point_out;
+//     point_out.header.frame_id = transform.child_frame_id;
 
-    tf2::doTransform(point_in, point_out, transform);
-    return {point_out.point.x, point_out.point.y, point_out.point.z};
-}
+//     tf2::doTransform(point_in, point_out, transform);
+//     return {point_out.point.x, point_out.point.y, point_out.point.z};
+// }
 
 auto convert_ned_enu(Eigen::Vector3f point) -> Eigen::Vector3f { return {point.y(), point.x(), -point.z()}; }
 

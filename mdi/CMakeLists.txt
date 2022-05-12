@@ -70,24 +70,94 @@ function(add_ros_executable name main)
   target_link_libraries(${name} ${catkin_LIBRARIES} fmt::fmt-header-only)
   target_compile_options(
     ${name}
-    PRIVATE -O0 -g
+    PRIVATE -O0
             # -g -Wall -Werror -Wextra -Wpedantic -Weffc++ -Wsign-conversion
   )
 endfunction(add_ros_executable)
 
+function(add_ros_dependencies target)
+  add_dependencies(${target} ${${PROJECT_NAME}_EXPORTED_TARGETS}
+                   ${catkin_EXPORTED_TARGETS})
+endfunction(add_ros_dependencies)
+
+# ##############################################################################
+# Libraries ##
+# ##############################################################################
+
+# math library
+add_library(math SHARED src/math.cpp)
+
+# bezier library
+add_library(bezier_spline SHARED src/bezier_spline.cpp)
+target_link_libraries(bezier_spline math)
+
+# linear trajectory library
+add_library(linear_trajectory SHARED src/linear_trajectory.cpp)
+
+# rrt library
+add_library(rrt SHARED src/rrt/rrt.cpp)
+target_link_libraries(rrt ${catkin_LIBRARIES} fmt::fmt-header-only
+                      kdtree-header-only)
+
+# compound trajectory library
+add_library(compound_trajectory SHARED src/compound_trajectory.cpp)
+target_link_libraries(compound_trajectory bezier_spline linear_trajectory rrt)
+
+# mission library
+add_library(mission SHARED src/mission.cpp)
+target_link_libraries(mission compound_trajectory rrt)
+
+#control library
+add_library(control SHARED src/pid_controller.cpp)
+target_sources(control PUBLIC src/transformlistener.cpp)
+
+# ##############################################################################
+# Executables ##
+# ##############################################################################
+
+# add_ros_executable(test_controller src/test_controller.cpp)
+# add_ros_executable(trajectory_follower src/trajectory_follower.cpp)
+# add_ros_executable(spline_tester src/spline_tester.cpp)
+# add_ros_executable(pid_controller src/pid_controller.cpp)
+add_ros_executable(publish_traversed_path src/publish_traversed_path.cpp)
+add_ros_executable(visualize_raycast test/visualize_raycast.cpp)
+
+add_executable(control_manager src/control_manager.cpp)
+add_ros_dependencies(control_manager)
+target_link_libraries(control_manager ${catkin_LIBRARIES} control)
+
+add_executable(mission_manager src/mission_manager.cpp)
+add_ros_dependencies(mission_manager)
+target_link_libraries(mission_manager ${catkin_LIBRARIES} compound_trajectory rrt
+                      mission fmt::fmt-header-only)
+# target_compile_options(mission_manager PRIVATE -g)
+
+# rrt service
+add_executable(rrt_service src/nodes/rrt_service.cpp)
+add_ros_dependencies(rrt_service)
+target_sources(rrt_service PRIVATE src/rrt/rrt.cpp)
+# target_compile_options(rrt_service PRIVATE -O0 -g)
+# target_compile_options(rrt_service PRIVATE -O2 -g)
+target_link_libraries(rrt_service ${catkin_LIBRARIES} fmt::fmt-header-only
+                      kdtree-header-only ${OCTOMAP_LIBRARIES})
+
+# ##############################################################################
+# Testing ##
+# ##############################################################################
+
+# kdtree testing
 # add_ros_executable(visualize_kdtree src/visualize_kdtree.cpp)
 # add_ros_executable(linear_search_vs_kdtree test/linear_search_vs_kdtree.cpp)
 # add_ros_executable(test_rrt test/rrt.test.cpp)
 
+# rrt test
 add_executable(test_rrt test/rrt.test.cpp)
 add_dependencies(test_rrt ${${PROJECT_NAME}_EXPORTED_TARGETS}
                  ${catkin_EXPORTED_TARGETS})
 target_sources(test_rrt PUBLIC src/rrt/rrt.cpp)
 target_link_libraries(test_rrt ${catkin_LIBRARIES} fmt::fmt-header-only
                       kdtree-header-only)
-
 # target_compile_options(test_rrt PRIVATE -g -O0 -Wall -Wextra -Wpedantic)
-
 target_compile_options(test_rrt PRIVATE -O3 -finline-functions-called-once)
 # target_compile_options(test_rrt PRIVATE -g -O0 -Wall -Wextra -Wpedantic)
 # target_compile_definitions(test_rrt PUBLIC MEASURE_PERF)
@@ -95,73 +165,15 @@ target_compile_definitions(test_rrt PUBLIC USE_KDTREE)
 # target_sources(visualize_kdtree PUBLIC src/kdtree3/kdtree3.cpp)
 # target_compile_options(visualize_kdtree PRIVATE -g)
 
-add_ros_executable(test_controller src/test_controller.cpp)
-add_ros_executable(trajectory_follower src/trajectory_follower.cpp)
-# add_ros_executable(spline_tester src/spline_tester.cpp)
-add_ros_executable(pid_controller src/pid_controller.cpp)
-add_ros_executable(publish_traversed_path src/publish_traversed_path.cpp)
-
-add_ros_executable(visualize_raycast test/visualize_raycast.cpp)
-
-# target_sources( spline_tester PUBLIC src/bezier_spline.cpp PUBLIC
-# src/math.cpp)
-add_library(bezier_spline SHARED src/bezier_spline.cpp)
-target_sources(bezier_spline PUBLIC src/math.cpp)
-add_library(linear_trajectory SHARED src/linear_trajectory.cpp)
-add_library(rrt SHARED src/rrt/rrt.cpp)
-target_link_libraries(rrt ${catkin_LIBRARIES} fmt::fmt-header-only
-                      kdtree-header-only)
-
-add_library(compound_trajectory SHARED src/compound_trajectory.cpp)
-target_link_libraries(compound_trajectory bezier_spline linear_trajectory rrt)
-add_library(mission SHARED src/mission.cpp)
-target_link_libraries(mission compound_trajectory rrt)
-
-# add_ros_executable(mission_manager src/mission_manager.cpp)
-add_executable(mission_manager src/mission_manager.cpp)
-add_dependencies(mission_manager ${${PROJECT_NAME}_EXPORTED_TARGETS}
-                 ${catkin_EXPORTED_TARGETS})
-target_link_libraries(mission_manager ${catkin_LIBRARIES} compound_trajectory rrt
-                      mission fmt::fmt-header-only)
-target_compile_options(mission_manager PRIVATE -g)
-
-target_sources(
-  trajectory_follower
-  PUBLIC src/bezier_spline.cpp
-  PUBLIC src/math.cpp)
-
+# rrt service testing
 add_executable(test_rrt_service test/rrt_service.test.cpp)
 add_dependencies(test_rrt_service ${${PROJECT_NAME}_EXPORTED_TARGETS}
                  ${catkin_EXPORTED_TARGETS})
 target_link_libraries(test_rrt_service ${catkin_LIBRARIES} rrt
                       fmt::fmt-header-only)
-target_compile_options(test_rrt_service PRIVATE -O0 -g)
+# target_compile_options(test_rrt_service PRIVATE -O0 -g)
 
-# target_sources( mission_manager # PUBLIC src/bezier_spline.cpp
-
-# # PUBLIC src/rrt/rrt.cpp # PUBLIC src/mission.cpp
-
-# )
-
-target_sources(pid_controller PUBLIC src/transformlistener.cpp)
-
-# add_library(rrt) target_sources(rrt PUBLIC src/rrt/rrt.cpp)
-# target_link_libraries(rrt ${catkin_LIBRARIES} fmt::fmt-header-only
-# kdtree-header-only)
-
-function(add_ros_dependencies target)
-  add_dependencies(${target} ${${PROJECT_NAME}_EXPORTED_TARGETS}
-                   ${catkin_EXPORTED_TARGETS})
-endfunction(add_ros_dependencies)
-
-add_executable(rrt_service src/nodes/rrt_service.cpp)
-add_ros_dependencies(rrt_service)
-target_sources(rrt_service PRIVATE src/rrt/rrt.cpp)
-# target_compile_options(rrt_service PRIVATE -O0 -g)
-target_compile_options(rrt_service PRIVATE -O2 -g)
-target_link_libraries(rrt_service ${catkin_LIBRARIES} fmt::fmt-header-only
-                      kdtree-header-only ${OCTOMAP_LIBRARIES})
-
+# octomap testing
 add_executable(octomap_test test/octomap.test.cpp)
 add_ros_dependencies(octomap_test)
 target_sources(octomap_test PRIVATE src/rrt/rrt.cpp)
@@ -169,15 +181,17 @@ target_compile_options(octomap_test PRIVATE -O2 -Wall)
 target_link_libraries(octomap_test ${catkin_LIBRARIES} fmt::fmt-header-only
                       kdtree-header-only ${OCTOMAP_LIBRARIES})
 
-add_executable(trajectory_test test/trajectory.test.cpp)
-add_ros_dependencies(trajectory_test)
-target_link_libraries(trajectory_test ${catkin_LIBRARIES} compound_trajectory)
-target_compile_options(trajectory_test PUBLIC -O0 -g)
+# trajectory testing
+# add_executable(trajectory_test test/trajectory.test.cpp)
+# add_ros_dependencies(trajectory_test)
+# target_link_libraries(trajectory_test ${catkin_LIBRARIES} compound_trajectory)
+# target_compile_options(trajectory_test PUBLIC -O0 -g)
 
 # ##############################################################################
 # Install ##
 # ##############################################################################
 
+# scripts
 install(PROGRAMS scripts/make_px4_airsim.sh
         DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
 install(PROGRAMS scripts/run_airsim.sh

@@ -21,6 +21,7 @@
 #include "mdi/rrt/rrt_builder.hpp"
 #include "mdi/utils/rviz/rviz.hpp"
 #include "mdi/utils/utils.hpp"
+#include "mdi_msgs/ControllerStateStamped.h"
 #include "mdi_msgs/MissionStateStamped.h"
 #include "mdi_msgs/PointNormStamped.h"
 #include "mdi_msgs/RrtFindPath.h"
@@ -59,8 +60,8 @@ class Mission {
     auto exploration_step() -> bool;
     auto publish() -> void;
 
-    auto state_cb(const mavros_msgs::State::ConstPtr& state) -> void;
-    auto error_cb(const mdi_msgs::PointNormStamped::ConstPtr& error) -> void;
+    auto mavros_state_cb(const mavros_msgs::State::ConstPtr& state) -> void;
+    auto controller_state_cb(const mdi_msgs::ControllerStateStamped::ConstPtr& state) -> void;
     auto odom_cb(const nav_msgs::Odometry::ConstPtr& odom) -> void;
 
     auto get_attitude() -> tf2::Quaternion;
@@ -80,7 +81,7 @@ class Mission {
 
     // subscribers
     ros::Subscriber sub_drone_state;
-    ros::Subscriber sub_position_error;
+    ros::Subscriber sub_controller_state;
     ros::Subscriber sub_odom;
 
     // services
@@ -93,7 +94,7 @@ class Mission {
     // msg instances
     mavros_msgs::State drone_state;
     nav_msgs::Odometry drone_odom;
-    mdi_msgs::PointNormStamped position_error;
+    mdi_msgs::ControllerStateStamped controller_state;
 
     // points
     Eigen::Vector3f home_position;

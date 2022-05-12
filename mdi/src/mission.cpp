@@ -19,17 +19,17 @@ Mission::Mission(ros::NodeHandle& nh, ros::Rate& rate, float velocity_target, Ei
       target({2.5, 2.5}),
       timeout({5}) {
     // publishers
-    pub_mission_state = nh.advertise<mdi_msgs::MissionStateStamped>("/mdi/state", utils::DEFAULT_QUEUE_SIZE);
-    pub_visualise = nh.advertise<visualization_msgs::Marker>("/mdi/visualisation_marker", utils::DEFAULT_QUEUE_SIZE);
+    pub_mission_state = nh.advertise<mdi_msgs::MissionStateStamped>("/mdi/mission/state", utils::DEFAULT_QUEUE_SIZE);
+    pub_visualise = nh.advertise<visualization_msgs::Marker>("/mdi/mission/visualisation", utils::DEFAULT_QUEUE_SIZE);
     pub_setpoint = nh.advertise<geometry_msgs::PoseStamped>("/mavros/setpoint_local/local", utils::DEFAULT_QUEUE_SIZE);
 
     // subscribers
     sub_drone_state =
-        nh.subscribe<mavros_msgs::State>("/mavros/state", utils::DEFAULT_QUEUE_SIZE, &Mission::state_cb, this);
-    sub_position_error =
-        nh.subscribe<mdi_msgs::PointNormStamped>("/mdi/error", utils::DEFAULT_QUEUE_SIZE, &Mission::error_cb, this);
-    sub_position_error = nh.subscribe<nav_msgs::Odometry>("/mavros/local_position/odom", utils::DEFAULT_QUEUE_SIZE,
-                                                          &Mission::odom_cb, this);
+        nh.subscribe<mavros_msgs::State>("/mavros/state", utils::DEFAULT_QUEUE_SIZE, &Mission::mavros_state_cb, this);
+    sub_controller_state = nh.subscribe<mdi_msgs::ControllerStateStamped>(
+        "/mdi/controller/state", utils::DEFAULT_QUEUE_SIZE, &Mission::controller_state_cb, this);
+    sub_odom = nh.subscribe<nav_msgs::Odometry>("/mavros/local_position/odom", utils::DEFAULT_QUEUE_SIZE,
+                                                &Mission::odom_cb, this);
 
     // services
     client_arm = nh.serviceClient<mavros_msgs::CommandBool>("/mavros/cmd/arming");
@@ -58,8 +58,10 @@ Mission::Mission(ros::NodeHandle& nh, ros::Rate& rate, float velocity_target, Ei
     // trajectory = trajectory::CompoundTrajectory(nh, rate, {{0, 0, 0}, home_position});
 }
 
-auto Mission::state_cb(const mavros_msgs::State::ConstPtr& state) -> void { drone_state = *state; }
-auto Mission::error_cb(const mdi_msgs::PointNormStamped::ConstPtr& error) -> void { position_error = *error; }
+auto Mission::mavros_state_cb(const mavros_msgs::State::ConstPtr& state) -> void { drone_state = *state; }
+auto Mission::controller_state_cb(const mdi_msgs::ControllerStateStamped::ConstPtr& error) -> void {
+    controller_state = *error;
+}
 auto Mission::odom_cb(const nav_msgs::Odometry::ConstPtr& odom) -> void { drone_odom = *odom; }
 
 auto Mission::get_attitude() -> tf2::Quaternion {
@@ -102,7 +104,7 @@ auto Mission::drone_takeoff(float altitude) -> bool {
     //     return false;
     // }
     ros::Duration(2).sleep();
-    while (ros::ok() && position_error.point.z > utils::SMALL_DISTANCE_TOLERANCE /*&&
+    while (ros::ok() && controller_state.error.position.z > utils::SMALL_DISTANCE_TOLERANCE /*&&
            drone_odom.pose.pose.position.z < utils::SMALL_DISTANCE_TOLERANCE / 1.5*/) {
         expected_position = Eigen::Vector3f(0, 0, utils::DEFAULT_DISTANCE_TOLERANCE);
         // std::cout << expected_position << std::endl;
@@ -128,7 +130,7 @@ auto Mission::drone_takeoff(float altitude) -> bool {
         rate.sleep();
     }
 
-    while (ros::ok() && position_error.norm > utils::DEFAULT_DISTANCE_TOLERANCE) {
+    while (ros::ok() && controller_state.error.position.norm > utils::DEFAULT_DISTANCE_TOLERANCE) {
         publish();
         ros::spinOnce();
         rate.sleep();
@@ -378,7 +380,7 @@ auto Mission::exploration_step() -> bool {
 
     // std::cout << "before if" << std::endl;
     if (step_count == 0 || (remaining_distance < utils::SMALL_DISTANCE_TOLERANCE * 5 &&
-                            position_error.norm < utils::SMALL_DISTANCE_TOLERANCE * 5)) {
+                            controller_state.error.position.norm < utils::SMALL_DISTANCE_TOLERANCE * 5)) {
         // std::cout << "inside if" << std::endl;
         if (waypoint_idx >= interest_points.size()) {
             // std::cout << waypoint_idx << std::endl;
@@ -437,7 +439,7 @@ auto Mission::trajectory_step() -> bool {
     // std::cout << mdi::utils::GREEN << "remaining_distance: " << remaining_distance << mdi::utils::RESET << std::endl;
 
     if (remaining_distance < utils::DEFAULT_DISTANCE_TOLERANCE * 3 &&
-        position_error.norm < utils::DEFAULT_DISTANCE_TOLERANCE * 3) {
+        controller_state.error.position.norm < utils::DEFAULT_DISTANCE_TOLERANCE * 3) {
         // std::cout << "end reached!" << std::endl;
         return true;
     }
