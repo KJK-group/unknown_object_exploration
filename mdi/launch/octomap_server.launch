@@ -8,7 +8,7 @@
 	<arg name="bt_file" value="$(dirname)/../data/simple_tree.bt"/>
 
 
-	<node pkg="octomap_server" type="octomap_server_node" name="octomap_server" output="screen" args="$(arg bt_file)">
+	<node pkg="octomap_server" type="octomap_server_node" name="octomap_server" args="$(arg bt_file)">
 		<param name="resolution" value="$(arg map_resolution)"/>
 		<param name="frame_id" type="string" value="$(arg frame_id)"/>
 		<param name="sensor_model/hit" value="0.8"/>
