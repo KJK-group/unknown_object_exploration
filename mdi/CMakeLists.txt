@@ -102,6 +102,7 @@ add_ros_executable(pid_controller src/pid_controller.cpp)
 add_ros_executable(publish_traversed_path src/publish_traversed_path.cpp)
 
 add_ros_executable(visualize_raycast test/visualize_raycast.cpp)
+add_ros_executable(visualize_fov test/visualize_fov.cpp)
 
 # target_sources( spline_tester PUBLIC src/bezier_spline.cpp PUBLIC
 # src/math.cpp)

@@ -194,6 +194,46 @@ struct sphere_msg_gen : public visualization_marker_msg_gen {
     }
 };
 
+struct cube_msg_gen : public visualization_marker_msg_gen {
+    cube_msg_gen(float x, float y, float z, const std::string& ns = "cube") {
+        msg.type = visualization_msgs::Marker::CUBE;
+        header.ns = append_epoch_suffix_if_enabled(ns);
+        scale.x = x;
+        scale.y = y;
+        scale.z = z;
+    }
+
+    cube_msg_gen(float r, const std::string& ns = "cube") {
+        msg.type = visualization_msgs::Marker::CUBE;
+        header.ns = append_epoch_suffix_if_enabled(ns);
+        scale.x = r;
+        scale.y = r;
+        scale.z = r;
+    }
+
+    auto operator()(geometry_msgs::Pose pose, ros::Time timestamp = ros::Time::now(),
+                    ros::Duration lifetime = ros::Duration(0)) -> visualization_msgs::Marker {
+        set_fields();
+        msg.header.stamp = timestamp;
+        msg.lifetime = lifetime;
+        msg.pose = pose;
+
+        return msg;
+    }
+
+    auto operator()(const Eigen::Vector3f v, ros::Time timestamp = ros::Time::now(),
+                    ros::Duration lifetime = ros::Duration(0)) -> visualization_msgs::Marker {
+        // set_fields();
+        // msg.header.stamp = timestamp;
+        // msg.lifetime = lifetime;
+        auto pose = geometry_msgs::Pose();
+        pose.position.x = v.x();
+        pose.position.y = v.y();
+        pose.position.z = v.z();
+        return this->operator()(pose, timestamp, lifetime);
+    }
+};
+
 struct text_msg_gen : public visualization_marker_msg_gen {
     text_msg_gen(float text_height = 0.5f, const std::string& ns = "text") {
         msg.type = visualization_msgs::Marker::TEXT_VIEW_FACING;

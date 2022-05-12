@@ -235,6 +235,7 @@ class RRT {
         node_t* parent = nullptr;
         std::vector<node_t*> children{};
         vec3 position_{};
+        float gain = 0.0f;
 
         [[nodiscard]] auto is_leaf() const -> bool { return children.empty(); }
         [[nodiscard]] auto is_root() const -> bool { return parent == nullptr; }
@@ -256,6 +257,9 @@ class RRT {
     auto sample_random_point_() -> vec3;
     // TODO: make kdtree or list transparent to the caller
     auto find_nearest_neighbor_(const vec3& pt) -> node_t*;
+
+
+	auto gain_() const -> double;
 
     /**
      * @brief traverse tree in breath first order, and call @ref f, for every edge

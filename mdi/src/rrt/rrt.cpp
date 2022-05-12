@@ -561,6 +561,7 @@ auto RRT::optimize_waypoints_() -> void {
     };
 
     const auto edge_is_collision_free = [this](const edge& e) -> bool {
+
         const auto [from, to] = e;
         assert(0 <= from && from < waypoints_.size());
         assert(0 <= to && to < waypoints_.size());
