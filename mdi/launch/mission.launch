@@ -1,0 +1,40 @@
+<?xml version="1.0"?>
+<launch>
+    <arg name="package" value="mdi"/>
+    <arg name="package_path" value="$(find mdi)"/>
+    <!-- Controller Arguments -->
+    <arg name="xy_p" default="0.5"/>
+    <arg name="xy_i" default="0"/>
+    <arg name="xy_d" default="0"/>
+    <arg name="yaw_p" default="0.5"/>
+    <arg name="yaw_i" default="0"/>
+    <arg name="yaw_d" default="0"/>
+    <arg name="z_p" default="0.5"/>
+    <arg name="z_i" default="0"/>
+    <arg name="z_d" default="0"/>
+    <arg name="vel" default="0.5"/>
+
+    <!-- <arg name="lp" default="valgrind"/> -->
+    <arg name="lp" default=""/>
+
+	<!-- <rosparam command="load" file="$(dirname)/../rosparam/rrt.yaml"/> -->
+
+    <include file="$(arg package_path)/launch/rrt_service.launch" />
+
+    <node
+        pkg="$(arg package)"
+        type="mission_manager"
+        name="mission_manager"
+        args="$(arg vel)"
+        launch-prefix="$(arg lp)" />
+    <node
+        pkg="$(arg package)"
+        type="control_manager"
+        name="control_manager"
+        output="screen"
+        args="$(arg xy_p) $(arg xy_i) $(arg xy_d) $(arg yaw_p) $(arg yaw_i) $(arg yaw_d) $(arg z_p) $(arg z_i) $(arg z_d)" />
+    <node
+        pkg="$(arg package)"
+        type="publish_traversed_path"
+        name="publish_traversed_path" />
+</launch>

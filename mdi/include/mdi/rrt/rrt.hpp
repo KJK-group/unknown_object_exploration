@@ -286,7 +286,7 @@ class RRT {
         return collision_free_(a, b, drone_radius_, padding_, end_of_raycast_padding_);
     }
 
-    float drone_radius_ = 1.0f;
+    float drone_radius_ = 2.5f;
     float padding_ = 0.1f;
     float end_of_raycast_padding_ = 1.0f;
 

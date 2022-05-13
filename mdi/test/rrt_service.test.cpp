@@ -25,7 +25,7 @@
 #include <variant>
 #include <vector>
 
-#include "mdi/utils/rviz/rviz.hpp"
+#include "mdi/utils/rviz.hpp"
 #include "ros/forwards.h"
 #include "ros/rate.h"
 #include "ros/service_client.h"

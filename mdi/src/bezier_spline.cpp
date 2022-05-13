@@ -2,7 +2,7 @@
 
 #include <iostream>
 
-namespace mdi {
+namespace mdi::trajectory {
 //--------------------------------------------------------------------------------------------------
 // Constructor; generates the spline the first time,
 // calling generate_spline with `points` and `resolution`
@@ -180,6 +180,8 @@ auto BezierSpline::get_point_at_distance(float distance) -> Vector3f {
     distance = this->distance_lut[this->distance_lut.size() - 1] - distance;
     if (distance < 0) {
         distance = 0;
+    } else if (distance > this->distance_lut.back()) {
+        distance = this->distance_lut.back();
     }
     // std::cout << "distance = " << distance << std::endl;
     auto t_idx = this->get_time_idx(distance);
@@ -248,4 +250,4 @@ auto BezierSpline::get_length() -> float {
         return 0;
     }
 }
-}  // namespace mdi
+}  // namespace mdi::trajectory

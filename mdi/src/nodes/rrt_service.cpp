@@ -15,7 +15,7 @@
 #include "mdi/octomap.hpp"
 #include "mdi/rrt/rrt.hpp"
 #include "mdi/rrt/rrt_builder.hpp"
-#include "mdi/utils/rviz/rviz.hpp"
+#include "mdi/utils/rviz.hpp"
 #include "mdi_msgs/RrtFindPath.h"
 #include "octomap/octomap_types.h"
 #include "ros/duration.h"

@@ -1,9 +1,17 @@
 #!/bin/bash
 catkin_ws_dir="~/catkin_ws"
+px4_dir="${catkin_ws_dir}/PX4-Autopilot"
 if [ $# -eq 0 ];
 then
-    echo "Defaulting to workspace ~/catkin_ws"
+    echo "Defaulting to workspace ${catkin_ws_dir}"
 else
+    if [ $# -eq 1 ];
+    then
+        echo "Defaulting to PX4 dir at ${px4_dir}"
+    else
+        echo "Using provided PX4 dir at ${px4_dir}"
+        px4_dir="${2}"
+    fi
     echo "Using provided workspace ${1}"
     catkin_ws_dir="${1}"
 fi

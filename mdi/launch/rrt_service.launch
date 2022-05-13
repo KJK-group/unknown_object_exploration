@@ -2,13 +2,17 @@
 <launch>
 	<arg name="node" value="rrt_service"/>
 	<arg name="package" value="mdi"/>
-	<arg name="frame_id" value="map"/>
-	<arg name="launch-prefix" default="kitty lldb"/>
-	<!-- <arg name="launch-prefix" value=""/> -->
+	<arg name="frame_id" value="world_enu"/>
+	<!-- <arg name="launch-prefix" default="kitty lldb"/> -->
+	<arg name="launch-prefix" value=""/>
 
 	<include file="$(dirname)/octomap_server.launch">
 		<arg name="frame_id" value="$(arg frame_id)"/>
 	</include>
-	<node pkg="$(arg package)" type="$(arg node)" name="$(arg node)" output="screen" launch-prefix="$(arg launch-prefix)"/>
+	<node
+		pkg="$(arg package)"
+		type="$(arg node)"
+		name="$(arg node)"
+		launch-prefix="$(arg launch-prefix)" />
 	<!-- <node name="rviz" pkg="rviz" type="rviz" output="log" respawn="false" respawn_delay="0" args="-d $(dirname)/../rviz/octomap.rviz"/> -->
 </launch>
