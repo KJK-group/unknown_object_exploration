@@ -7,7 +7,7 @@
 
 #include "geometry_msgs/TwistStamped.h"
 #include "mdi/utils/eigen.hpp"
-#include "mdi/utils/rviz/rviz.hpp"
+#include "mdi/utils/rviz.hpp"
 #include "mdi/utils/state.hpp"
 #include "mdi/utils/transform.hpp"
 #include "mdi/utils/utils.hpp"

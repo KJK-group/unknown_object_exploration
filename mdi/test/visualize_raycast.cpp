@@ -21,7 +21,7 @@
 // #include "mdi/rrt/rrt.hpp"
 // #include "mdi/rrt/rrt_builder.hpp"
 // #include "mdi/octomap.hpp"
-#include "mdi/utils/rviz/rviz.hpp"
+#include "mdi/utils/rviz.hpp"
 #include "ros/assert.h"
 #include "ros/init.h"
 #include "ros/rate.h"

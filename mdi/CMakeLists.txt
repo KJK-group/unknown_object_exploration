@@ -95,7 +95,7 @@ target_link_libraries(bezier_spline math)
 add_library(linear_trajectory SHARED src/linear_trajectory.cpp)
 
 # rrt library
-add_library(rrt SHARED src/rrt/rrt.cpp)
+add_library(rrt SHARED src/rrt.cpp)
 target_link_libraries(rrt ${catkin_LIBRARIES} fmt::fmt-header-only
                       kdtree-header-only)
 
@@ -119,14 +119,14 @@ target_sources(control PUBLIC src/transformlistener.cpp)
 # add_ros_executable(trajectory_follower src/trajectory_follower.cpp)
 # add_ros_executable(spline_tester src/spline_tester.cpp)
 # add_ros_executable(pid_controller src/pid_controller.cpp)
-add_ros_executable(publish_traversed_path src/publish_traversed_path.cpp)
+add_ros_executable(publish_traversed_path src/nodes/publish_traversed_path.cpp)
 add_ros_executable(visualize_raycast test/visualize_raycast.cpp)
 
-add_executable(control_manager src/control_manager.cpp)
+add_executable(control_manager src/nodes/control_manager.cpp)
 add_ros_dependencies(control_manager)
 target_link_libraries(control_manager ${catkin_LIBRARIES} control)
 
-add_executable(mission_manager src/mission_manager.cpp)
+add_executable(mission_manager src/nodes/mission_manager.cpp)
 add_ros_dependencies(mission_manager)
 target_link_libraries(mission_manager ${catkin_LIBRARIES} compound_trajectory rrt
                       mission fmt::fmt-header-only)
@@ -135,10 +135,9 @@ target_link_libraries(mission_manager ${catkin_LIBRARIES} compound_trajectory rr
 # rrt service
 add_executable(rrt_service src/nodes/rrt_service.cpp)
 add_ros_dependencies(rrt_service)
-target_sources(rrt_service PRIVATE src/rrt/rrt.cpp)
 # target_compile_options(rrt_service PRIVATE -O0 -g)
 # target_compile_options(rrt_service PRIVATE -O2 -g)
-target_link_libraries(rrt_service ${catkin_LIBRARIES} fmt::fmt-header-only
+target_link_libraries(rrt_service ${catkin_LIBRARIES} rrt fmt::fmt-header-only
                       kdtree-header-only ${OCTOMAP_LIBRARIES})
 
 # ##############################################################################
@@ -154,8 +153,7 @@ target_link_libraries(rrt_service ${catkin_LIBRARIES} fmt::fmt-header-only
 add_executable(test_rrt test/rrt.test.cpp)
 add_dependencies(test_rrt ${${PROJECT_NAME}_EXPORTED_TARGETS}
                  ${catkin_EXPORTED_TARGETS})
-target_sources(test_rrt PUBLIC src/rrt/rrt.cpp)
-target_link_libraries(test_rrt ${catkin_LIBRARIES} fmt::fmt-header-only
+target_link_libraries(test_rrt ${catkin_LIBRARIES} rrt fmt::fmt-header-only
                       kdtree-header-only)
 # target_compile_options(test_rrt PRIVATE -g -O0 -Wall -Wextra -Wpedantic)
 target_compile_options(test_rrt PRIVATE -O3 -finline-functions-called-once)
@@ -176,9 +174,8 @@ target_link_libraries(test_rrt_service ${catkin_LIBRARIES} rrt
 # octomap testing
 add_executable(octomap_test test/octomap.test.cpp)
 add_ros_dependencies(octomap_test)
-target_sources(octomap_test PRIVATE src/rrt/rrt.cpp)
 target_compile_options(octomap_test PRIVATE -O2 -Wall)
-target_link_libraries(octomap_test ${catkin_LIBRARIES} fmt::fmt-header-only
+target_link_libraries(octomap_test ${catkin_LIBRARIES} rrt fmt::fmt-header-only
                       kdtree-header-only ${OCTOMAP_LIBRARIES})
 
 # trajectory testing

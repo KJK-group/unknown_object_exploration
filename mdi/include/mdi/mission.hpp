@@ -19,7 +19,7 @@
 #include "mdi/compound_trajectory.hpp"
 #include "mdi/rrt/rrt.hpp"
 #include "mdi/rrt/rrt_builder.hpp"
-#include "mdi/utils/rviz/rviz.hpp"
+#include "mdi/utils/rviz.hpp"
 #include "mdi/utils/utils.hpp"
 #include "mdi_msgs/ControllerStateStamped.h"
 #include "mdi_msgs/MissionStateStamped.h"
