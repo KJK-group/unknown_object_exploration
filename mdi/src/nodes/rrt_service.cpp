@@ -12,6 +12,7 @@
 #include <memory>
 
 #include "mdi/common_headers.hpp"
+#include "mdi/gain.hpp"
 #include "mdi/octomap.hpp"
 #include "mdi/rrt/rrt.hpp"
 #include "mdi/rrt/rrt_builder.hpp"
@@ -39,7 +40,7 @@ waypoint_cb before_waypoint_optimization;
 waypoint_cb after_waypoint_optimization;
 raycast_cb raycast;
 
-auto call_get_octomap() -> mdi::Octomap* {
+auto call_get_environment_octomap() -> mdi::Octomap* {
     auto request = octomap_msgs::GetOctomap::Request{};  // empty request
     auto response = octomap_msgs::GetOctomap::Response{};
 
@@ -98,13 +99,13 @@ auto rrt_find_path_handler(mdi_msgs::RrtFindPath::Request& request, mdi_msgs::Rr
     // rrt.register_cb_for_event_on_new_node_created(
     // [](const auto& p1, const auto& p2) { std::cout << "New node created" << '\n'; });
 
-    rrt.register_cb_for_event_before_optimizing_waypoints(before_waypoint_optimization);
-    rrt.register_cb_for_event_after_optimizing_waypoints(after_waypoint_optimization);
-    rrt.register_cb_for_event_on_raycast(raycast);
+    // rrt.register_cb_for_event_before_optimizing_waypoints(before_waypoint_optimization);
+    // rrt.register_cb_for_event_after_optimizing_waypoints(after_waypoint_optimization);
+    // rrt.register_cb_for_event_on_raycast(raycast);
 
     auto success = false;
 
-    auto octomap_ptr = call_get_octomap();
+    auto octomap_ptr = call_get_environment_octomap();
 
     if (octomap_ptr != nullptr) {
         rrt.assign_octomap(octomap_ptr);
@@ -125,6 +126,44 @@ auto rrt_find_path_handler(mdi_msgs::RrtFindPath::Request& request, mdi_msgs::Rr
     }
     if (octomap_ptr != nullptr) {
         delete octomap_ptr;
+    }
+
+    return success;
+}
+
+auto nbv_handler(mdi_msgs::NBV::Request& request, mdi_msgs::NBV::Response& response) -> bool {
+    auto success = false;
+    static mdi::utils::random::random_point_generator rng{0.0, 1.0};
+
+    const auto sample_random_point = [&]() -> vec3 {
+        auto random_pt = rng.sample_random_point_inside_unit_sphere(direction_from_start_to_goal_, goal_bias_);
+        return sampling_radius_ * random_pt + start_position_;
+    }
+
+    for (std::size_t fov_attempted = 0; fov_attempted < request.allowed_attempts; ++fov_attempted) {
+        auto random_point = sample_random_point();
+        random_point[2] = request.target[2];
+
+        // construnt fov
+        const auto orientation = Quaternion{1, 0, 0, 0};
+        const auto pose = Pose{random, orientation};
+        const auto horizontal = FoVAngle::from_degrees(request.fov.horizontal);
+        const auto vertical = FoVAngle::from_degrees(request.fov.vertical);
+        const auto depth_range = DepthRange{request.depth_range.min, request.depth_range.max};
+        auto fov = FoV{pose, horizontal, vertical, depth_range, request.target};
+
+        const auto direction = fov.direction();
+
+        const double gain =
+            mdi::gain_of_fov(fov, octomap, request.weight_free, request.weight_unknown, request.weight_occupied);
+
+        if (gain > request.gain_of_interest) {
+            success = true;
+            // run rrt with fov position as target
+			if (const auto opt = rrt()) {
+				const auto waypoints = opt.value();
+			}
+        }
     }
 
     return success;
@@ -209,6 +248,11 @@ auto main(int argc, char* argv[]) -> int {
     auto service = [&] {
         const auto url = "/mdi/rrt_service/find_path";
         return nh.advertiseService(url, rrt_find_path_handler);
+    }();
+
+    auto nbv_service = [&] {
+        const auto url = "/mdi/rrt_service/nbv";
+        return nh.advertiseService(url, nbv_handler);
     }();
 
     ros::spin();
