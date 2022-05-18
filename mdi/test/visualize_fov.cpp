@@ -25,6 +25,7 @@
 // #include "mdi/octomap.hpp"
 #include "mdi/fov.hpp"
 #include "mdi/utils/rviz.hpp"
+#include "mdi/utils/utils.hpp"
 #include "ros/assert.h"
 #include "ros/init.h"
 #include "ros/rate.h"
@@ -34,12 +35,13 @@ using namespace mdi::types;
 auto main(int argc, char* argv[]) -> int {
     ros::init(argc, argv, "visualize_raycast");
     auto nh = ros::NodeHandle();
-    auto publish_rate = ros::Rate(50);
+    auto publish_rate = ros::Rate(mdi::utils::DEFAULT_LOOP_RATE * 10);
+
+    ros::Duration(5).sleep();
 
     auto pub_visualize_marker = [&nh] {
         const auto topic_name = "/visualization_marker";
-        const auto queue_size = 10;
-        return nh.advertise<visualization_msgs::Marker>(topic_name, queue_size);
+        return nh.advertise<visualization_msgs::Marker>(topic_name, mdi::utils::DEFAULT_QUEUE_SIZE);
     }();
 
     auto publish_marker = [&pub_visualize_marker, &publish_rate](const auto& msg) {
@@ -50,8 +52,7 @@ auto main(int argc, char* argv[]) -> int {
 
     auto pub_visualize_marker_array = [&nh] {
         const auto topic_name = "/visualization_marker_array";
-        const auto queue_size = 10;
-        return nh.advertise<visualization_msgs::MarkerArray>(topic_name, queue_size);
+        return nh.advertise<visualization_msgs::MarkerArray>(topic_name, mdi::utils::DEFAULT_QUEUE_SIZE);
     }();
 
     auto publish_marker_array = [&pub_visualize_marker_array, &publish_rate](const auto& msg) {
@@ -89,14 +90,21 @@ auto main(int argc, char* argv[]) -> int {
         //     publish_marker(msg);
         //     publish_marker(msg);
         // }
-
-        publish_marker(arrow_msg_gen({pos, target}));
+        {
+            auto msg = arrow_msg_gen({pos, target});
+            msg.color.a = 0.2;
+            msg.color.r = 1;
+            msg.color.g = 1;
+            msg.color.b = 1;
+            publish_marker(msg);
+        }
 
         {
             auto msg = arrow_msg_gen({pos, pos + fov.direction() * 5});
-            msg.color.r = 0;
-            msg.color.b = 1;
-
+            msg.color.a = 1;
+            msg.color.r = 1;
+            msg.color.g = 0.2;
+            msg.color.b = 0.2;
             publish_marker(msg);
         }
 
@@ -159,17 +167,23 @@ auto main(int argc, char* argv[]) -> int {
         {
             auto msg = arrow_msg_gen({pos, pos + i_basis});
             msg.color.r = 1;
+            msg.color.g = 0;
+            msg.color.b = 0;
             publish_marker(msg);
         }
 
         {
             auto msg = arrow_msg_gen({pos, pos + j_basis});
+            msg.color.r = 0;
             msg.color.g = 1;
+            msg.color.b = 0;
             publish_marker(msg);
         }
 
         {
             auto msg = arrow_msg_gen({pos, pos + k_basis});
+            msg.color.r = 0;
+            msg.color.g = 0;
             msg.color.b = 1;
             publish_marker(msg);
         }
@@ -181,24 +195,32 @@ auto main(int argc, char* argv[]) -> int {
             // near plane
             {
                 auto msg = arrow_msg_gen({pos + from * fov.depth_range().min, pos + to * fov.depth_range().min});
-                msg.color.r = 0.8;
-                msg.color.b = 0.7;
+                msg.color.r = 0.7;
+                msg.color.g = 0.2;
+                msg.color.b = 1;
+                msg.scale.y = 0;
+                msg.scale.z = -1;
                 publish_marker(msg);
             }
 
             // border
             {
                 auto msg = arrow_msg_gen({pos + from * fov.depth_range().min, pos + from * fov.depth_range().max});
-                msg.color.r = 0.8;
-                msg.color.g = 0.4;
-                msg.color.b = 0;
+                msg.color.r = 1;
+                msg.color.g = 1;
+                msg.color.b = 1;
+                msg.scale.y = 0;
+                msg.scale.z = -1;
                 publish_marker(msg);
             }
             // far plane
             {
                 auto msg = arrow_msg_gen({pos + from * fov.depth_range().max, pos + to * fov.depth_range().max});
-                msg.color.g = 0.8;
-                msg.color.b = 0.2;
+                msg.color.r = 0.2;
+                msg.color.g = 0.7;
+                msg.color.b = 1;
+                msg.scale.y = 0;
+                msg.scale.z = -1;
                 publish_marker(msg);
             }
         };
@@ -227,13 +249,13 @@ auto main(int argc, char* argv[]) -> int {
 
         // publish_marker_array(marker_array);
 
-        std::cout << yaml(fov) << '\n';
+        // std::cout << yaml(fov) << '\n';
     };
 
     const auto center = vec3{-10, 10, -7};
     const auto step_size = M_PI_2 / 4;
     const auto radius = 20;
-    vec3 fem = vec3{2, 2, 2};
+    vec3 fem = vec3{5, 5, 5};
     for (float i = 0.0f; i < M_PI * 2; i += step_size) {
         float x = std::cos(i) * radius;
         float y = std::sin(i) * radius;
@@ -258,14 +280,14 @@ auto main(int argc, char* argv[]) -> int {
         visualize_fov(center + offset, center + fem);
     }
 
-    for (float i = 0.0f; i < M_PI * 2; i += step_size) {
-        float x = std::cos(i) * radius;
-        float y = std::cos(i) * radius;
-        float z = std::sin(i) * radius;
-        const auto offset = vec3{x, y, z};
+    // for (float i = 0.0f; i < M_PI * 2; i += step_size) {
+    //     float x = std::cos(i) * radius;
+    //     float y = std::cos(i) * radius;
+    //     float z = std::sin(i) * radius;
+    //     const auto offset = vec3{x, y, z};
 
-        visualize_fov(center + offset, center + fem);
-    }
+    //     visualize_fov(center + offset, center + fem);
+    // }
 
     publish_rate.sleep();
     ros::spinOnce();

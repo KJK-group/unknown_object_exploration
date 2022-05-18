@@ -5,5 +5,5 @@
 	<arg name="package_path" value="$(find mdi)"/>
 
 	<node pkg="rviz" type="rviz" name="rviz" args="-d $(arg package_path)/rviz/$(arg node).rviz"/>
-	<node pkg="$(arg package)" type="$(arg node)" name="$(arg node)" output="screen"/>
+	<node pkg="$(arg package)" type="$(arg node)" name="$(arg node)"/>
 </launch>

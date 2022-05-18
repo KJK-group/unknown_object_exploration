@@ -62,7 +62,9 @@
   <exec_depend>roscpp</exec_depend>
   <exec_depend>
    gazebo_ros
- </exec_depend>
+  </exec_depend>
+  <build_depend>libpcl-all-dev</build_depend>
+  <exec_depend>libpcl-all</exec_depend>
 
   <!-- The export tag contains other, unspecified, tags -->
   <export>

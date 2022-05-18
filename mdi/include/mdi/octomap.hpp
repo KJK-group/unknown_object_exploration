@@ -7,10 +7,14 @@
 #include <octomap_msgs/conversions.h>
 #include <octomap_ros/conversions.h>
 
-#include "mdi/common_headers.hpp"
-#include "mdi/voxelstatus.hpp"
+#include "common_headers.hpp"
+#include "mdi/common_types.hpp"
+#include "pcl/impl/point_types.hpp"
+#include "voxelstatus.hpp"
 
 namespace mdi {
+constexpr auto DEFAULT_MIN_THRESH_PROB = 0.1;
+constexpr auto DEFAULT_MAX_THRESH_PROB = 0.5;
 
 class Octomap final {
    public:  // PUBLIC TYPES --------------------------------------------------------------------------------------------
@@ -33,6 +37,13 @@ class Octomap final {
             // friend std::ostream& operator<<(std::ostream& os, const Octomap& octomap);
    public:  // CONSTRUCTORS --------------------------------------------------------------------------------------------
     Octomap(double resolution) : octree_(resolution) {}
+
+    Octomap(double resolution, double thresh_prob_min = DEFAULT_MIN_THRESH_PROB,
+            double thresh_prob_max = DEFAULT_MAX_THRESH_PROB)
+        : octree_(resolution) {
+        octree_.setClampingThresMax(thresh_prob_max);
+        octree_.setClampingThresMin(thresh_prob_min);
+    }
     // Octomap(octree_type&& tree) : octree_(tree) {}
     Octomap(const Octomap& octree) = delete;
     Octomap(const octomap_msgs::Octomap& map) : octree_{map.resolution} {
@@ -64,6 +75,13 @@ class Octomap final {
     // Octomap(OcTree&& tree) : octree_(std:Const:move(tree)) {}
 
    public:  // PUBLIC INTERFACE ----------------------------------------------------------------------------------------
+    auto insert_points(std::vector<pcl::PointXYZ, Eigen::aligned_allocator<pcl::PointXYZ>> points) -> void {
+        octomap::Pointcloud octo_point_cloud;
+        for (auto point : points) {
+            octo_point_cloud.push_back({point.x, point.y, point.z});
+        }
+        octree_.insertPointCloud(octo_point_cloud, {0, 0, 0});
+    }
     auto raycast_in_direction(const point_type& origin, const point_type& direction, double max_range,
                               bool ignore_unknown_voxels = true) const -> std::optional<point_type> {
         return raycast_(origin, direction, max_range, ignore_unknown_voxels);
@@ -121,6 +139,12 @@ class Octomap final {
      * @return const OcTree&
      */
     auto octree() const -> const octree_type& { return octree_; }
+
+    /**
+     * @brief returns a mutable reference to the underlying OcTree
+     * @return const OcTree&
+     */
+    auto octree() -> octree_type& { return octree_; }
 
    private:  // --------------------------------------------------------------------------------------------------------
     octree_type octree_;

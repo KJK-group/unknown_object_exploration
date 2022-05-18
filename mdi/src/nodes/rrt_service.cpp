@@ -16,6 +16,7 @@
 #include "mdi/rrt/rrt.hpp"
 #include "mdi/rrt/rrt_builder.hpp"
 #include "mdi/utils/rviz.hpp"
+#include "mdi/utils/utils.hpp"
 #include "mdi_msgs/RrtFindPath.h"
 #include "octomap/octomap_types.h"
 #include "ros/duration.h"
@@ -135,7 +136,7 @@ auto main(int argc, char* argv[]) -> int {
 
     ros::init(argc, argv, name_of_node);
     auto nh = ros::NodeHandle();
-    auto rate = ros::Rate(10);
+    auto rate = ros::Rate(mdi::utils::DEFAULT_LOOP_RATE);
 
     waypoints_path_pub = std::make_unique<ros::Publisher>([&] {
         const auto service_name = "/visualization_marker"s;

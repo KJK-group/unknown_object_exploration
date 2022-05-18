@@ -23,9 +23,12 @@ find_package(
              nav_msgs
              mavros_msgs
              octomap_msgs
+             sensor_msgs
              octomap_ros
              mdi_msgs
              roscpp
+             pcl_conversions
+             pcl_ros
              tf2
              tf2_ros
              tf2_eigen)
@@ -35,6 +38,15 @@ include_directories(${catkin_INCLUDE_DIRS})
 
 find_package(Eigen3 REQUIRED)
 include_directories(${Eigen3_INCLUDE_DIRS})
+
+# find_package(PCL 1.0 REQUIRED COMPONENTS io)
+# include_directories(${PCL_INCLUDE_DIRS})
+# link_directories(${PCL_LIBRARY_DIRS})
+# add_definitions(${PCL_DEFINITIONS})
+# find_package(PCL REQUIRED)
+# include_directories(${PCL_INCLUDE_DIRS})
+# link_directories(${PCL_LIBRARY_DIRS})
+# add_definitions(${PCL_DEFINITIONS})
 
 find_package(octomap REQUIRED)
 include_directories(${OCTOMAP_INCLUDE_DIRS})
@@ -139,6 +151,12 @@ add_ros_dependencies(rrt_service)
 # target_compile_options(rrt_service PRIVATE -O2 -g)
 target_link_libraries(rrt_service ${catkin_LIBRARIES} rrt fmt::fmt-header-only
                       kdtree-header-only ${OCTOMAP_LIBRARIES})
+
+add_executable(object_map_processor src/nodes/object_map_processor.cpp)
+add_ros_dependencies(object_map_processor)
+target_link_libraries(object_map_processor ${catkin_LIBRARIES}
+                      ${OCTOMAP_LIBRARIES})
+
 
 # ##############################################################################
 # Testing ##

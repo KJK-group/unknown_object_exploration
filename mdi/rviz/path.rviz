@@ -6,8 +6,10 @@ Panels:
       Expanded:
         - /TF1/Frames1
         - /Marker1
+        - /Odometry1
+        - /Odometry1/Shape1
       Splitter Ratio: 0.550000011920929
-    Tree Height: 439
+    Tree Height: 925
   - Class: rviz/Selection
     Name: Selection
   - Class: rviz/Tool Properties
@@ -160,7 +162,7 @@ Visualization Manager:
       Marker Topic: /mdi/mission/visualisation
       Name: Marker
       Namespaces:
-        {}
+        "": true
       Queue Size: 100
       Value: true
     - Class: octomap_rviz_plugin/OccupancyGrid
@@ -180,7 +182,7 @@ Visualization Manager:
       Marker Topic: /mdi/visualisation
       Name: MarkerArray
       Namespaces:
-        {}
+        "": true
       Queue Size: 10
       Value: true
     - Class: rviz/Marker
@@ -188,7 +190,126 @@ Visualization Manager:
       Marker Topic: /mdi/visualisation/controller
       Name: Marker
       Namespaces:
-        {}
+        arrow/1652449552: true
+        arrow/1652449553: true
+        arrow/1652449554: true
+        arrow/1652449555: true
+        arrow/1652449556: true
+        arrow/1652449557: true
+        arrow/1652449558: true
+        arrow/1652449559: true
+        arrow/1652449560: true
+        arrow/1652449561: true
+        arrow/1652449562: true
+        arrow/1652449563: true
+        arrow/1652449564: true
+        arrow/1652449565: true
+        arrow/1652449566: true
+        arrow/1652449567: true
+        arrow/1652449568: true
+        arrow/1652449569: true
+        arrow/1652449570: true
+        arrow/1652449571: true
+        arrow/1652449572: true
+        arrow/1652449573: true
+        arrow/1652449574: true
+        arrow/1652449575: true
+        arrow/1652449576: true
+        arrow/1652449577: true
+        arrow/1652449578: true
+        arrow/1652449579: true
+        arrow/1652449580: true
+        arrow/1652449581: true
+        arrow/1652449582: true
+        arrow/1652449583: true
+        arrow/1652449584: true
+        arrow/1652449585: true
+        arrow/1652449586: true
+        arrow/1652449587: true
+        arrow/1652449588: true
+        arrow/1652449589: true
+        arrow/1652449590: true
+        arrow/1652449591: true
+        arrow/1652449592: true
+        arrow/1652449593: true
+        arrow/1652449594: true
+        arrow/1652449595: true
+        arrow/1652449596: true
+        arrow/1652449597: true
+        arrow/1652449598: true
+        arrow/1652449599: true
+        arrow/1652449600: true
+        arrow/1652449601: true
+        arrow/1652449602: true
+        arrow/1652449603: true
+        arrow/1652449604: true
+        arrow/1652449605: true
+        arrow/1652449606: true
+        arrow/1652449607: true
+        arrow/1652449608: true
+        arrow/1652449609: true
+        arrow/1652449610: true
+        arrow/1652449611: true
+        sphere/1652449552: true
+        sphere/1652449553: true
+        sphere/1652449554: true
+        sphere/1652449555: true
+        sphere/1652449556: true
+        sphere/1652449557: true
+        sphere/1652449558: true
+        sphere/1652449559: true
+        sphere/1652449560: true
+        sphere/1652449561: true
+        sphere/1652449562: true
+        sphere/1652449563: true
+        sphere/1652449564: true
+        sphere/1652449565: true
+        sphere/1652449566: true
+        sphere/1652449567: true
+        sphere/1652449568: true
+        sphere/1652449569: true
+        sphere/1652449570: true
+        sphere/1652449571: true
+        sphere/1652449572: true
+        sphere/1652449573: true
+        sphere/1652449574: true
+        sphere/1652449575: true
+        sphere/1652449576: true
+        sphere/1652449577: true
+        sphere/1652449578: true
+        sphere/1652449579: true
+        sphere/1652449580: true
+        sphere/1652449581: true
+        sphere/1652449582: true
+        sphere/1652449583: true
+        sphere/1652449584: true
+        sphere/1652449585: true
+        sphere/1652449586: true
+        sphere/1652449587: true
+        sphere/1652449588: true
+        sphere/1652449589: true
+        sphere/1652449590: true
+        sphere/1652449591: true
+        sphere/1652449592: true
+        sphere/1652449593: true
+        sphere/1652449594: true
+        sphere/1652449595: true
+        sphere/1652449596: true
+        sphere/1652449597: true
+        sphere/1652449598: true
+        sphere/1652449599: true
+        sphere/1652449600: true
+        sphere/1652449601: true
+        sphere/1652449602: true
+        sphere/1652449603: true
+        sphere/1652449604: true
+        sphere/1652449605: true
+        sphere/1652449606: true
+        sphere/1652449607: true
+        sphere/1652449608: true
+        sphere/1652449609: true
+        sphere/1652449610: true
+        sphere/1652449611: true
       Queue Size: 100
       Value: true
     - Angle Tolerance: 0.10000000149011612
@@ -214,14 +335,14 @@ Visualization Manager:
       Position Tolerance: 0.10000000149011612
       Queue Size: 10
       Shape:
-        Alpha: 1
+        Alpha: 0.30000001192092896
         Axes Length: 1
         Axes Radius: 0.10000000149011612
-        Color: 255; 25; 0
-        Head Length: 0.30000001192092896
-        Head Radius: 0.10000000149011612
-        Shaft Length: 1
-        Shaft Radius: 0.05000000074505806
+        Color: 255; 255; 255
+        Head Length: 0.05000000074505806
+        Head Radius: 0.02500000037252903
+        Shaft Length: 2.5
+        Shaft Radius: 0.02500000037252903
         Value: Arrow
       Topic: /airsim_node/PX4/odom_local_ned
       Unreliable: false
@@ -254,7 +375,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/XYOrbit
-      Distance: 16.97382354736328
+      Distance: 9.369148254394531
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -262,17 +383,17 @@ Visualization Manager:
         Value: false
       Field of View: 0.7853981852531433
       Focal Point:
-        X: 0.4502241611480713
-        Y: 0.2788057327270508
-        Z: 3.76216703443788e-05
+        X: 1.5398719310760498
+        Y: 0.6713476181030273
+        Z: 3.7144833186175674e-05
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.7897961139678955
+      Pitch: 0.6447960138320923
       Target Frame: world_view
-      Yaw: 3.802231550216675
+      Yaw: 4.272233963012695
     Saved: ~
 Window Geometry:
   Displays:
