@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.14)
 project(mdi_msgs)
 
-set(MSG_DEPENDENCIES std_msgs geometry_msgs)
+set(MSG_DEPENDENCIES std_msgs geometry_msgs sensor_msgs)
 
 find_package(catkin REQUIRED ${MSG_DEPENDENCIES} message_generation)
 
@@ -29,7 +29,12 @@ add_message_files(
     PointNormStamped.msg
     Error.msg
     ControllerStateStamped.msg)
-add_service_files(FILES RrtFindPath.srv)
+
+add_service_files(
+    FILES
+    RrtFindPath.srv
+    Model.srv
+)
 
 generate_messages(DEPENDENCIES ${MSG_DEPENDENCIES})
 
