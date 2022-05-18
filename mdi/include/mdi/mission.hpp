@@ -16,6 +16,7 @@
 #include <optional>
 #include <utility>
 
+#include "common_types.hpp"
 #include "mdi/compound_trajectory.hpp"
 #include "mdi/rrt/rrt.hpp"
 #include "mdi/rrt/rrt_builder.hpp"
@@ -31,7 +32,7 @@ namespace mdi {
 constexpr auto INITIAL_ALTITUDE = 5;
 class Mission {
    public:
-    Mission(ros::NodeHandle& nh, ros::Rate& rate, float velocity_target = 1,
+    Mission(ros::NodeHandle& nh, ros::Rate& rate, types::vec2 target, float velocity_target = 1,
             Eigen::Vector3f home = {0, 0, INITIAL_ALTITUDE}, bool visualise = false);
     enum state { PASSIVE, HOME, EXPLORATION, INSPECTION, LAND };
     static auto state_to_string(enum state s) -> std::string;
@@ -50,82 +51,83 @@ class Mission {
     auto get_state() -> state;
 
    private:
-    auto find_path(Eigen::Vector3f start, Eigen::Vector3f end) -> std::vector<Eigen::Vector3f>;
-    auto fit_trajectory(std::vector<Eigen::Vector3f> path) -> std::optional<trajectory::CompoundTrajectory>;
-    auto drone_set_mode(std::string mode = "OFFBOARD") -> bool;
+    auto find_path_(Eigen::Vector3f start, Eigen::Vector3f end) -> std::vector<Eigen::Vector3f>;
+    auto fit_trajectory_(std::vector<Eigen::Vector3f> path) -> std::optional<trajectory::CompoundTrajectory>;
+    auto drone_set_mode_(std::string mode = "OFFBOARD") -> bool;
 
-    auto go_home() -> void;
-    auto trajectory_step() -> bool;
-    auto explore() -> bool;
-    auto exploration_step() -> bool;
-    auto publish() -> void;
+    auto go_home_() -> void;
+    auto trajectory_step_() -> bool;
+    auto explore_() -> bool;
+    auto exploration_step_() -> bool;
+    auto publish_() -> void;
 
-    auto mavros_state_cb(const mavros_msgs::State::ConstPtr& state) -> void;
-    auto controller_state_cb(const mdi_msgs::ControllerStateStamped::ConstPtr& state) -> void;
-    auto odom_cb(const nav_msgs::Odometry::ConstPtr& odom) -> void;
+    auto mavros_state_cb_(const mavros_msgs::State::ConstPtr& state) -> void;
+    auto controller_state_cb_(const mdi_msgs::ControllerStateStamped::ConstPtr& state) -> void;
+    auto odom_cb_(const nav_msgs::Odometry::ConstPtr& odom) -> void;
 
-    auto get_attitude() -> tf2::Quaternion;
-    auto visualise() -> void;
+    auto compute_attitude_() -> void;
+    auto visualise_() -> void;
 
-    ros::NodeHandle& nh;
-    ros::Rate& rate;
-    mdi_msgs::MissionStateStamped state;
+    ros::NodeHandle& nh_;
+    ros::Rate& rate_;
+    mdi_msgs::MissionStateStamped state_;
 
-    std::vector<Eigen::Vector3f> interest_points;
-    std::vector<Eigen::Vector2f> target_points;
+    std::vector<Eigen::Vector3f> interest_points_;
+    std::vector<Eigen::Vector2f> target_points_;
 
     // publishers
-    ros::Publisher pub_mission_state;
-    ros::Publisher pub_visualise;
-    ros::Publisher pub_setpoint;
+    ros::Publisher pub_mission_state_;
+    ros::Publisher pub_visualise_;
+    ros::Publisher pub_setpoint_;
 
     // subscribers
-    ros::Subscriber sub_drone_state;
-    ros::Subscriber sub_controller_state;
-    ros::Subscriber sub_odom;
+    ros::Subscriber sub_drone_state_;
+    ros::Subscriber sub_controller_state_;
+    ros::Subscriber sub_odom_;
 
     // services
-    ros::ServiceClient client_arm;
-    ros::ServiceClient client_mode;
-    ros::ServiceClient client_takeoff;
-    ros::ServiceClient client_land;
-    ros::ServiceClient client_rrt;
+    ros::ServiceClient client_arm_;
+    ros::ServiceClient client_mode_;
+    ros::ServiceClient client_takeoff_;
+    ros::ServiceClient client_land_;
+    ros::ServiceClient client_rrt_;
 
     // msg instances
-    mavros_msgs::State drone_state;
-    nav_msgs::Odometry drone_odom;
-    mdi_msgs::ControllerStateStamped controller_state;
+    mavros_msgs::State drone_state_;
+    nav_msgs::Odometry drone_odom_;
+    mdi_msgs::ControllerStateStamped controller_state_;
 
     // points
-    Eigen::Vector3f home_position;
-    Eigen::Vector3f expected_position;
-    Eigen::Vector2f target;
-    tf2::Quaternion expected_attitude;
+    Eigen::Vector3f home_position_;
+    Eigen::Vector3f expected_position_;
+    Eigen::Vector2f target_;
+    Eigen::Vector2f object_center_;
+    tf2::Quaternion expected_attitude_;
 
     // time
-    ros::Time start_time;
-    ros::Time timeout_start_time;
-    ros::Duration delta_time;
-    ros::Duration timeout_delta_time;
-    ros::Duration timeout;
+    ros::Time start_time_;
+    ros::Time timeout_start_time_;
+    ros::Duration delta_time_;
+    ros::Duration timeout_delta_time_;
+    ros::Duration timeout_;
 
     // path
-    trajectory::CompoundTrajectory trajectory;
-    int waypoint_idx;
+    trajectory::CompoundTrajectory trajectory_;
+    int waypoint_idx_;
 
-    float velocity_target;
+    float velocity_target_;
 
     // state
-    int seq_state;
-    int seq_point;
-    int seq_vis;
-    int step_count;
-    bool inspection_complete;
-    bool exploration_complete;
+    int seq_state_;
+    int seq_point_;
+    int seq_vis_;
+    int step_count_;
+    bool inspection_complete_;
+    bool exploration_complete_;
 
     // visualisation
-    float marker_scale;
-    bool should_visualise;
+    float marker_scale_;
+    bool should_visualise_;
 };
 }  // namespace mdi
 #endif  // _MDI_MISSION_MANAGER_HPP_

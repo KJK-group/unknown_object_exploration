@@ -33,7 +33,7 @@ auto main(int argc, char** argv) -> int {
     if (argc > 1) velocity_target = std::stof(argv[1]);
 
     // mission instance
-    auto mission = mdi::Mission(nh, rate, velocity_target, {0, 0, altitude}, true);
+    auto mission = mdi::Mission(nh, rate, {2.5, 2.5}, velocity_target, {0, 0, altitude}, true);
     // for (auto& p : interest_points) {
     //     mission.add_interest_point(p);
     // }

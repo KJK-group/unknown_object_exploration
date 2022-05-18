@@ -160,7 +160,7 @@ Visualization Manager:
       Marker Topic: /mdi/mission/visualisation
       Name: Marker
       Namespaces:
-        {}
+        "": true
       Queue Size: 100
       Value: true
     - Class: octomap_rviz_plugin/OccupancyGrid
@@ -188,7 +188,16 @@ Visualization Manager:
       Marker Topic: /mdi/visualisation/controller
       Name: Marker
       Namespaces:
-        {}
+        arrow/1652901710: true
+        arrow/1652901711: true
+        arrow/1652901712: true
+        arrow/1652901713: true
+        arrow/1652901714: true
+        sphere/1652901710: true
+        sphere/1652901711: true
+        sphere/1652901712: true
+        sphere/1652901713: true
+        sphere/1652901714: true
       Queue Size: 100
       Value: true
     - Angle Tolerance: 0.10000000149011612

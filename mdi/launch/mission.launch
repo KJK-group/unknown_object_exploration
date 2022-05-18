@@ -31,7 +31,6 @@
         pkg="$(arg package)"
         type="control_manager"
         name="control_manager"
-        output="screen"
         args="$(arg xy_p) $(arg xy_i) $(arg xy_d) $(arg yaw_p) $(arg yaw_i) $(arg yaw_d) $(arg z_p) $(arg z_i) $(arg z_d)" />
     <node
         pkg="$(arg package)"
