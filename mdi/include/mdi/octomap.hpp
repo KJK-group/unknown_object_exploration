@@ -7,8 +7,13 @@
 #include <octomap_msgs/conversions.h>
 #include <octomap_ros/conversions.h>
 
+#include <functional>
+#include <utility>
+
+#include "mdi/bbx.hpp"
 #include "mdi/common_headers.hpp"
 #include "mdi/voxelstatus.hpp"
+#include "octomap/OcTreeKey.h"
 
 namespace mdi {
 
@@ -18,16 +23,16 @@ class Octomap final {
     using octree_type = octomap::OcTree;
     using node_type = octree_type::NodeType;
 
-    struct BBX {
-        point_type center;
-        float width, height, depth;
-        [[nodiscard]] auto min() const -> point_type {
-            return {center.x() - width / 2, center.z() - height / 2, center.z() - depth / 2};
-        }
-        [[nodiscard]] auto max() const -> point_type {
-            return {center.x() + width / 2, center.z() + height / 2, center.z() + depth / 2};
-        }
-    };  // BBX
+    // struct BBX {
+    //     point_type center;
+    //     float width, height, depth;
+    //     [[nodiscard]] auto min() const -> point_type {
+    //         return {center.x() - width / 2, center.z() - height / 2, center.z() - depth / 2};
+    //     }
+    //     [[nodiscard]] auto max() const -> point_type {
+    //         return {center.x() + width / 2, center.z() + height / 2, center.z() + depth / 2};
+    //     }
+    // };  // BBX
 
    public:  // FRIENDS -------------------------------------------------------------------------------------------------
             // friend std::ostream& operator<<(std::ostream& os, const Octomap& octomap);
@@ -120,7 +125,33 @@ class Octomap final {
      * @brief returns a const reference to the underlying OcTree
      * @return const OcTree&
      */
-    auto octree() const -> const octree_type& { return octree_; }
+    auto octree() -> octree_type& { return octree_; }
+
+    using bbx_iterator_cb = std::function<void(const point_type& pt, const VoxelStatus vs)>;
+
+    auto iterate_over_bbx(const mdi::types::BBX& bbx, bbx_iterator_cb cb) const -> void {
+        const auto [min, max] = [&] {
+            const auto min = bbx.min();
+            const auto max = bbx.max();
+            const point_type start = {min.x(), min.y(), min.z()};
+            const point_type stop = {max.x(), max.y(), max.z()};
+            return std::make_pair(start, stop);
+        }();
+
+        for (auto it = octree_.begin_leafs_bbx(min, max), end = octree_.end_leafs_bbx(); it != end; ++it) {
+            const auto voxel_center = it.getCoordinate();
+            const auto key = it.getKey();
+
+            cb(voxel_center, get_voxelstatus_at_node_using_key_(key));
+        }
+
+        octomap::point3d_list voxel_centers{};
+
+        octree_.getUnknownLeafCenters(voxel_centers, min, max);
+        for (auto voxel_center : voxel_centers) {
+            cb(voxel_center, VoxelStatus::Unknown);
+        }
+    }
 
    private:  // --------------------------------------------------------------------------------------------------------
     octree_type octree_;
@@ -141,6 +172,25 @@ class Octomap final {
             octree_.castRay(origin, direction, end, ignore_unknown_voxels, max_range);
         if (intersected_occupied_voxel) {
             return end;
+        }
+
+        return std::nullopt;
+    }
+
+    auto get_voxelstatus_at_node_using_key_(const octomap::OcTreeKey key) const -> VoxelStatus {
+        if (const auto opt = search_for_node_using_key_(key)) {
+            const auto node_ptr = opt.value();
+            return octree_.isNodeOccupied(node_ptr) ? VoxelStatus::Occupied : VoxelStatus::Free;
+        }
+
+        return VoxelStatus::Unknown;
+    }
+
+    auto search_for_node_using_key_(const octomap::OcTreeKey key, unsigned int depth = 0) const
+        -> std::optional<node_type*> {
+        const auto node_ptr = octree_.search(key, depth);
+        if (node_ptr != nullptr) {
+            return node_ptr;
         }
 
         return std::nullopt;
