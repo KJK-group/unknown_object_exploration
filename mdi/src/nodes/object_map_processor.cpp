@@ -80,15 +80,15 @@ auto main(int argc, char* argv[]) -> int {
         // using pcl library to filter point cloud
         if (client_model.call(srv)) {
             // fill the filter with the segmented indices from the model output
-            auto indices_filter = pcl::PointIndices{};
+            auto indices_filter = pcl::PointIndicesPtr{};
             for (int i = 0; i < srv.response.data.size(); i++) {
-                indices_filter.indices.push_back(i);
+                indices_filter->indices.push_back(i);
             }
 
             // construct index filter
             auto filter = pcl::ExtractIndices<pcl::PointXYZ>();
             filter.setInputCloud(unfiltered_point_cloud);
-            filter.setIndices(boost::make_shared<const pcl::PointIndices>(indices_filter));
+            filter.setIndices(indices_filter);
             // perform filtration and output to filtered cloud
             auto filtered_cloud = pcl::PointCloud<pcl::PointXYZ>::Ptr{};
             filter.filter(*filtered_cloud);

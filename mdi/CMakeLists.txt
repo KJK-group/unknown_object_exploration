@@ -27,8 +27,6 @@ find_package(
              octomap_ros
              mdi_msgs
              roscpp
-             pcl_conversions
-             pcl_ros
              tf2
              tf2_ros
              tf2_eigen)
@@ -47,6 +45,18 @@ include_directories(${Eigen3_INCLUDE_DIRS})
 # include_directories(${PCL_INCLUDE_DIRS})
 # link_directories(${PCL_LIBRARY_DIRS})
 # add_definitions(${PCL_DEFINITIONS})
+
+# find_package(PCL 1.12 REQUIRED)
+# include_directories(${PCL_INCLUDE_DIRS})
+# link_directories(${PCL_LIBRARY_DIRS})
+# add_definitions(${PCL_DEFINITIONS})
+
+
+file(GLOB PCL_LIBRARIES /usr/local/lib/libpcl_*)
+set(PCL_INCLUDE_DIRS /usr/local/include/pcl-1.12)
+
+INCLUDE_DIRECTORIES(${PROJECT_NAME} ${PCL_INCLUDE_DIRS})
+# TARGET_LINK_LIBRARIES(${PROJECT_NAME} ${PCL_LIBRARIES})
 
 find_package(octomap REQUIRED)
 include_directories(${OCTOMAP_INCLUDE_DIRS})
@@ -155,7 +165,8 @@ target_link_libraries(rrt_service ${catkin_LIBRARIES} rrt fmt::fmt-header-only
 add_executable(object_map_processor src/nodes/object_map_processor.cpp)
 add_ros_dependencies(object_map_processor)
 target_link_libraries(object_map_processor ${catkin_LIBRARIES}
-                      ${OCTOMAP_LIBRARIES})
+                      ${OCTOMAP_LIBRARIES} ${PCL_LIBRARIES})
+# target_link_directories(object_map_processor ${PCL_INCLUDE_DIRS})
 
 
 # ##############################################################################
