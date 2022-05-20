@@ -2,7 +2,8 @@
 
 namespace mdi::utils::transform {
 
-auto TransformListener::lookup_tf(const std::string& to_frame, const std::string& from_frame, ros::Time time)
+auto TransformListener::lookup_tf(const std::string& to_frame, const std::string& from_frame,
+                                  ros::Time time)
     -> std::optional<geometry_msgs::TransformStamped> {
     try {
         return buffer.lookupTransform(to_frame, from_frame, time);
@@ -12,7 +13,8 @@ auto TransformListener::lookup_tf(const std::string& to_frame, const std::string
 }
 
 auto TransformListener::transform_vec3(const std::string& to_frame, const std::string& from_frame,
-                                       const Eigen::Vector3f& vec3, ros::Time time) -> std::optional<Eigen::Vector3f> {
+                                       const Eigen::Vector3f& vec3, ros::Time time)
+    -> std::optional<Eigen::Vector3f> {
     if (const auto opt = lookup_tf(to_frame, from_frame, time)) {
         const auto tf = *opt;
         auto point_to_frame = geometry_msgs::PointStamped();
@@ -22,7 +24,8 @@ auto TransformListener::transform_vec3(const std::string& to_frame, const std::s
         point_from_frame.point.z = vec3.z();
         tf2::doTransform(point_from_frame, point_to_frame, tf);
         const auto& point = point_to_frame.point;
-        return Eigen::Vector3f{point.x, point.y, point.z};
+        return Eigen::Vector3f{static_cast<float>(point.x), static_cast<float>(point.y),
+                               static_cast<float>(point.z)};
     }
     return std::nullopt;
 }
