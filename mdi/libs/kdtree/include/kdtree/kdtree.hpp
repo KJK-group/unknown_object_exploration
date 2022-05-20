@@ -1,5 +1,4 @@
-#ifndef _MULTI_DRONE_INSPECTION_KDTREE_HPP_
-#define _MULTI_DRONE_INSPECTION_KDTREE_HPP_
+#pragma once
 
 #include <algorithm>
 #include <array>
@@ -178,5 +177,3 @@ class kdtree {
 };
 
 }  // namespace kdtree
-
-#endif  // _MULTI_DRONE_INSPECTION_KDTREE_HPP_

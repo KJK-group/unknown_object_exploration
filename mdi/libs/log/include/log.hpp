@@ -1,5 +1,4 @@
-#ifndef _LOG_HPP_
-#define _LOG_HPP_
+#pragma once
 
 #include <chrono>
 #include <iostream>
@@ -18,5 +17,3 @@ class log final {
 };  // log
 
 }  // namespace log
-
-#endif  // _LOG_HPP_

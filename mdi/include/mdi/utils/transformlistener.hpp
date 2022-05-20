@@ -1,5 +1,4 @@
-#ifndef _AMR_HW2_TRANSFORMLISTENER_HPP_
-#define _AMR_HW2_TRANSFORMLISTENER_HPP_
+#pragma once
 
 #include <ros/ros.h>
 #include <tf2/utils.h>
@@ -28,5 +27,3 @@ class TransformListener {
     tf2_ros::TransformListener listener = {buffer};
 };
 }  // namespace mdi::utils::transform
-
-#endif  // _AMR_HW2_TRANSFORMLISTENER_HPP_

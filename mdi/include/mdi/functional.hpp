@@ -1,5 +1,4 @@
-#ifndef _MULTI_DRONE_INSPECTION_FUNCTIONAL_HPP_
-#define _MULTI_DRONE_INSPECTION_FUNCTIONAL_HPP_
+#pragma once
 
 #include <algorithm>
 #include <vector>
@@ -15,5 +14,3 @@ auto map(const auto& iteratable, auto fn) -> std::vector<decltype(*(iteratable.b
 }
 
 }  // namespace functional
-
-#endif  // _MULTI_DRONE_INSPECTION_FUNCTIONAL_HPP_

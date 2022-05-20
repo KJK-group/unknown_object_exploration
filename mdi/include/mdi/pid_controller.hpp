@@ -1,5 +1,4 @@
-#ifndef _MDI_PID_CONTROLLER_HPP_
-#define _MDI_PID_CONTROLLER_HPP_
+#pragma once
 
 #include <ros/ros.h>
 
@@ -86,5 +85,3 @@ class PIDController {
     bool should_visualise;
 };
 }  // namespace mdi::control
-
-#endif  // _MDI_PID_CONTROLLER_HPP_

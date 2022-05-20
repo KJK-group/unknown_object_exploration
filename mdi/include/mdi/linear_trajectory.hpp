@@ -1,5 +1,4 @@
-#ifndef _MDI_LINEAR_TRAJECTORY_HPP_
-#define _MDI_LINEAR_TRAJECTORY_HPP_
+#pragma once
 
 #include <eigen3/Eigen/Dense>
 #include <vector>
@@ -17,5 +16,3 @@ class LinearTrajectory {
     float length;
 };
 }  // namespace mdi::trajectory
-
-#endif  // _MDI_LINEAR_TRAJECTORY_HPP_

@@ -1,5 +1,4 @@
-#ifndef _MDI_UTILS_HPP_
-#define _MDI_UTILS_HPP_
+#pragma once
 
 #include <cassert>
 #include <cmath>
@@ -37,7 +36,9 @@ auto hsb_to_rgb(float h, float s, float b) -> std::tuple<float, float, float> {
     b /= 100;
 
     const auto k = [&](float n) { return std::fmod((n + h / 60), 6); };
-    const auto f = [&](float n) { return b * (1 - s * std::max(0.0, std::min(std::min(k(n), 4 - k(n)), 1.0))); };
+    const auto f = [&](float n) {
+        return b * (1 - s * std::max(0.0, std::min(std::min(k(n), 4 - k(n)), 1.0)));
+    };
     return std::make_tuple(255 * f(5), 255 * f(3), 255 * f(1));
 }
 
@@ -64,5 +65,3 @@ auto range(int start, int end) -> std::vector<int> {
 // 	return result;
 // }
 }  // namespace mdi::utils
-
-#endif  // _MDI_UTILS_HPP_

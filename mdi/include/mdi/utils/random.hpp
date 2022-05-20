@@ -1,5 +1,4 @@
-#ifndef _MULTI_DRONE_INSPECTION_RANDOM_HPP_
-#define _MULTI_DRONE_INSPECTION_RANDOM_HPP_
+#pragma once
 
 #include <cassert>
 #include <chrono>
@@ -41,7 +40,7 @@ struct random_point_generator {
 
     auto get_bias_rotation_interval(float bias) -> float {
 #ifndef NDEBUG
-        if (!(0.f < bias && bias < 1.f)) {
+        if (! (0.f < bias && bias < 1.f)) {
             throw std::invalid_argument("bias must be between 0 and 1");
         }
 #endif
@@ -284,5 +283,3 @@ struct random_point_generator {
 // }
 
 }  // namespace mdi::utils::random
-
-#endif  // _MULTI_DRONE_INSPECTION_RANDOM_HPP_

@@ -1,5 +1,4 @@
-#ifndef _MULTI_DRONE_INSPECTION_ROSPARAM_HPP_
-#define _MULTI_DRONE_INSPECTION_ROSPARAM_HPP_
+#pragma once
 
 #include <fmt/core.h>
 #include <ros/ros.h>
@@ -25,5 +24,3 @@ auto get(std::string_view key) -> T {
 }
 
 }  // namespace mdi::utils::rosparam
-
-#endif  // _MULTI_DRONE_INSPECTION_ROSPARAM_HPP_

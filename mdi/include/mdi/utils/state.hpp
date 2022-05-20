@@ -1,11 +1,10 @@
-#ifndef _MDI_STATE_HPP_
-#define _MDI_STATE_HPP_
+#pragma once
 
 #include <cmath>
 
 namespace mdi::utils::state {
 
-auto clamp_yaw(float yaw) -> float { return yaw > M_PI ? yaw - 2 * M_PI : yaw < -M_PI ? yaw + 2 * M_PI : yaw; }
+constexpr auto yaw_representation(float angle) -> float {
+    return angle > M_PI ? angle - 2 * M_PI : angle < -M_PI ? angle + 2 * M_PI : angle;
+}
 }  // namespace mdi::utils::state
-
-#endif  // _MDI_STATE_HPP_

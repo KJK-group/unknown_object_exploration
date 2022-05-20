@@ -2,8 +2,8 @@
 
 namespace mdi::control {
 
-PIDController::PIDController(ros::NodeHandle& nh, ros::Rate& rate, PID gains_xy, PID gains_z, PID gains_yaw,
-                             bool visualise)
+PIDController::PIDController(ros::NodeHandle& nh, ros::Rate& rate, PID gains_xy, PID gains_z,
+                             PID gains_yaw, bool visualise)
     : rate(rate),
       gains_xy(gains_xy),
       gains_z(gains_z),
@@ -22,38 +22,43 @@ PIDController::PIDController(ros::NodeHandle& nh, ros::Rate& rate, PID gains_xy,
       should_visualise(visualise) {
     // state subscriber
     sub_mission_state = nh.subscribe<mdi_msgs::MissionStateStamped>(
-        "/mdi/mission/state", mdi::utils::DEFAULT_QUEUE_SIZE, &PIDController::mission_state_cb, this);
-    sub_odom = nh.subscribe<nav_msgs::Odometry>("/mavros/local_position/odom", mdi::utils::DEFAULT_QUEUE_SIZE,
+        "/mdi/mission/state", mdi::utils::DEFAULT_QUEUE_SIZE, &PIDController::mission_state_cb,
+        this);
+    sub_odom = nh.subscribe<nav_msgs::Odometry>("/mavros/local_position/odom",
+                                                mdi::utils::DEFAULT_QUEUE_SIZE,
                                                 &PIDController::odom_cb, this);
 
     // std::cout << "Inside controller" << std::endl;
-    // std::cout << "gains_xy: \n" << gains_xy.p << " " << gains_xy.i << " " << gains_xy.d << std::endl;
-    // std::cout << "gains_z: \n" << gains_z.p << " " << gains_z.i << " " << gains_z.d << std::endl;
-    // std::cout << "gains_yaw: \n" << gains_yaw.p << " " << gains_yaw.i << " " << gains_yaw.d << std::endl;
-    // velocity publisher
-    pub_velocity =
-        nh.advertise<geometry_msgs::TwistStamped>("/mavros/setpoint_velocity/cmd_vel", mdi::utils::DEFAULT_QUEUE_SIZE);
+    // std::cout << "gains_xy: \n" << gains_xy.p << " " << gains_xy.i << " " << gains_xy.d <<
+    // std::endl; std::cout << "gains_z: \n" << gains_z.p << " " << gains_z.i << " " << gains_z.d <<
+    // std::endl; std::cout << "gains_yaw: \n" << gains_yaw.p << " " << gains_yaw.i << " " <<
+    // gains_yaw.d << std::endl; velocity publisher
+    pub_velocity = nh.advertise<geometry_msgs::TwistStamped>("/mavros/setpoint_velocity/cmd_vel",
+                                                             mdi::utils::DEFAULT_QUEUE_SIZE);
     // state publisher
-    pub_state = nh.advertise<mdi_msgs::ControllerStateStamped>("/mdi/controller/state", mdi::utils::DEFAULT_QUEUE_SIZE);
+    pub_state = nh.advertise<mdi_msgs::ControllerStateStamped>("/mdi/controller/state",
+                                                               mdi::utils::DEFAULT_QUEUE_SIZE);
     // visualisation publisher
-    pub_visualisation =
-        nh.advertise<visualization_msgs::Marker>("/mdi/visualisation/controller", mdi::utils::DEFAULT_QUEUE_SIZE);
+    pub_visualisation = nh.advertise<visualization_msgs::Marker>("/mdi/visualisation/controller",
+                                                                 mdi::utils::DEFAULT_QUEUE_SIZE);
 }
 
 /**
- * @brief takes a 3D position error `pos_error` and applies PID control, converting it to a geometry_msgs::TwistStamped
- * message with the respective 3D velocities.
+ * @brief takes a 3D position error `pos_error` and applies PID control, converting it to a
+ * geometry_msgs::TwistStamped message with the respective 3D velocities.
  *
  * @param pos_error is the 3D euclidean error
  * @return geometry_msgs::TwistStamped PID control output in a geometry_msgs::TwistStamped message
  */
 auto PIDController::compute_linear_velocities() -> void {
     // std::cout << "Inside compute_linear_velocities" << std::endl;
-    // std::cout << "gains_xy: \n" << gains_xy.p << " " << gains_xy.i << " " << gains_xy.d << std::endl;
-    // std::cout << "gains_z: \n" << gains_z.p << " " << gains_z.i << " " << gains_z.d << std::endl;
-    // std::cout << "gains_yaw: \n" << gains_yaw.p << " " << gains_yaw.i << " " << gains_yaw.d << std::endl;
-    error_position = mdi::utils::transform::geometry_mgs_point_to_vec(mission_state.target.position) -
-                     mdi::utils::transform::geometry_mgs_point_to_vec(odom.pose.pose.position);
+    // std::cout << "gains_xy: \n" << gains_xy.p << " " << gains_xy.i << " " << gains_xy.d <<
+    // std::endl; std::cout << "gains_z: \n" << gains_z.p << " " << gains_z.i << " " << gains_z.d <<
+    // std::endl; std::cout << "gains_yaw: \n" << gains_yaw.p << " " << gains_yaw.i << " " <<
+    // gains_yaw.d << std::endl;
+    error_position =
+        mdi::utils::transform::geometry_mgs_point_to_vec(mission_state.target.position) -
+        mdi::utils::transform::geometry_mgs_point_to_vec(odom.pose.pose.position);
     // update integral error if the drone is in the air
     if (odom.pose.pose.position.z > mdi::utils::SMALL_DISTANCE_TOLERANCE) {
         error_position_integral += error_position;
@@ -63,12 +68,12 @@ auto PIDController::compute_linear_velocities() -> void {
 
     // linear velocity controller output
     // apply seperate gains for xy and z
-    auto x_vel =
-        gains_xy.p * error_position.x() + gains_xy.i * error_position_integral.x() + gains_xy.d * error_derivative.x();
-    auto y_vel =
-        gains_xy.p * error_position.y() + gains_xy.i * error_position_integral.y() + gains_xy.d * error_derivative.y();
-    auto z_vel =
-        gains_z.p * error_position.z() + gains_z.i * error_position_integral.z() + gains_z.d * error_derivative.z();
+    auto x_vel = gains_xy.p * error_position.x() + gains_xy.i * error_position_integral.x() +
+                 gains_xy.d * error_derivative.x();
+    auto y_vel = gains_xy.p * error_position.y() + gains_xy.i * error_position_integral.y() +
+                 gains_xy.d * error_derivative.y();
+    auto z_vel = gains_z.p * error_position.z() + gains_z.i * error_position_integral.z() +
+                 gains_z.d * error_derivative.z();
     auto tmp_command_linear = Eigen::Vector3f{x_vel, y_vel, z_vel};
     // auto ep = gains_xy.p * error_position;
     // auto ei = gains_xy.i * error_position_integral;
@@ -81,8 +86,8 @@ auto PIDController::compute_linear_velocities() -> void {
 }
 
 /**
- * @brief take a quaternion target `quat` and applies PID control, converting it to a yaw velocity, that will correct
- * the error
+ * @brief take a quaternion target `quat` and applies PID control, converting it to a yaw velocity,
+ * that will correct the error
  *
  * @param quat is the target attitude for the drone
  * @return float yaw velocity
@@ -92,8 +97,8 @@ auto PIDController::compute_yaw_velocity() -> void {
     auto target_yaw = tf2::getYaw(mission_state.target.orientation);
 
     // attitude error
-    auto yaw = utils::state::clamp_yaw(tf2::getYaw(drone_attitude) + M_PI / 2);
-    error_yaw = utils::state::clamp_yaw(target_yaw - yaw);
+    auto yaw = utils::state::yaw_representation(tf2::getYaw(drone_attitude) + M_PI / 2);
+    error_yaw = utils::state::yaw_representation(target_yaw - yaw);
 
     // update integral error if the drone is in the air
     if (odom.pose.pose.position.z > utils::SMALL_DISTANCE_TOLERANCE) {
@@ -102,15 +107,16 @@ auto PIDController::compute_yaw_velocity() -> void {
     // change in error since previous time step
     auto error_yaw_derivative = error_yaw - error_yaw_previous;
     // pid output
-    auto tmp_command_yaw =
-        gains_yaw.p * error_yaw + gains_yaw.i * error_yaw_integral + gains_yaw.d * error_yaw_derivative;
+    auto tmp_command_yaw = gains_yaw.p * error_yaw + gains_yaw.i * error_yaw_integral +
+                           gains_yaw.d * error_yaw_derivative;
     // set class field used to publish
     command_yaw = std::clamp(tmp_command_yaw, VELOCITY_MIN_YAW, VELOCITY_MAX_YAW);
 
     error_yaw_previous = error_yaw;
 }
 /**
- * @brief publishes all necessary controller information, such as position error, to the topic /mdi/controller/error
+ * @brief publishes all necessary controller information, such as position error, to the topic
+ * /mdi/controller/error
  *
  */
 auto PIDController::publish() -> void {
@@ -145,13 +151,13 @@ auto PIDController::publish() -> void {
     pub_state.publish(state_msg);
 }
 /**
- * @brief publishes visualisation_msg::Marker messages to the topic /mdi/visualisation/controller for visualisation in
- * RViz
+ * @brief publishes visualisation_msg::Marker messages to the topic /mdi/visualisation/controller
+ * for visualisation in RViz
  *
  */
 auto PIDController::visualise() -> void {
-    auto m = utils::rviz::sphere_msg_gen()(utils::transform::geometry_mgs_point_to_vec(odom.pose.pose.position) +
-                                           error_position);
+    auto m = utils::rviz::sphere_msg_gen()(
+        utils::transform::geometry_mgs_point_to_vec(odom.pose.pose.position) + error_position);
     m.header.frame_id = utils::FRAME_WORLD;
 
     m.color.a = 1;
@@ -164,7 +170,8 @@ auto PIDController::visualise() -> void {
     m.scale.z = 0.05;
 
     // std::cout << mdi::utils::MAGENTA << "PUBLISHING" << RESET << std::endl;
-    // std::cout << mdi::utils::ITALIC << mdi::utils::BOLD << "x: " << m.pose.position.x << "\ty: " << m.pose.position.y
+    // std::cout << mdi::utils::ITALIC << mdi::utils::BOLD << "x: " << m.pose.position.x << "\ty: "
+    // << m.pose.position.y
     //           << "\tz: " << m.pose.position.z << std::endl;
 
     auto pos = utils::transform::geometry_mgs_point_to_vec(odom.pose.pose.position);
@@ -182,14 +189,14 @@ auto PIDController::visualise() -> void {
 }
 
 /**
- * @brief called when new message is published on the odometry topic /mavros/local_position/odom. sets class field
- * `odom` to the contents of the published message.
+ * @brief called when new message is published on the odometry topic /mavros/local_position/odom.
+ * sets class field `odom` to the contents of the published message.
  *
  */
 auto PIDController::odom_cb(const nav_msgs::Odometry::ConstPtr& msg) -> void { odom = *msg; }
 /**
- * @brief called when new message is published on the mdi state topic /mdi/mission/state. sets class field `state` to
- * the contents of the published message.
+ * @brief called when new message is published on the mdi state topic /mdi/mission/state. sets class
+ * field `state` to the contents of the published message.
  *
  */
 auto PIDController::mission_state_cb(const mdi_msgs::MissionStateStamped::ConstPtr& msg) -> void {
@@ -202,12 +209,14 @@ auto PIDController::mission_state_cb(const mdi_msgs::MissionStateStamped::ConstP
  */
 auto PIDController::run() -> void {
     while (ros::ok()) {
-        auto expected_position = Eigen::Vector3f(mission_state.target.position.x, mission_state.target.position.y,
-                                                 mission_state.target.position.z);
+        auto expected_position =
+            Eigen::Vector3f(mission_state.target.position.x, mission_state.target.position.y,
+                            mission_state.target.position.z);
 
         tf2::Quaternion drone_attitude_ned;
         tf2::fromMsg(odom.pose.pose.orientation, drone_attitude_ned);
-        drone_attitude = drone_attitude_ned * tf2::Quaternion(std::sqrt(2) / 2, -std::sqrt(2) / 2, 0, 0);
+        drone_attitude =
+            drone_attitude_ned * tf2::Quaternion(std::sqrt(2) / 2, -std::sqrt(2) / 2, 0, 0);
 
         compute_linear_velocities();
         compute_yaw_velocity();

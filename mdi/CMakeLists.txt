@@ -84,12 +84,8 @@ endfunction(add_ros_dependencies)
 # Libraries ##
 # ##############################################################################
 
-# math library
-add_library(math SHARED src/math.cpp)
-
 # bezier library
 add_library(bezier_spline SHARED src/bezier_spline.cpp)
-target_link_libraries(bezier_spline math)
 
 # linear trajectory library
 add_library(linear_trajectory SHARED src/linear_trajectory.cpp)

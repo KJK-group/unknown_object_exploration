@@ -1,5 +1,4 @@
-#ifndef _MDI_MISSION_MANAGER_HPP_
-#define _MDI_MISSION_MANAGER_HPP_
+#pragma once
 
 #include <geometry_msgs/PoseStamped.h>
 #include <mavros_msgs/CommandBool.h>
@@ -52,7 +51,8 @@ class Mission {
 
    private:
     auto find_path_(Eigen::Vector3f start, Eigen::Vector3f end) -> std::vector<Eigen::Vector3f>;
-    auto fit_trajectory_(std::vector<Eigen::Vector3f> path) -> std::optional<trajectory::CompoundTrajectory>;
+    auto fit_trajectory_(std::vector<Eigen::Vector3f> path)
+        -> std::optional<trajectory::CompoundTrajectory>;
     auto drone_set_mode_(std::string mode = "OFFBOARD") -> bool;
 
     auto go_home_() -> void;
@@ -130,4 +130,3 @@ class Mission {
     bool should_visualise_;
 };
 }  // namespace mdi
-#endif  // _MDI_MISSION_MANAGER_HPP_

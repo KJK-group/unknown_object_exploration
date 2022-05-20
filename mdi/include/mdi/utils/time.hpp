@@ -1,5 +1,4 @@
-#ifndef _MULTI_DRONE_INSPECTION_TIME_HPP_
-#define _MULTI_DRONE_INSPECTION_TIME_HPP_
+#pragma once
 
 #include <chrono>
 
@@ -14,5 +13,3 @@ auto get_seconds_since_epoch() -> decltype(seconds_t().count()) {
     return seconds.count();
 }
 }  // namespace mdi::utils::time
-
-#endif  // _MULTI_DRONE_INSPECTION_TIME_HPP_

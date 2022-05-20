@@ -1,5 +1,4 @@
-#ifndef _MULTI_DRONE_INSPECTION_BEZIER_SPLINE_HPP_
-#define _MULTI_DRONE_INSPECTION_BEZIER_SPLINE_HPP_
+#pragma once
 
 #include <tf2_eigen/tf2_eigen.h>
 
@@ -18,8 +17,40 @@ using std::abs;
 using std::pair;
 using std::pow;
 using std::vector;
-// Generates necessary LUTs for a Bezier spline given a list of points
-// and a time resolution
+
+//--------------------------------------------------------------------------------------------------
+// Generates the binomial LUT for a Bezier pline with `n` points
+// This will be used to generate the spline
+const int binomial_lut_size = 20;
+constexpr auto generate_binomial_lut() -> std::array<float, binomial_lut_size> {
+    auto lut = std::array<float, binomial_lut_size>{};
+    for (int i = 0; i < binomial_lut_size; i++) {
+        lut[i] = (mdi::utils::binomial_coefficient(binomial_lut_size, i));
+    }
+    return lut;
+}
+// static constexpr std::array<float, binomial_lut_size> binomial_lut{
+//     mdi::utils::binomial_coefficient(binomial_lut_size, 0),
+//     mdi::utils::binomial_coefficient(binomial_lut_size, 1),
+//     mdi::utils::binomial_coefficient(binomial_lut_size, 2),
+//     mdi::utils::binomial_coefficient(binomial_lut_size, 3),
+//     mdi::utils::binomial_coefficient(binomial_lut_size, 4),
+//     mdi::utils::binomial_coefficient(binomial_lut_size, 5),
+//     mdi::utils::binomial_coefficient(binomial_lut_size, 6),
+//     mdi::utils::binomial_coefficient(binomial_lut_size, 7),
+//     mdi::utils::binomial_coefficient(binomial_lut_size, 8),
+//     mdi::utils::binomial_coefficient(binomial_lut_size, 9),
+//     mdi::utils::binomial_coefficient(binomial_lut_size, 10),
+//     mdi::utils::binomial_coefficient(binomial_lut_size, 11),
+//     mdi::utils::binomial_coefficient(binomial_lut_size, 12),
+//     mdi::utils::binomial_coefficient(binomial_lut_size, 13),
+//     mdi::utils::binomial_coefficient(binomial_lut_size, 14),
+//     mdi::utils::binomial_coefficient(binomial_lut_size, 15),
+//     mdi::utils::binomial_coefficient(binomial_lut_size, 16),
+//     mdi::utils::binomial_coefficient(binomial_lut_size, 17),
+//     mdi::utils::binomial_coefficient(binomial_lut_size, 18),
+//     mdi::utils::binomial_coefficient(binomial_lut_size, 19)};
+
 class BezierSpline {
    public:
     BezierSpline() {}
@@ -32,19 +63,21 @@ class BezierSpline {
     auto f(float t) -> Vector3f;  // spline polynomial function
 
    private:
+    auto generate_distance_lut() -> void;
+    auto generate_offset_points() -> void;
+
     vector<Vector3f> input_points;         // idx: input point number, element: 3D input point
     vector<Vector3f> offset_input_points;  // idx: offset point number
     vector<Vector3f> spline_points;        // idx: output point number, element: 3D output point
-    vector<int> binomial_lut;              // idx: input point number, element: binomial coeffient
-    vector<float> distance_lut;            // idx: time, element: distance - arc length at last idx
-    Vector3f offset;                       // translation from origin
-    int resolution;                        // output size
-    int size;                              // input size
+    // static vector<int> binomial_lut;       // idx: input point number, element: binomial
+    // coeffient
+    static constexpr std::array<float, binomial_lut_size> binomial_lut = generate_binomial_lut();
+    vector<float> distance_lut;  // idx: time, element: distance - arc length at last idx
+    Vector3f offset;             // translation from origin
+    int resolution;              // output size
+    int size;                    // input size
     auto get_time_idx(float distance) -> int;
-    auto generate_binomial_lut() -> void;
-    auto generate_distance_lut() -> void;
-    auto generate_offset_points() -> void;
+    // auto generate_binomial_lut() -> void;
 };
+// BezierSpline::binomial_lut = BezierSpline::generate_binomial_lut<20>();
 }  // namespace mdi::trajectory
-
-#endif  // _MULTI_DRONE_INSPECTION_BEZIER_SPLINE_HPP_

@@ -1,5 +1,4 @@
-#ifndef _MULTI_DRONE_INSPECTION_POINT_HPP_
-#define _MULTI_DRONE_INSPECTION_POINT_HPP_
+#pragma once
 
 #include <algorithm>
 #include <array>
@@ -53,5 +52,3 @@ class point {
 };  // class point
 
 }  // namespace kdtree
-
-#endif  // _MULTI_DRONE_INSPECTION_POINT_HPP_

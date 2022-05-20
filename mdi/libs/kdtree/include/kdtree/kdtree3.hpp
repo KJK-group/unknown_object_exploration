@@ -1,5 +1,4 @@
-#ifndef _MULTI_DRONE_INSPECTION_KDTREE3_HPP_
-#define _MULTI_DRONE_INSPECTION_KDTREE3_HPP_
+#pragma once
 
 #include <array>
 #include <cstddef>
@@ -114,7 +113,8 @@ class kdtree3 final {
      * @param query
      * @return std::optional<std::vector<RangeQueryResult>>
      */
-    [[nodiscard]] auto range_query(const RangeQuery& query) const -> std::optional<std::vector<RangeQueryResult>> {
+    [[nodiscard]] auto range_query(const RangeQuery& query) const
+        -> std::optional<std::vector<RangeQueryResult>> {
         const auto traverse = [this, &query](Node* root) -> std::vector<RangeQueryResult> {
             // https://slides.com/cos226/kd-tree-range-search/fullscreen#/1
             const auto [x_min, y_min, z_min] = query.min;
@@ -126,9 +126,15 @@ class kdtree3 final {
                 return ! ((c > a && c > b) || (c < a && c < b));
             };
 
-            const auto between_x = [&, x_min, x_max](const float x) { return between(x_min, x_max, x); };
-            const auto between_y = [&, y_min, y_max](const float y) { return between(y_min, y_max, y); };
-            const auto between_z = [&, z_min, z_max](const float z) { return between(z_min, z_max, z); };
+            const auto between_x = [&, x_min, x_max](const float x) {
+                return between(x_min, x_max, x);
+            };
+            const auto between_y = [&, y_min, y_max](const float y) {
+                return between(y_min, y_max, y);
+            };
+            const auto between_z = [&, z_min, z_max](const float z) {
+                return between(z_min, z_max, z);
+            };
             const auto in_query_rectangle = [&](const Point& p) {
                 return between_x(p.x()) && between_y(p.y()) && between_z(p.z());
             };
@@ -155,22 +161,29 @@ class kdtree3 final {
                 }
             };  // kdtree3_search_bbx
 
-            const auto kdtree3_search_bbx_intersects_query_rectangle = [=](const kdtree3_search_bbx& bbx) {
-                const auto in_cuboid = [=](float x, float y, float z) {
-                    return between(x_min, x_max, x) && between(y_min, y_max, y) && between(z_min, z_max, z);
-                };
+            const auto kdtree3_search_bbx_intersects_query_rectangle =
+                [=](const kdtree3_search_bbx& bbx) {
+                    const auto in_cuboid = [=](float x, float y, float z) {
+                        return between(x_min, x_max, x) && between(y_min, y_max, y) &&
+                               between(z_min, z_max, z);
+                    };
 
-                // const auto [x_min, x_max, y_min, y_max, z_min, z_max] = bbx;
-                // a 3D cuboid has 8 vertices, and at least one of them has to intersect.
-                return in_cuboid(bbx.x_min, bbx.y_min, bbx.z_min) || in_cuboid(bbx.x_max, bbx.y_max, bbx.z_max) ||
-                       in_cuboid(bbx.x_min, bbx.y_max, bbx.z_min) || in_cuboid(bbx.x_max, bbx.y_max, bbx.z_min) ||
-                       in_cuboid(bbx.x_max, bbx.y_min, bbx.z_min) || in_cuboid(bbx.x_min, bbx.y_min, bbx.z_max) ||
-                       in_cuboid(bbx.x_min, bbx.y_max, bbx.z_max) || in_cuboid(bbx.x_max, bbx.y_min, bbx.z_max);
-            };
+                    // const auto [x_min, x_max, y_min, y_max, z_min, z_max] = bbx;
+                    // a 3D cuboid has 8 vertices, and at least one of them has to intersect.
+                    return in_cuboid(bbx.x_min, bbx.y_min, bbx.z_min) ||
+                           in_cuboid(bbx.x_max, bbx.y_max, bbx.z_max) ||
+                           in_cuboid(bbx.x_min, bbx.y_max, bbx.z_min) ||
+                           in_cuboid(bbx.x_max, bbx.y_max, bbx.z_min) ||
+                           in_cuboid(bbx.x_max, bbx.y_min, bbx.z_min) ||
+                           in_cuboid(bbx.x_min, bbx.y_min, bbx.z_max) ||
+                           in_cuboid(bbx.x_min, bbx.y_max, bbx.z_max) ||
+                           in_cuboid(bbx.x_max, bbx.y_min, bbx.z_max);
+                };
 
             auto acc = std::vector<RangeQueryResult>();
 
-            const auto traverse_rec = [&](Node* root, kdtree3_search_bbx bbx, std::size_t index, const auto&& impl) {
+            const auto traverse_rec = [&](Node* root, kdtree3_search_bbx bbx, std::size_t index,
+                                          const auto&& impl) {
                 // base case 1
                 // return if current node is null
                 if (root == nullptr) {
@@ -230,9 +243,12 @@ class kdtree3 final {
 
    private:
     struct Node {
-        Node(Point pt, const Value& value) : point_(std::move(pt)), value_(value), left_(nullptr), right_(nullptr) {}
+        Node(Point pt, const Value& value)
+            : point_(std::move(pt)), value_(value), left_(nullptr), right_(nullptr) {}
 
-        [[nodiscard]] auto distance(const Point& pt) const -> double { return (point_ - pt).norm(); }
+        [[nodiscard]] auto distance(const Point& pt) const -> double {
+            return (point_ - pt).norm();
+        }
         [[nodiscard]] auto get_element_in_dimension(int index) const -> coordinate_type {
             assert(0 <= index && index < 3);
             return point_(index);
@@ -306,5 +322,3 @@ class kdtree3 final {
 };  // kdtree3
 
 }  // namespace kdtree
-
-#endif  // _MULTI_DRONE_INSPECTION_KDTREE3_HPP_
