@@ -30,22 +30,24 @@ class RRT {
     friend std::ostream& operator<<(std::ostream& os, const RRT& rrt);
 
     using coordinate_type = vec3;
-    using waypoint_type = coordinate_type;
-    using waypoints_type = std::vector<waypoint_type>;
+    using Waypoint = coordinate_type;
+    using Waypoints = std::vector<Waypoint>;
 
-    // TODO:
-    enum class traversal_order {
-        breath_first,
-        depth_first,
-    };
+    using on_new_node_created_cb = std::function<void(const vec3&, const vec3&)>;
+    using on_goal_reached_cb = std::function<void(const vec3&, size_t)>;
+    using on_trying_full_path_cb = std::function<void(const vec3&, const vec3&)>;
+    using on_clearing_nodes_in_tree_cb = std::function<void()>;
+    using before_optimizing_waypoints_cb = std::function<void(const vec3&, const vec3&)>;
+    using after_optimizing_waypoints_cb = std::function<void(const vec3&, const vec3&)>;
+    using on_raycast_cb = std::function<void(const vec3&, const vec3&, const float, bool)>;
 
     /**
      * @brief grow the tree until a path is found, or max number of iterations is exceeded.
      *
-     * @return std::optional<waypoints_type> some variant containing the waypoints if a path is
+     * @return std::optional<Waypoints> some variant containing the waypoints if a path is
      * found. Otherwise std::nullopt.
      */
-    auto run() -> std::optional<waypoints_type>;
+    auto run() -> std::optional<Waypoints>;
     /**
      * @brief // grow the tree n nodes.
      * @throws std::invalid_argument if n < 0.
@@ -58,6 +60,8 @@ class RRT {
      * @return true if a path is found, false otherwise
      */
     auto grow1() -> bool { return growN(1); }
+
+    auto get_newest_node() const -> const void {}
 
     /**
      * @brief // deallocate all nodes in the tree.
@@ -79,15 +83,28 @@ class RRT {
     /**
      * @brief Get the waypoints.
      * meant to be called after @ref growN or @ref grow1
-     * @return std::optional<waypoint_type> some variant if a path goal has been found,
+     * @return std::optional<Waypoint> some variant if a path goal has been found,
      * else std::nullopt.
      */
-    auto get_waypoints() -> std::optional<waypoints_type> {
+    auto get_waypoints() -> std::optional<Waypoints> {
         if (waypoints_.empty()) {
             return std::nullopt;
         }
         return waypoints_;
     }
+
+    auto waypoints_from_newest_node() -> std::optional<Waypoints> {
+        backtrack_and_set_waypoints_starting_at_(&nodes_[nodes_.size() - 1]);
+        return {waypoints_};
+    }
+
+    auto get_waypoints_from_nearsest_node_to(const vec3& pt) -> std::optional<Waypoints> {
+        const auto nearest_node = find_nearest_neighbor_(pt);
+        backtrack_and_set_waypoints_starting_at_(nearest_node);
+
+        return {waypoints_};
+    }
+
     [[nodiscard]] auto get_frontier_nodes() const -> std::vector<vec3>;
 
     /**
@@ -133,31 +150,27 @@ class RRT {
     auto disable_perf_logging() -> void { log_perf_measurements_enabled_ = false; }
 #endif  // MEASURE_PERF
 
-    auto register_cb_for_event_on_new_node_created(std::function<void(const vec3&, const vec3&)> cb) -> void {
+    auto register_cb_for_event_on_new_node_created(on_new_node_created_cb cb) {
         on_new_node_created_cb_list.push_back(cb);
     }
 
-    auto register_cb_for_event_before_optimizing_waypoints(std::function<void(const vec3&, const vec3&)> cb) -> void {
+    auto register_cb_for_event_before_optimizing_waypoints(before_optimizing_waypoints_cb cb) {
         before_optimizing_waypoints_cb_list.push_back(cb);
     }
 
-    auto register_cb_for_event_after_optimizing_waypoints(std::function<void(const vec3&, const vec3&)> cb) -> void {
+    auto register_cb_for_event_after_optimizing_waypoints(after_optimizing_waypoints_cb cb) {
         after_optimizing_waypoints_cb_list.push_back(cb);
     }
 
-    auto register_cb_for_event_on_goal_reached(std::function<void(const vec3&, size_t)> cb) -> void {
-        on_goal_reached_cb_list.push_back(cb);
-    }
-    auto register_cb_for_event_on_trying_full_path(std::function<void(const vec3&, const vec3&)> cb) -> void {
+    auto register_cb_for_event_on_goal_reached(on_goal_reached_cb cb) { on_goal_reached_cb_list.push_back(cb); }
+    auto register_cb_for_event_on_trying_full_path(on_trying_full_path_cb cb) {
         on_trying_full_path_cb_list.push_back(cb);
     }
-    auto register_cb_for_event_on_clearing_nodes_in_tree(std::function<void()> cb) -> void {
+    auto register_cb_for_event_on_clearing_nodes_in_tree(on_clearing_nodes_in_tree_cb cb) {
         on_clearing_nodes_in_tree_cb_list.push_back(cb);
     }
 
-    auto register_cb_for_event_on_raycast(std::function<void(const vec3&, const vec3&, const float, bool)> cb) -> void {
-        on_raycast_cb_list.push_back(cb);
-    }
+    auto register_cb_for_event_on_raycast(on_raycast_cb cb) -> void { on_raycast_cb_list.push_back(cb); }
 
     auto unregister_cbs_for_event_on_new_node_created() -> void { on_new_node_created_cb_list.clear(); }
     auto unregister_cbs_for_event_on_trying_full_path() -> void { on_trying_full_path_cb_list.clear(); }
@@ -258,8 +271,7 @@ class RRT {
     // TODO: make kdtree or list transparent to the caller
     auto find_nearest_neighbor_(const vec3& pt) -> node_t*;
 
-
-	auto gain_() const -> double;
+    auto gain_() const -> double;
 
     /**
      * @brief traverse tree in breath first order, and call @ref f, for every edge
@@ -401,13 +413,13 @@ class RRT {
     auto call_cbs_for_event_before_optimizing_waypoints_(const vec3&, const vec3&) const -> void;
     auto call_cbs_for_event_on_raycast_(const vec3&, const vec3&, const float, bool) const -> void;
 
-    std::vector<std::function<void(const vec3&, const vec3&)>> on_new_node_created_cb_list{};
-    std::vector<std::function<void(const vec3&, size_t)>> on_goal_reached_cb_list{};
-    std::vector<std::function<void(const vec3&, const vec3&)>> on_trying_full_path_cb_list{};
-    std::vector<std::function<void()>> on_clearing_nodes_in_tree_cb_list{};
-    std::vector<std::function<void(const vec3&, const vec3&)>> before_optimizing_waypoints_cb_list{};
-    std::vector<std::function<void(const vec3&, const vec3&)>> after_optimizing_waypoints_cb_list{};
-    std::vector<std::function<void(const vec3&, const vec3&, const float, bool)>> on_raycast_cb_list{};
+    std::vector<on_new_node_created_cb> on_new_node_created_cb_list{};
+    std::vector<on_goal_reached_cb> on_goal_reached_cb_list{};
+    std::vector<on_trying_full_path_cb> on_trying_full_path_cb_list{};
+    std::vector<on_clearing_nodes_in_tree_cb> on_clearing_nodes_in_tree_cb_list{};
+    std::vector<before_optimizing_waypoints_cb> before_optimizing_waypoints_cb_list{};
+    std::vector<after_optimizing_waypoints_cb> after_optimizing_waypoints_cb_list{};
+    std::vector<on_raycast_cb> on_raycast_cb_list{};
 
     bool on_new_node_created_status_ = true;
     bool on_goal_reached_status_ = true;

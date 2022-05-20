@@ -11,7 +11,8 @@
 namespace mdi::utils::transform {
 
 // loop_rate.sleep();
-auto lookup_transform(const tf2_ros::TransformListener& listener) -> tf2_ros::TransformListener {}
+// auto lookup_transform(const tf2_ros::TransformListener& listener) -> tf2_ros::TransformListener
+// {}
 
 auto make_transform(Eigen::Vector3f translation, Eigen::Vector3f euler_rotation)
     -> geometry_msgs::Transform {
@@ -49,7 +50,7 @@ auto convert_ned_enu(Eigen::Vector3f point) -> Eigen::Vector3f {
 }
 
 auto geometry_mgs_point_to_vec(geometry_msgs::Point point) -> Eigen::Vector3f {
-    return {point.x, point.y, point.z};
+    return {static_cast<float>(point.x), static_cast<float>(point.y), static_cast<float>(point.z)};
 }
 auto vec_to_geometry_msg_point(Eigen::Vector3f point) -> geometry_msgs::Point {
     geometry_msgs::Point point_out;

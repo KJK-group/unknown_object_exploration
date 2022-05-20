@@ -1,0 +1,8 @@
+geometry_msgs/Point start
+geometry_msgs/Point goal
+float32 goal_bias
+float32 step_size
+uint32 max_iterations
+float32 goal_tolerance
+float32 probability_of_testing_full_path_from_new_node_to_goal
+float32 collision_padding

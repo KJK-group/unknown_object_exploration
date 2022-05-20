@@ -38,7 +38,7 @@ inline auto quaternion_from_two_vectors(const vec3& u, const vec3& v) -> Quatern
 }
 
 // TODO: finish this
-template <typename T>
+/* template <typename T>
 auto yaml(std::vector<T> xs, int indentation = 0, int tabsize = 2) -> std::string {
     const auto tab = std::string(tabsize, ' ');
     const auto whitespace = std::string(indentation, ' ');
@@ -46,7 +46,7 @@ auto yaml(std::vector<T> xs, int indentation = 0, int tabsize = 2) -> std::strin
         yaml(x, indentation + tabsize, tabsize);
     }
 }
-
+ */
 constexpr inline auto rad2deg(double a) -> double { return a * 180.0f / static_cast<float>(M_PI); };
 constexpr inline auto deg2rad(double a) -> double { return a * static_cast<float>(M_PI) / 180.0f; };
 
@@ -68,7 +68,9 @@ class Angle {
         }
     }
 
-    static auto from_degrees(float a) -> Angle<encoding, min, max> { return Angle<encoding, min, max>{deg2rad(a)}; }
+    static auto from_degrees(float a) -> Angle<encoding, min, max> {
+        return Angle<encoding, min, max>{static_cast<float>(deg2rad(a))};
+    }
     [[nodiscard]] auto as_degree() const -> float { return rad2deg(angle_); }
     [[nodiscard]] auto angle() const -> float { return angle_; }
 };
@@ -211,13 +213,15 @@ auto angle_of_vector(vec3 v) -> RPY {
 }
 auto angle_of_vector(tf2::Vector3 v) -> RPY {
     v.normalize();
-    return {std::acos(v.getX()), std::acos(v.getY()), std::acos(v.getZ())};
+    return {std::acos(static_cast<float>(v.getX())), std::acos(static_cast<float>(v.getY())),
+            std::acos(static_cast<float>(v.getZ()))};
 }
 
 auto transform(const tf2::Transform& tf, const vec3& v) -> vec3 {
     auto tmp = tf2::Vector3{v.x(), v.y(), v.z()};
     auto transformed = tf * tmp;
-    return {transformed.getX(), transformed.getY(), transformed.getZ()};
+    return {static_cast<float>(transformed.getX()), static_cast<float>(transformed.getY()),
+            static_cast<float>(transformed.getZ())};
 }
 
 struct SphericalCoordinate {
@@ -226,11 +230,10 @@ struct SphericalCoordinate {
 
 inline auto to_cartesian_coordinate(const SphericalCoordinate& coord) -> vec3 {
     const auto [r, theta, psi] = coord;
-    return {r * cos(psi) * sin(theta), r * sin(psi) * sin(theta), r * cos(theta)};
+    return {static_cast<float>(r * cos(psi) * sin(theta)), static_cast<float>(r * sin(psi) * sin(theta)),
+            static_cast<float>(r * cos(theta))};
 }
 
 inline auto yaw_diff(const vec3& a, const vec3& b) -> double { return std::acos(a.normalized().dot(b.normalized())); }
-
-
 
 }  // namespace mdi::types

@@ -247,17 +247,17 @@ auto Mission::find_path_(Eigen::Vector3f start, Eigen::Vector3f end) -> std::vec
     // std::cout << "Finding path from " << start << " to " << end << std::endl;
     const auto goal_tolerance = 2;
     auto rrt_msg = mdi_msgs::RrtFindPath{};
-    rrt_msg.request.probability_of_testing_full_path_from_new_node_to_goal = 0;
-    rrt_msg.request.goal_bias = 0.7;
-    rrt_msg.request.goal_tolerance = goal_tolerance;
-    rrt_msg.request.start.x = start.x();
-    rrt_msg.request.start.y = start.y();
-    rrt_msg.request.start.z = start.z();
-    rrt_msg.request.goal.x = end.x();
-    rrt_msg.request.goal.y = end.y();
-    rrt_msg.request.goal.z = end.z();
-    rrt_msg.request.max_iterations = 10000;
-    rrt_msg.request.step_size = 1.5;
+    rrt_msg.request.rrt_config.probability_of_testing_full_path_from_new_node_to_goal = 0;
+    rrt_msg.request.rrt_config.goal_bias = 0.7;
+    rrt_msg.request.rrt_config.goal_tolerance = goal_tolerance;
+    rrt_msg.request.rrt_config.start.x = start.x();
+    rrt_msg.request.rrt_config.start.y = start.y();
+    rrt_msg.request.rrt_config.start.z = start.z();
+    rrt_msg.request.rrt_config.goal.x = end.x();
+    rrt_msg.request.rrt_config.goal.y = end.y();
+    rrt_msg.request.rrt_config.goal.z = end.z();
+    rrt_msg.request.rrt_config.max_iterations = 10000;
+    rrt_msg.request.rrt_config.step_size = 1.5;
 
     std::vector<Eigen::Vector3f> path;
     if (client_rrt_.call(rrt_msg)) {

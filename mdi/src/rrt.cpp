@@ -33,14 +33,13 @@
 
 namespace mdi::rrt {
 
-auto RRT::run() -> std::optional<waypoints_type> {
-    // TODO: enable
-    // if (collision_free_(start_position_, goal_position_)) {
-    //     // we might get lucky here, and a direct path between start and goal exists :-)
-    //     waypoints_.push_back(goal_position_);
-    //     waypoints_.push_back(start_position_);
-    //     return {waypoints_};
-    // }
+auto RRT::run() -> std::optional<Waypoints> {
+    if (collision_free_(start_position_, goal_position_)) {
+        // we might get lucky here, and a direct path between start and goal exists :-)
+        waypoints_.push_back(goal_position_);
+        waypoints_.push_back(start_position_);
+        return {waypoints_};
+    }
 
     while (remaining_iterations_ > 0) {
         if (grow_()) {
@@ -453,18 +452,6 @@ auto RRT::grow_() -> bool {
     Eigen::Vector3f x_new;
     x_new << x, y, z;
 
-    // const auto edge_between_u_and_v_intersects_a_occupied_voxel = [this](const auto& u, const auto& v) {
-    //     const auto convert_to_pt = [](const auto& v) -> mdi::Octomap::point_type { return {v.x(), v.y(), v.z()};
-    //     };
-    //     // if opt is the some variant, then it means that a occupied voxel was hit.
-    //     // TODO: handle this case in an other way
-    //     if (octomap_ == nullptr) {
-    //         return false;
-    //     }
-    //     const auto opt = octomap_->raycast(convert_to_pt(u), convert_to_pt(v));
-    //     return opt.has_value();
-    // };
-
     const auto edge_between_u_and_v_is_free = [this](const auto& u, const auto& v) -> bool {
         return collision_free_(u, v);
     };
@@ -474,20 +461,10 @@ auto RRT::grow_() -> bool {
     };
 
     if (edge_between_u_and_v_intersects_a_occupied_voxel((*v_near).position_, x_new)) {
-        // std::cout << "edge_between_u_and_v_intersects_a_occupied_voxel" << std::endl;
         return false;
     }
 
     auto& inserted_node = insert_node_(x_new, v_near);
-
-    // auto c_min = cost(x_min) + line(v_near, x_new);
-
-    // auto c_new = 2;
-    // if (c_new < c_min) {
-    //     // if collision_free(v_near, x_new)
-    //     // x_min = v_near
-    //     // c_min = c_near
-    // }
 
 #ifdef MEASURE_PERF
     const auto t_end = std::chrono::high_resolution_clock::now();
@@ -561,7 +538,6 @@ auto RRT::optimize_waypoints_() -> void {
     };
 
     const auto edge_is_collision_free = [this](const edge& e) -> bool {
-
         const auto [from, to] = e;
         assert(0 <= from && from < waypoints_.size());
         assert(0 <= to && to < waypoints_.size());
@@ -616,17 +592,6 @@ auto RRT::optimize_waypoints_() -> void {
         edges.push_back(v);
         return true;
     };
-
-    // const auto print_graph = [](const graph& g) {
-    //     for (std::size_t u = 0; u < g.size(); ++u) {
-    //         std::cout << "[ ";
-    //         for (std::size_t v = 0; v < g[u].size(); ++v) {
-    //             std::cout << "(" << u << ", " << v << "), ";
-    //         }
-    //         std::cout << " ]" << std::endl;
-    //     }
-    //     std::cout << "\n\n";
-    // };
 
     // create a range [0, |W| - 1]
     auto wps = std::vector<std::size_t>(waypoints_.size());
@@ -683,15 +648,7 @@ auto RRT::optimize_waypoints_() -> void {
         return;  // nothing to do  ¯\_(ツ)_/¯
     }
 
-    // std::cout << "solution_waypoints before interpolation " << solution_indices.size() << '\n';
-
-    // for (std::size_t i = 0; i < solution_indices.size(); ++i) {
-    //     const auto& wp = waypoints_[solution_indices[i]];
-    //     std::cout << "[" << i << "] " << fmt_vec3(wp) << '\n';
-    // }
-    // std::cout << "\n\n";
-
-    auto solution_waypoints = std::vector<waypoint_type>();
+    auto solution_waypoints = std::vector<Waypoint>();
     // interpolate points a long path so bezier spline interpolation is better
     for (std::size_t i = 0; i < solution_indices.size() - 1; ++i) {
         const auto idx = solution_indices[i];
@@ -700,13 +657,14 @@ auto RRT::optimize_waypoints_() -> void {
         const auto& to = waypoints_[next_idx];
         solution_waypoints.push_back(from);
 
+        const float half_step_size = step_size_ / 2;
+
         const auto edge_cost = cost(idx, next_idx);
-        const auto should_interpolate_along_edge = edge_cost > static_cast<double>(step_size_);
+        const bool should_interpolate_along_edge = edge_cost > static_cast<double>(half_step_size);
         if (should_interpolate_along_edge) {
-            const double percentage_offset = 1 / std::ceil(edge_cost / static_cast<double>(step_size_));
-            // TODO: special case for edge_cost / static_cast<double>(step_size_) being an integer.
+            const double percentage_offset = 1 / (edge_cost / static_cast<double>(half_step_size));
             // then n <= steps should be n < steps
-            const int steps = std::floor(edge_cost / static_cast<double>(step_size_));
+            const int steps = std::floor(edge_cost / static_cast<double>(half_step_size));
             const auto direction = to - from;
             for (std::size_t n = 1; n <= steps; ++n) {
                 solution_waypoints.emplace_back(from + n * percentage_offset * direction);
@@ -716,20 +674,11 @@ auto RRT::optimize_waypoints_() -> void {
     // the above loop does not iterate over the last optimized waypoint, so we have to add it.
     solution_waypoints.push_back(waypoints_[solution_indices.back()]);
 
-    // std::cout << "solution_waypoints after interpolation " << solution_waypoints.size() << '\n';
-    // std::cout << "interpolated waypoints added "
-    //           << static_cast<int>(solution_waypoints.size()) - static_cast<int>(solution_indices.size()) << '\n';
-
     for (std::size_t i = 0; i < solution_waypoints.size() - 1; ++i) {
         const auto& from = solution_waypoints[i];
         const auto& to = solution_waypoints[i + 1];
         call_cbs_for_event_after_optimizing_waypoints_(from, to);
     }
-
-    // for (std::size_t i = 0; i < solution_waypoints.size(); ++i) {
-    //     const auto& wp = solution_waypoints[i];
-    //     std::cout << "[" << i << "] " << fmt_vec3(wp) << '\n';
-    // }
 
     waypoints_.clear();
     waypoints_ = solution_waypoints;

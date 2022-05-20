@@ -9,13 +9,16 @@
 #include <algorithm>
 #include <functional>
 #include <iterator>
+#include <limits>
 #include <memory>
 
 #include "mdi/common_headers.hpp"
+#include "mdi/gain.hpp"
 #include "mdi/octomap.hpp"
 #include "mdi/rrt/rrt.hpp"
 #include "mdi/rrt/rrt_builder.hpp"
 #include "mdi/utils/rviz.hpp"
+#include "mdi_msgs/NBV.h"
 #include "mdi_msgs/RrtFindPath.h"
 #include "octomap/octomap_types.h"
 #include "ros/duration.h"
@@ -28,6 +31,7 @@ using namespace std::string_literals;
 using vec3 = Eigen::Vector3f;
 
 using mdi::Octomap;
+using namespace mdi::types;
 
 // use ptr to forward declare cause otherwise we have to call their constructor,
 // which is not allowed before ros::init(...)
@@ -39,7 +43,7 @@ waypoint_cb before_waypoint_optimization;
 waypoint_cb after_waypoint_optimization;
 raycast_cb raycast;
 
-auto call_get_octomap() -> mdi::Octomap* {
+auto call_get_environment_octomap() -> mdi::Octomap* {
     auto request = octomap_msgs::GetOctomap::Request{};  // empty request
     auto response = octomap_msgs::GetOctomap::Response{};
 
@@ -77,34 +81,47 @@ auto call_clear_region_of_octomap(const octomap::point3d& max, const octomap::po
     clear_region_of_octomap_client->call(request, response);
 }
 
+auto waypoints_to_geometry_msgs_points(const mdi::rrt::RRT::Waypoints& wps) -> std::vector<geometry_msgs::Point> {
+    auto points = std::vector<geometry_msgs::Point>(wps.size());
+    std::transform(wps.begin(), wps.end(), std::back_inserter(points), [](const auto& pt) {
+        auto geo_pt = geometry_msgs::Point{};
+        geo_pt.x = pt.x();
+        geo_pt.y = pt.y();
+        geo_pt.z = pt.z();
+        return geo_pt;
+    });
+
+    return points;
+}
+
 auto rrt_find_path_handler(mdi_msgs::RrtFindPath::Request& request, mdi_msgs::RrtFindPath::Response& response) -> bool {
     const auto convert = [](const auto& pt) -> mdi::rrt::vec3 {
         return {static_cast<float>(pt.x), static_cast<float>(pt.y), static_cast<float>(pt.z)};
     };
 
-    const auto start = convert(request.start);
-    const auto goal = convert(request.goal);
+    const auto start = convert(request.rrt_config.start);
+    const auto goal = convert(request.rrt_config.goal);
 
     auto rrt = mdi::rrt::RRT::from_builder()
                    .start_and_goal_position(start, goal)
-                   .max_iterations(request.max_iterations)
-                   .goal_bias(request.goal_bias)
+                   .max_iterations(request.rrt_config.max_iterations)
+                   .goal_bias(request.rrt_config.goal_bias)
                    .probability_of_testing_full_path_from_new_node_to_goal(
-                       request.probability_of_testing_full_path_from_new_node_to_goal)
-                   .max_dist_goal_tolerance(request.goal_tolerance)
-                   .step_size(request.step_size)
+                       request.rrt_config.probability_of_testing_full_path_from_new_node_to_goal)
+                   .max_dist_goal_tolerance(request.rrt_config.goal_tolerance)
+                   .step_size(request.rrt_config.step_size)
                    .build();
 
     // rrt.register_cb_for_event_on_new_node_created(
     // [](const auto& p1, const auto& p2) { std::cout << "New node created" << '\n'; });
 
-    rrt.register_cb_for_event_before_optimizing_waypoints(before_waypoint_optimization);
-    rrt.register_cb_for_event_after_optimizing_waypoints(after_waypoint_optimization);
-    rrt.register_cb_for_event_on_raycast(raycast);
+    // rrt.register_cb_for_event_before_optimizing_waypoints(before_waypoint_optimization);
+    // rrt.register_cb_for_event_after_optimizing_waypoints(after_waypoint_optimization);
+    // rrt.register_cb_for_event_on_raycast(raycast);
 
     auto success = false;
 
-    auto octomap_ptr = call_get_octomap();
+    auto octomap_ptr = call_get_environment_octomap();
 
     if (octomap_ptr != nullptr) {
         rrt.assign_octomap(octomap_ptr);
@@ -113,18 +130,116 @@ auto rrt_find_path_handler(mdi_msgs::RrtFindPath::Request& request, mdi_msgs::Rr
     if (const auto opt = rrt.run()) {
         const auto path = opt.value();
         std::cout << "path.size() = " << path.size() << std::endl;
-        std::transform(path.begin(), path.end(), std::back_inserter(response.waypoints), [](const auto& pt) {
-            auto geo_pt = geometry_msgs::Point{};
-            geo_pt.x = pt.x();
-            geo_pt.y = pt.y();
-            geo_pt.z = pt.z();
-            return geo_pt;
-        });
+        response.waypoints = waypoints_to_geometry_msgs_points(path);
+        // std::transform(path.begin(), path.end(), std::back_inserter(response.waypoints), [](const auto& pt) {
+        //     auto geo_pt = geometry_msgs::Point{};
+        //     geo_pt.x = pt.x();
+        //     geo_pt.y = pt.y();
+        //     geo_pt.z = pt.z();
+        //     return geo_pt;
+        // });
 
         success = true;
     }
     if (octomap_ptr != nullptr) {
         delete octomap_ptr;
+    }
+
+    return success;
+}
+
+auto nbv_handler(mdi_msgs::NBV::Request& request, mdi_msgs::NBV::Response& response) -> bool {
+    bool success = false;
+
+    const auto convert = [](const auto& pt) -> mdi::rrt::vec3 {
+        return {static_cast<float>(pt.x), static_cast<float>(pt.y), static_cast<float>(pt.z)};
+    };
+    // these parameters are static so we only compute them once
+    const auto horizontal = FoVAngle::from_degrees(request.fov.horizontal.angle);
+    const auto vertical = FoVAngle::from_degrees(request.fov.vertical.angle);
+    const auto depth_range = DepthRange{request.fov.depth_range.min, request.fov.depth_range.max};
+
+    // TODO: handle unessary goal in a better way
+    auto rrt = mdi::rrt::RRT::from_builder()
+                   .start_and_goal_position(convert(request.rrt_config.start),
+                                            vec3{500.0f, 500.0f, 500.0f})  // goal is irrelevant
+                   .max_iterations(request.rrt_config.max_iterations)
+                   .goal_bias(request.rrt_config.goal_bias)
+                   .probability_of_testing_full_path_from_new_node_to_goal(
+                       /* request.rrt_config.probability_of_testing_full_path_from_new_node_to_goal */ 0.0)
+                   .max_dist_goal_tolerance(/* request.rrt_config.goal_tolerance */ 0.0)
+                   .step_size(request.rrt_config.step_size)
+                   .build();
+
+    auto octomap_environment_ptr = call_get_environment_octomap();
+
+    if (octomap_environment_ptr != nullptr) {
+        rrt.assign_octomap(octomap_environment_ptr);
+    }
+
+    double best_gain = std::numeric_limits<double>::min();
+    auto best_point = vec3{0, 0, 0};
+
+    bool found_suitable_nbv = false;
+
+    // TODO: octomap for target
+
+    rrt.register_cb_for_event_on_new_node_created([&](const auto& parent, const auto& new_point) {
+        // drone needs to look at target with 0 pitch
+        vec3 target = new_point;
+        target[2] = convert(request.fov.target)[2];
+
+        // construnt fov
+        const auto orientation = Quaternion{1, 0, 0, 0};
+        const auto pose = Pose{new_point, orientation};
+        const auto fov = FoV{pose, horizontal, vertical, depth_range, target};
+
+        const double gain =
+            mdi::gain_of_fov(fov, *octomap_environment_ptr, request.nbv_config.weight_free,
+                             request.nbv_config.weight_unknown, request.nbv_config.weight_occupied,
+                             request.nbv_config.weight_distance_to_object, [](double x) { return x /* x * x */; });
+
+        if (gain > best_gain) {
+            best_gain = gain;
+            best_point = new_point;
+        }
+
+        if (gain >= request.nbv_config.gain_of_interest_threshold) {
+            found_suitable_nbv = true;
+        }
+    });
+
+    for (std::size_t i = 0; i < request.rrt_config.max_iterations; ++i) {
+        rrt.grow1();
+
+        if (found_suitable_nbv) {
+            // backtrack and set waypoints
+            if (const auto opt = rrt.waypoints_from_newest_node()) {
+                const auto path = opt.value();
+                response.waypoints = waypoints_to_geometry_msgs_points(path);
+                response.found_nbv_with_sufficent_gain = true;
+                success = true;
+            } else {
+                // should not happen, but just in case
+                response.found_nbv_with_sufficent_gain = false;
+                success = false;
+            }
+
+            break;
+        }
+    }
+
+    if (! success) {
+        // a suitable nbv has not been found, so we use best found instead
+        if (const auto opt = rrt.get_waypoints_from_nearsest_node_to(best_point)) {
+            const auto path = opt.value();
+            response.waypoints = waypoints_to_geometry_msgs_points(path);
+            response.found_nbv_with_sufficent_gain = false;
+        }
+    }
+
+    if (octomap_environment_ptr != nullptr) {
+        delete octomap_environment_ptr;
     }
 
     return success;
@@ -209,6 +324,11 @@ auto main(int argc, char* argv[]) -> int {
     auto service = [&] {
         const auto url = "/mdi/rrt_service/find_path";
         return nh.advertiseService(url, rrt_find_path_handler);
+    }();
+
+    auto nbv_service = [&] {
+        const auto url = "/mdi/rrt_service/nbv";
+        return nh.advertiseService(url, nbv_handler);
     }();
 
     ros::spin();
