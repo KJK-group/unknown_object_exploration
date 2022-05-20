@@ -200,13 +200,13 @@ auto main(int argc, char* argv[]) -> int {
                 auto opt = ocmap.raycast(origin, octomap::point3d{v.x(), v.y(), v.z()});
                 return ! opt.has_value();
             };
-
-            double gain = 0;
-
-            double weight_free = 0;
-            double weight_unknown = 0;
-            double weight_occupied = 0;
-
+            //
+            // double gain = 0;
+            //
+            // double weight_free = 0;
+            // double weight_unknown = 0;
+            // double weight_occupied = 0;
+            //
             ocmap.iterate_over_bbx(bbx, [&](const auto& pt, VoxelStatus vs) {
                 const vec3 v = vec3{pt.x(), pt.y(), pt.z()};
                 if (fov.inside_fov(v) && visible(v)) {
@@ -216,25 +216,25 @@ auto main(int argc, char* argv[]) -> int {
                     // msg.scale.z = 0.5;
                     // msg.color.a = 0.6;
                     publish_marker(msg);
-                    switch (vs) {
-                        case VoxelStatus::Free:
-                            gain += weight_free;
-                            break;
-                        case VoxelStatus::Occupied:
-                            gain += weight_occupied;
-                            break;
-
-                        case VoxelStatus::Unknown:
-                            gain += unknown_weight;
-                            break;
-                    }
+                    // switch (vs) {
+                    // case VoxelStatus::Free:
+                    // gain += weight_free;
+                    // break;
+                    // case VoxelStatus::Occupied:
+                    // gain += weight_occupied;
+                    // break;
+                    //
+                    // case VoxelStatus::Unknown:
+                    // gain += unknown_weight;
+                    // break;
+                    // }
                 }
             });
 
             // Scale with volume
-            gain *= std::pow(resolution, 3.0);
+            // gain *= std::pow(resolution, 3.0);
 
-            std::cout << "GAIN: " << gain << '\n';
+            // std::cout << "GAIN: " << gain << '\n';
         };
 
         visualize_voxels_inside_fov(bbx);

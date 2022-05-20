@@ -22,15 +22,18 @@ struct BBX {
         : width{max.x() - min.x()},
           depth{max.y() - min.y()},
           height{max.z() - min.z()},
-          center{min.x() + width / 2, min.y() + depth / 2, min.z() + height / 2} {
+          center{static_cast<float>(min.x() + width / 2), static_cast<float>(min.y() + depth / 2),
+                 static_cast<float>(min.z() + height / 2)} {
         assert(min.x() <= max.x() && min.y() <= max.y() && min.z() <= max.z());
     }
 
     [[nodiscard]] auto min() const -> vec3 {
-        return {center.x() - width / 2, center.y() - depth / 2, center.z() - height / 2};
+        return {static_cast<float>(center.x() - width / 2), static_cast<float>(center.y() - depth / 2),
+                static_cast<float>(center.z() - height / 2)};
     }
     [[nodiscard]] auto max() const -> vec3 {
-        return {center.x() + width / 2, center.y() + depth / 2, center.z() + height / 2};
+        return {static_cast<float>(center.x() + width / 2), static_cast<float>(center.y() + depth / 2),
+                static_cast<float>(center.z() + height / 2)};
     }
 
     /**

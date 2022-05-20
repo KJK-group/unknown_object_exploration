@@ -61,6 +61,8 @@ class RRT {
      */
     auto grow1() -> bool { return growN(1); }
 
+    auto get_newest_node() const -> const void {}
+
     /**
      * @brief // deallocate all nodes in the tree.
      * and reset the tree to its initial state as if constructed again with
@@ -90,6 +92,19 @@ class RRT {
         }
         return waypoints_;
     }
+
+    auto waypoints_from_newest_node() -> std::optional<Waypoints> {
+        backtrack_and_set_waypoints_starting_at_(&nodes_[nodes_.size() - 1]);
+        return {waypoints_};
+    }
+
+    auto get_waypoints_from_nearsest_node_to(const vec3& pt) -> std::optional<Waypoints> {
+        const auto nearest_node = find_nearest_neighbor_(pt);
+        backtrack_and_set_waypoints_starting_at_(nearest_node);
+
+        return {waypoints_};
+    }
+
     [[nodiscard]] auto get_frontier_nodes() const -> std::vector<vec3>;
 
     /**

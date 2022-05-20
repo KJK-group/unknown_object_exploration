@@ -77,7 +77,7 @@ class FoV {
                 }
             }();
             // 2. project to global xy plane
-            vec3 foo = vec3{i, j, k}.normalized();
+            vec3 foo = vec3{static_cast<float>(i), static_cast<float>(j), static_cast<float>(k)}.normalized();
             // 3. point.normalize();
 
             // 4. find 3rd basis pos.cross(point)
@@ -124,6 +124,8 @@ class FoV {
 
     [[nodiscard]] auto pose() const -> const Pose& { return pose_; }
     [[nodiscard]] auto direction() const -> vec3 { return direction_towards_target_; }
+    [[nodiscard]] auto target() const -> const Position& { return target_; }
+
     [[nodiscard]] auto horizontal() const -> FoVAngle { return horizontal_; }
     [[nodiscard]] auto vertical() const -> FoVAngle { return vertical_; }
     [[nodiscard]] auto depth_range() const -> const DepthRange& { return depth_range_; }
