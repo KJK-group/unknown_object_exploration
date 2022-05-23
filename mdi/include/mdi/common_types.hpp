@@ -14,7 +14,7 @@
 #include <string>
 #include <utility>
 
-#include "Eigen/src/Geometry/AngleAxis.h"
+// #include "Eigen/src/Geometry/AngleAxis.h"
 #include "ros/macros.h"
 #include "tf2/LinearMath/Quaternion.h"
 #include "tf2/LinearMath/Vector3.h"
@@ -76,11 +76,14 @@ class Angle {
 };
 
 template <AngleEncoding encoding, int min, int max>
-auto yaml(const Angle<encoding, min, max> angle, int indentation = 0, int tabsize = 2) -> std::string {
+auto yaml(const Angle<encoding, min, max> angle, int indentation = 0, int tabsize = 2)
+    -> std::string {
     const auto tab = std::string(tabsize, ' ');
     const auto whitespace = std::string(indentation, ' ');
     const auto line = [&](const std::string& s) { return whitespace + s + "\n"; };
-    const auto line2 = [&](const std::string& s, float f) { return whitespace + s + std::to_string(f) + "\n"; };
+    const auto line2 = [&](const std::string& s, float f) {
+        return whitespace + s + std::to_string(f) + "\n";
+    };
     return line("Angle:") + line2(tab + "min: ", min) + line2(tab + "max: ", max) +
            line2(tab + "radian: ", angle.angle()) + line2(tab + "degrees: ", angle.as_degree());
 }
@@ -113,7 +116,8 @@ auto yaml(const Position& position, int indentation = 0, int tabsize = 2) -> std
     const auto whitespace = std::string(indentation, ' ');
     const auto line = [&](const std::string& s) { return whitespace + s + "\n"; };
     return line("Position:") + line(tab + "x: " + std::to_string(position.x())) +
-           line(tab + "y: " + std::to_string(position.y())) + line(tab + "z: " + std::to_string(position.z())) +
+           line(tab + "y: " + std::to_string(position.y())) +
+           line(tab + "z: " + std::to_string(position.z())) +
            line(tab + "euclidian norm: " + std::to_string(position.norm()));
 }
 
@@ -125,7 +129,8 @@ auto yaml(const Quaternion& quat, int indentation = 0, int tabsize = 2) -> std::
         return whitespace + tab + s + ": " + std::to_string(value) + "\n";
     };
 
-    return line("Position") + field("x", quat.x()) + field("y", quat.y()) + field("z", quat.z()) + field("w", quat.w());
+    return line("Orientation") + field("x", quat.x()) + field("y", quat.y()) +
+           field("z", quat.z()) + field("w", quat.w());
 }
 
 auto yaml(const Orientation& orientation, int indentation = 0, int tabsize = 2) -> std::string {
@@ -187,19 +192,22 @@ auto yaml(const DepthRange& range, int indentation = 0, int tabsize = 2) -> std:
 
 auto rotation_around_X_axis(float angle) -> mat3x3 {
     mat3x3 M{};
-    M << 1.0f, 0.0f, 0.0f, 0.0f, std::cos(angle), std::sin(angle), 0.0f, -std::sin(angle), std::cos(angle);
+    M << 1.0f, 0.0f, 0.0f, 0.0f, std::cos(angle), std::sin(angle), 0.0f, -std::sin(angle),
+        std::cos(angle);
     return M;
 }
 
 auto rotation_around_Y_axis(float angle) -> mat3x3 {
     mat3x3 M{};
-    M << std::cos(angle), 0.0f, std::sin(angle), 0.0f, 1.0f, 0.0f, -std::sin(angle), 0.0f, std::cos(angle);
+    M << std::cos(angle), 0.0f, std::sin(angle), 0.0f, 1.0f, 0.0f, -std::sin(angle), 0.0f,
+        std::cos(angle);
     return M;
 }
 
 auto rotation_around_Z_axis(float angle) -> mat3x3 {
     mat3x3 M{};
-    M << std::cos(angle), -std::sin(angle), 0.0f, std::sin(angle), std::cos(angle), 0.0f, 0.0f, 0.0f, 1.0f;
+    M << std::cos(angle), -std::sin(angle), 0.0f, std::sin(angle), std::cos(angle), 0.0f, 0.0f,
+        0.0f, 1.0f;
     return M;
 }
 
@@ -230,10 +238,12 @@ struct SphericalCoordinate {
 
 inline auto to_cartesian_coordinate(const SphericalCoordinate& coord) -> vec3 {
     const auto [r, theta, psi] = coord;
-    return {static_cast<float>(r * cos(psi) * sin(theta)), static_cast<float>(r * sin(psi) * sin(theta)),
-            static_cast<float>(r * cos(theta))};
+    return {static_cast<float>(r * cos(psi) * sin(theta)),
+            static_cast<float>(r * sin(psi) * sin(theta)), static_cast<float>(r * cos(theta))};
 }
 
-inline auto yaw_diff(const vec3& a, const vec3& b) -> double { return std::acos(a.normalized().dot(b.normalized())); }
+inline auto yaw_diff(const vec3& a, const vec3& b) -> double {
+    return std::acos(a.normalized().dot(b.normalized()));
+}
 
 }  // namespace mdi::types

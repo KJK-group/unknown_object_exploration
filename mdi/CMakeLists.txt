@@ -135,6 +135,7 @@ add_ros_dependencies(rrt_service)
 # target_compile_options(rrt_service PRIVATE -O2 -g)
 target_link_libraries(rrt_service ${catkin_LIBRARIES} rrt fmt::fmt-header-only
                       kdtree-header-only ${OCTOMAP_LIBRARIES})
+target_compile_definitions(rrt_service PUBLIC VISUALIZE_MARKERS_IN_RVIZ)
 
 # ##############################################################################
 # Testing ##
@@ -166,6 +167,8 @@ add_ros_dependencies(octomap_test)
 target_compile_options(octomap_test PRIVATE -O2 -Wall)
 target_link_libraries(octomap_test ${catkin_LIBRARIES} rrt fmt::fmt-header-only
                       kdtree-header-only ${OCTOMAP_LIBRARIES})
+
+add_ros_executable(test_nbv_service test/nbv_service.test.cpp)
 
 # trajectory testing add_executable(trajectory_test test/trajectory.test.cpp)
 # add_ros_dependencies(trajectory_test) target_link_libraries(trajectory_test

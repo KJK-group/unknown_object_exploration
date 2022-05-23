@@ -123,8 +123,8 @@ auto main(int argc, char* argv[]) -> int {
             // border
             {
                 const auto fmt_vec3 = [&](const vec3& v) -> std::string {
-                    return "[" + std::to_string(v.x()) + ", " + std::to_string(v.y()) + ", " + std::to_string(v.z()) +
-                           "]";
+                    return "[" + std::to_string(v.x()) + ", " + std::to_string(v.y()) + ", " +
+                           std::to_string(v.z()) + "]";
                 };
                 const vec3 near = fov.pose().position + from * fov.depth_range().min;
                 const vec3 far = fov.pose().position + from * fov.depth_range().max;
@@ -181,7 +181,8 @@ auto main(int argc, char* argv[]) -> int {
         visualize_bbx(bbx);
 
         for (const auto n : fov.plane_normals()) {
-            auto msg = arrow_msg_gen({fov.pose().position, fov.pose().position + n * fov.depth_range().max / 2});
+            auto msg = arrow_msg_gen(
+                {fov.pose().position, fov.pose().position + n * fov.depth_range().max / 2});
             publish_marker(msg);
         }
 
@@ -189,7 +190,7 @@ auto main(int argc, char* argv[]) -> int {
             // const auto min = bbx.min();
             // const auto max = bbx.max();
             auto cube_msg_gen = mdi::utils::rviz::cube_msg_gen{resolution};
-            cube_msg_gen.color = {1, 0, 1, 0.4};
+            cube_msg_gen.color = {0, 0, 0, 0.4};
 
             const auto origin = [&] {
                 const auto pos = fov.pose().position;
@@ -211,6 +212,19 @@ auto main(int argc, char* argv[]) -> int {
                 const vec3 v = vec3{pt.x(), pt.y(), pt.z()};
                 if (fov.inside_fov(v) && visible(v)) {
                     auto msg = cube_msg_gen(v);
+                    switch (vs) {
+                        case VoxelStatus::Free:
+                            msg.color.g = 1;
+                            break;
+
+                        case VoxelStatus::Occupied:
+                            msg.color.r = 1;
+                            break;
+
+                        case VoxelStatus::Unknown:
+                            msg.color.b = 1;
+                            break;
+                    }
                     // msg.scale.x = 0.5;
                     // msg.scale.y = 0.5;
                     // msg.scale.z = 0.5;

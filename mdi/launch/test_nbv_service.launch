@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<launch>
+	<arg name="node" value="test_nbv_service"/>
+	<arg name="package" value="mdi"/>
+	<arg name="package_path" value="$(find mdi)"/>
+	<arg name="launch-prefix" value=""/>
+	<arg name="frame_id" default="map"/>
+	<arg name="bt_file" default="/home/kristoffer/Downloads/octomap-dataset/fr_078_tidyup.bt"/>
+	<!-- <arg name="bt_file" default="/home/kristoffer/Downloads/octomap-dataset/new_college_10m.bt"/> -->
+	<!-- <arg name="bt_file" default="/home/kristoffer/Downloads/octomap-dataset/fr_079-10m.bt"/> -->
+
+	<node pkg="rviz" type="rviz" name="rviz" args="-d $(arg package_path)/rviz/$(arg node).rviz"/>
+
+	<include file="$(arg package_path)/launch/rrt_service.launch">
+		<arg name="frame_id" value="$(arg frame_id)"/>
+		<arg name="bt_file" value="$(arg bt_file)"/>
+	</include>
+
+	<node pkg="$(arg package)" type="$(arg node)" name="$(arg node)" output="screen" launch-prefix="$(arg launch-prefix)"/>
+</launch>

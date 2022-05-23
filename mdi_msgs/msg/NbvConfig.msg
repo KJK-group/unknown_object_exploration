@@ -3,3 +3,4 @@ float64 weight_free
 float64 weight_unknown
 float64 weight_distance_to_object
 float64 gain_of_interest_threshold
+float64 voxel_resolution

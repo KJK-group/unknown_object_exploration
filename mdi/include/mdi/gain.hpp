@@ -12,8 +12,9 @@
 namespace mdi {
 
 auto gain_of_fov(const types::FoV& fov, const mdi::Octomap& octomap, const double weight_free,
-                 const double weight_occupied, const double weight_unknown, const double weight_distance_to_target,
-                 std::function<double(double)> distance_tf) -> double {
+                 const double weight_occupied, const double weight_unknown,
+                 const double weight_distance_to_target, std::function<double(double)> distance_tf)
+    -> double {
     using namespace mdi::types;
     using mdi::VoxelStatus;
     using point = mdi::Octomap::point_type;
@@ -46,7 +47,7 @@ auto gain_of_fov(const types::FoV& fov, const mdi::Octomap& octomap, const doubl
                     break;
 
                 case VoxelStatus::Unknown:
-                    gain += weight_unknown + weight_distance_to_target * dist_to_target;
+                    gain += weight_unknown + weight_distance_to_target * (1.0 / dist_to_target);
                     break;
             }
         }

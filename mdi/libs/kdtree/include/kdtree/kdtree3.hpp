@@ -97,7 +97,6 @@ class kdtree3 final {
      */
     [[nodiscard]] auto nearest(const Point& pt) -> std::optional<NearestNeighborResult> {
         if (root_ == nullptr) {
-            // return std::nullopt;
             return {};
         }
         best_ = nullptr;
