@@ -162,11 +162,11 @@ add_ros_dependencies(rrt_service)
 target_link_libraries(rrt_service ${catkin_LIBRARIES} rrt fmt::fmt-header-only
                       kdtree-header-only ${OCTOMAP_LIBRARIES})
 
-add_executable(object_map_processor src/nodes/object_map_processor.cpp)
-add_ros_dependencies(object_map_processor)
-target_link_libraries(object_map_processor ${catkin_LIBRARIES}
+add_executable(object_map src/nodes/object_map.cpp)
+add_ros_dependencies(object_map)
+target_link_libraries(object_map ${catkin_LIBRARIES}
                       ${OCTOMAP_LIBRARIES} ${PCL_LIBRARIES})
-# target_link_directories(object_map_processor ${PCL_INCLUDE_DIRS})
+# target_link_directories(object_map ${PCL_INCLUDE_DIRS})
 
 
 # ##############################################################################

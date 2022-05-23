@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<launch>
+    <arg name="package" value="mdi"/>
+    <arg name="package_path" value="$(find mdi)"/>
+
+    <arg name="sim" default="false"/>
+
+    <node pkg="$(arg package)" type="" name="executable" />
+</launch>
