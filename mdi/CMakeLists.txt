@@ -47,7 +47,6 @@ find_package(Boost REQUIRED COMPONENTS system)
 
 include_directories(include)
 
-add_subdirectory(deps/fmt)
 add_subdirectory(libs/kdtree)
 
 catkin_package()
@@ -94,8 +93,7 @@ enable_optimization(linear_trajectory)
 
 # rrt library
 add_library(rrt SHARED src/rrt.cpp)
-target_link_libraries(rrt ${catkin_LIBRARIES} fmt::fmt-header-only
-                      kdtree-header-only)
+target_link_libraries(rrt ${catkin_LIBRARIES} kdtree-header-only)
 enable_optimization(rrt)
 
 # compound trajectory library
