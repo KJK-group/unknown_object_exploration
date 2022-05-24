@@ -59,7 +59,7 @@ using new_node_cb = std::function<void(const vec3&, const vec3&)>;
 using raycast_cb = std::function<void(const vec3&, const vec3&, const float, bool)>;
 waypoint_cb before_waypoint_optimization;
 waypoint_cb after_waypoint_optimization;
-new_node_cb new_node;
+new_node_cb new_node_created;
 raycast_cb raycast;
 
 auto call_get_environment_octomap() -> mdi::Octomap* {
@@ -117,14 +117,14 @@ auto waypoints_to_geometry_msgs_points(const mdi::rrt::RRT::Waypoints& wps)
 
 auto rrt_find_path_handler(mdi_msgs::RrtFindPath::Request& request,
                            mdi_msgs::RrtFindPath::Response& response) -> bool {
-    ROS_INFO_STREAM("rrt service called.");
+    ROS_INFO("rrt service called.");
 
-    const auto convert = [](const auto& pt) -> mdi::rrt::vec3 {
+    const auto geometry_msgs_point_to_vec3 = [](const auto& pt) -> mdi::rrt::vec3 {
         return {static_cast<float>(pt.x), static_cast<float>(pt.y), static_cast<float>(pt.z)};
     };
 
-    const auto start = convert(request.rrt_config.start);
-    const auto goal = convert(request.rrt_config.goal);
+    const auto start = geometry_msgs_point_to_vec3(request.rrt_config.start);
+    const auto goal = geometry_msgs_point_to_vec3(request.rrt_config.goal);
 
     auto rrt = mdi::rrt::RRT::from_builder()
                    .start_and_goal_position(start, goal)
@@ -141,43 +141,36 @@ auto rrt_find_path_handler(mdi_msgs::RrtFindPath::Request& request,
 
     // rrt.register_cb_for_event_on_new_node_created(new_node);
 
+    // TODO: comment
     rrt.register_cb_for_event_before_optimizing_waypoints(before_waypoint_optimization);
     rrt.register_cb_for_event_after_optimizing_waypoints(after_waypoint_optimization);
     rrt.register_cb_for_event_on_raycast(raycast);
 
-    auto success = false;
-
     auto octomap_ptr = call_get_environment_octomap();
 
     if (octomap_ptr != nullptr) {
-        ROS_INFO_STREAM("there is a octomap available");
-
+        ROS_INFO("there is a octomap available");
         rrt.assign_octomap(octomap_ptr);
     }
+    auto found_a_path = false;
 
-    std::cout << "Running rrt" << '\n';
+    ROS_INFO("running rrt");
     if (const auto opt = rrt.run()) {
-        ROS_INFO_STREAM("found a path");
+        ROS_INFO("rrt: found a path");
 
         const auto path = opt.value();
         std::cout << "path.size() = " << path.size() << std::endl;
         response.waypoints = waypoints_to_geometry_msgs_points(path);
-        // std::transform(path.begin(), path.end(), std::back_inserter(response.waypoints), [](const
-        // auto& pt) {
-        //     auto geo_pt = geometry_msgs::Point{};
-        //     geo_pt.x = pt.x();
-        //     geo_pt.y = pt.y();
-        //     geo_pt.z = pt.z();
-        //     return geo_pt;
-        // });
 
-        success = true;
+        found_a_path = true;
     }
+
     if (octomap_ptr != nullptr) {
+        ROS_INFO("deallocating octomap copy");
         delete octomap_ptr;
     }
 
-    return success;
+    return found_a_path;
 }
 
 auto nbv_handler(mdi_msgs::NBV::Request& request, mdi_msgs::NBV::Response& response) -> bool {
@@ -185,7 +178,7 @@ auto nbv_handler(mdi_msgs::NBV::Request& request, mdi_msgs::NBV::Response& respo
 
     ROS_INFO("nbv request received");
 
-    const auto convert = [](const auto& pt) -> mdi::rrt::vec3 {
+    const auto geometry_msgs_point_to_vec3 = [](const auto& pt) -> mdi::rrt::vec3 {
         return {static_cast<float>(pt.x), static_cast<float>(pt.y), static_cast<float>(pt.z)};
     };
     // these parameters are static so we only compute them once
@@ -196,7 +189,7 @@ auto nbv_handler(mdi_msgs::NBV::Request& request, mdi_msgs::NBV::Response& respo
     // TODO: handle unessary goal in a better way
     auto rrt =
         mdi::rrt::RRT::from_builder()
-            .start_and_goal_position(convert(request.rrt_config.start),
+            .start_and_goal_position(geometry_msgs_point_to_vec3(request.rrt_config.start),
                                      vec3{500.0f, 500.0f, 500.0f})  // goal is irrelevant
             .max_iterations(request.rrt_config.max_iterations)
             .goal_bias(request.rrt_config.goal_bias)
@@ -206,11 +199,12 @@ auto nbv_handler(mdi_msgs::NBV::Request& request, mdi_msgs::NBV::Response& respo
             .step_size(request.rrt_config.step_size)
             .build();
 
-    ROS_INFO_STREAM("" << rrt);
+    // ROS_INFO_STREAM("" << rrt);
 
     auto octomap_environment_ptr = call_get_environment_octomap();
 
     if (octomap_environment_ptr != nullptr) {
+        ROS_INFO("there is a octomap available");
         rrt.assign_octomap(octomap_environment_ptr);
     }
 
@@ -219,32 +213,24 @@ auto nbv_handler(mdi_msgs::NBV::Request& request, mdi_msgs::NBV::Response& respo
 
     bool found_suitable_nbv = false;
 
-    vec3 target = convert(request.rrt_config.goal);
+    const vec3 target = geometry_msgs_point_to_vec3(request.rrt_config.goal);
 
     rrt.register_cb_for_event_on_new_node_created([&](const auto& parent, const vec3& new_point) {
-        // drone needs to look at target with 0 pitch
-        // target[2] = new_point_copy[2];
-
         vec3 dir = target - new_point;
 
         const auto yaw = std::atan2(dir.y(), dir.x());
         // construct fov
-        // const auto orientation = Quaternion{1, 0, 0, 0};
         Eigen::Quaternionf orientation =
             Eigen::AngleAxisf(yaw, Eigen::Vector3f::UnitZ()) *
             Eigen::AngleAxisf(deg2rad(request.fov.pitch.angle), Eigen::Vector3f::UnitY());
 
         const auto pose = Pose{new_point, orientation};
-
         const auto fov = FoV{pose, horizontal, vertical, depth_range, target};
-        // std::cout << yaml(fov) << std::endl;
 
 #ifdef VISUALIZE_MARKERS_IN_RVIZ
         mdi::visualization::visualize_fov(fov, *marker_pub);
         mdi::visualization::visualize_bbx(mdi::compute_bbx(fov), *marker_pub);
         /* mdi::visualization::visualize_voxels_inside_fov(
-            // fov, *octomap_environment_ptr, request.nbv_config.voxel_resolution,
-            // *marker_array_pub);
             fov, *octomap_environment_ptr, octomap_environment_ptr->resolution(),
             *marker_array_pub); */
 #endif  // VISUALIZE_MARKERS_IN_RVIZ
@@ -255,9 +241,6 @@ auto nbv_handler(mdi_msgs::NBV::Request& request, mdi_msgs::NBV::Response& respo
             request.nbv_config.weight_occupied, request.nbv_config.weight_unknown,
             request.nbv_config.weight_distance_to_object, [](double x) { return x /* x * x */; });
         ROS_INFO_STREAM("gain is " << std::to_string(gain));
-
-        // TODO: remove later
-        // found_suitable_nbv = true;
 
         if (gain > best_gain) {
             ROS_INFO_STREAM("gain (" << std::to_string(gain)
@@ -307,6 +290,7 @@ auto nbv_handler(mdi_msgs::NBV::Request& request, mdi_msgs::NBV::Response& respo
     }
 
     if (octomap_environment_ptr != nullptr) {
+        ROS_INFO("deallocating octomap copy");
         delete octomap_environment_ptr;
     }
 
@@ -320,6 +304,7 @@ auto main(int argc, char* argv[]) -> int {
     auto nh = ros::NodeHandle();
     auto rate = ros::Rate(10);
 
+#ifdef VISUALIZE_MARKERS_IN_RVIZ
     waypoints_path_pub = std::make_unique<ros::Publisher>([&] {
         const auto service_name = "/visualization_marker"s;
         return nh.advertise<visualization_msgs::Marker>(service_name, 10);
@@ -381,14 +366,12 @@ auto main(int argc, char* argv[]) -> int {
                                       .color({0, 1, 0, 1})
                                       .build();
 
-    new_node = [&](const vec3& from, const vec3& to) {
+    new_node_created = [&](const vec3& from, const vec3& to) {
         auto msg = new_node_arrow_msg_gen({from, to});
         waypoints_path_pub->publish(msg);
         rate.sleep();
         ros::spinOnce();
     };
-
-#ifdef VISUALIZE_MARKERS_IN_RVIZ
 
     marker_pub = std::make_unique<ros::Publisher>([&] {
         const auto topic_name = "/visualization_marker";
@@ -419,14 +402,14 @@ auto main(int argc, char* argv[]) -> int {
         return nh.serviceClient<octomap_msgs::BoundingBoxQuery>(service_name);
     }());
 
-    ROS_INFO_STREAM("creating rrt service");
+    ROS_INFO("creating rrt service");
 
     auto service = [&] {
         const auto url = "/mdi/rrt_service/find_path";
         return nh.advertiseService(url, rrt_find_path_handler);
     }();
 
-    ROS_INFO_STREAM("creating nbv service");
+    ROS_INFO("creating nbv service");
 
     auto nbv_service = [&] {
         const auto url = "/mdi/rrt_service/nbv";

@@ -1,6 +1,5 @@
 #include "mdi/rrt/rrt.hpp"
 
-#include <fmt/core.h>
 #include <ros/console.h>
 #include <unistd.h>
 
@@ -880,7 +879,7 @@ auto RRT::from_builder() -> RRTBuilder { return {}; }
 
 auto RRT::from_rosparam(std::string_view prefix) -> RRT {
     const auto prepend_prefix = [&](std::string_view key) {
-        return fmt::format("{}/{}", prefix, key);
+        return std::string(prefix) + "/" + std::string(key);
     };
 
     const auto get_int = [&](std::string_view key) {
@@ -889,7 +888,8 @@ auto RRT::from_rosparam(std::string_view prefix) -> RRT {
             return default_value;
         }
 
-        const auto error_msg = fmt::format("key {} does not exist in the parameter server.", key);
+        const auto error_msg =
+            "key " + std::string(key) + " does not exist in the parameter server.";
         throw std::invalid_argument(error_msg);
     };
 
@@ -900,14 +900,14 @@ auto RRT::from_rosparam(std::string_view prefix) -> RRT {
             return default_value;
         }
 
-        const auto error_msg = fmt::format("key {} does not exist in the parameter server.", key);
+        const auto error_msg =
+            "key " + std::string(key) + " does not exist in the parameter server.";
         throw std::invalid_argument(error_msg);
     };
 
     const auto get_vec3 = [&](std::string_view key) {
         auto default_value = std::vector<float>{};
-        std::cerr << "[DEBUG] " << __FILE__ << ":" << __LINE__ << ": "
-                  << " key " << prepend_prefix(key) << '\n';
+
         if (ros::param::get(prepend_prefix(key), default_value)) {
             assert(default_value.size() == 3);
             const auto x = default_value[0];
@@ -916,7 +916,8 @@ auto RRT::from_rosparam(std::string_view prefix) -> RRT {
             return vec3{x, y, z};
         }
 
-        const auto error_msg = fmt::format("key {} does not exist in the parameter server.", key);
+        const auto error_msg =
+            "key " + std::string(key) + " does not exist in the parameter server.";
         throw std::invalid_argument(error_msg);
     };
 
@@ -946,9 +947,9 @@ RRT::~RRT() {
                     return static_cast<std::uint32_t>(
                         duration_cast<seconds>(now.time_since_epoch()).count());
                 }();
-                const auto fmt_str = file_path_csv_.stem().string() + "-{}" + ".csv";
-
-                return std::filesystem::path(fmt::format(fmt_str, unix_timestamp));
+                const auto fmt_str =
+                    file_path_csv_.stem().string() + "-" + std::to_string(unix_timestamp) + ".csv";
+                return std::filesystem::path(fmt_str);
             }
 
             return file_path_csv_;

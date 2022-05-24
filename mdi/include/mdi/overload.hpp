@@ -1,5 +1,6 @@
 #pragma once
 
+#include <functional>
 #include <variant>
 template <typename... Ts>
 struct Overload : Ts... {
@@ -9,7 +10,10 @@ struct Overload : Ts... {
 template <class... Ts>
 Overload(Ts...) -> Overload<Ts...>;
 
-// template <typename... Ts>
-// auto match(std::variant<Ts...> v, Ts patterns...) {
+// template <class... Ts, typename V = std::variant<Ts...>>
+// template <typename T, class... Ts>
+// auto match(std::variant<Ts...>, std::function<T(Ts)>...);
+
+// auto match(std::variant<Ts...> v, Ts... patterns) {
 //     return std::visit(Overload<Ts...>{patterns...}, v);
 // }
