@@ -55,9 +55,11 @@ std::unique_ptr<ros::ServiceClient> clear_octomap_client, clear_region_of_octoma
     get_octomap_client;
 std::unique_ptr<ros::Publisher> waypoints_path_pub;
 using waypoint_cb = std::function<void(const vec3&, const vec3&)>;
+using new_node_cb = std::function<void(const vec3&, const vec3&)>;
 using raycast_cb = std::function<void(const vec3&, const vec3&, const float, bool)>;
 waypoint_cb before_waypoint_optimization;
 waypoint_cb after_waypoint_optimization;
+new_node_cb new_node;
 raycast_cb raycast;
 
 auto call_get_environment_octomap() -> mdi::Octomap* {
@@ -115,6 +117,8 @@ auto waypoints_to_geometry_msgs_points(const mdi::rrt::RRT::Waypoints& wps)
 
 auto rrt_find_path_handler(mdi_msgs::RrtFindPath::Request& request,
                            mdi_msgs::RrtFindPath::Response& response) -> bool {
+    ROS_INFO_STREAM("rrt service called.");
+
     const auto convert = [](const auto& pt) -> mdi::rrt::vec3 {
         return {static_cast<float>(pt.x), static_cast<float>(pt.y), static_cast<float>(pt.z)};
     };
@@ -133,21 +137,28 @@ auto rrt_find_path_handler(mdi_msgs::RrtFindPath::Request& request,
                    .build();
 
     // rrt.register_cb_for_event_on_new_node_created(
-    // [](const auto& p1, const auto& p2) { std::cout << "New node created" << '\n'; });
+    //     [](const auto& p1, const auto& p2) { std::cout << "New node created" << '\n'; });
 
-    // rrt.register_cb_for_event_before_optimizing_waypoints(before_waypoint_optimization);
-    // rrt.register_cb_for_event_after_optimizing_waypoints(after_waypoint_optimization);
-    // rrt.register_cb_for_event_on_raycast(raycast);
+    // rrt.register_cb_for_event_on_new_node_created(new_node);
+
+    rrt.register_cb_for_event_before_optimizing_waypoints(before_waypoint_optimization);
+    rrt.register_cb_for_event_after_optimizing_waypoints(after_waypoint_optimization);
+    rrt.register_cb_for_event_on_raycast(raycast);
 
     auto success = false;
 
     auto octomap_ptr = call_get_environment_octomap();
 
     if (octomap_ptr != nullptr) {
+        ROS_INFO_STREAM("there is a octomap available");
+
         rrt.assign_octomap(octomap_ptr);
     }
+
     std::cout << "Running rrt" << '\n';
     if (const auto opt = rrt.run()) {
+        ROS_INFO_STREAM("found a path");
+
         const auto path = opt.value();
         std::cout << "path.size() = " << path.size() << std::endl;
         response.waypoints = waypoints_to_geometry_msgs_points(path);
@@ -315,10 +326,10 @@ auto main(int argc, char* argv[]) -> int {
     }());
 
     auto before_waypoint_optimization_arrow_msg_gen = mdi::utils::rviz::arrow_msg_gen::builder()
-                                                          .arrow_head_width(0.02f)
-                                                          .arrow_length(0.02f)
-                                                          .arrow_width(0.02f)
-                                                          .color({0, 1, 0, 1})
+                                                          .arrow_head_width(0.2f)
+                                                          .arrow_length(0.15f)
+                                                          .arrow_width(0.15f)
+                                                          .color({0.7, 0.7, 0, 1})
                                                           .build();
 
     before_waypoint_optimization = [&](const vec3& from, const vec3& to) {
@@ -328,7 +339,7 @@ auto main(int argc, char* argv[]) -> int {
         ros::spinOnce();
     };
 
-    ros::Duration(2).sleep();
+    ros::Duration(1).sleep();
 
     auto after_waypoint_optimization_arrow_msg_gen = mdi::utils::rviz::arrow_msg_gen::builder()
                                                          .arrow_head_width(0.5f)
@@ -344,7 +355,7 @@ auto main(int argc, char* argv[]) -> int {
         ros::spinOnce();
     };
 
-    ros::Duration(2).sleep();
+    ros::Duration(1).sleep();
     auto raycast_arrow_msg_gen = mdi::utils::rviz::arrow_msg_gen::builder()
                                      .arrow_head_width(0.15f)
                                      .arrow_length(0.3f)
@@ -358,6 +369,20 @@ auto main(int argc, char* argv[]) -> int {
             msg.color.r = 1;
             msg.color.g = 0;
         }
+        waypoints_path_pub->publish(msg);
+        rate.sleep();
+        ros::spinOnce();
+    };
+
+    auto new_node_arrow_msg_gen = mdi::utils::rviz::arrow_msg_gen::builder()
+                                      .arrow_head_width(0.05f)
+                                      .arrow_length(0.1f)
+                                      .arrow_width(0.1f)
+                                      .color({0, 1, 0, 1})
+                                      .build();
+
+    new_node = [&](const vec3& from, const vec3& to) {
+        auto msg = new_node_arrow_msg_gen({from, to});
         waypoints_path_pub->publish(msg);
         rate.sleep();
         ros::spinOnce();
@@ -394,10 +419,14 @@ auto main(int argc, char* argv[]) -> int {
         return nh.serviceClient<octomap_msgs::BoundingBoxQuery>(service_name);
     }());
 
+    ROS_INFO_STREAM("creating rrt service");
+
     auto service = [&] {
         const auto url = "/mdi/rrt_service/find_path";
         return nh.advertiseService(url, rrt_find_path_handler);
     }();
+
+    ROS_INFO_STREAM("creating nbv service");
 
     auto nbv_service = [&] {
         const auto url = "/mdi/rrt_service/nbv";

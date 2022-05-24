@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <launch>
-	<arg name="node" value="test_rrt_with_octomap"/>
+	<arg name="node" value="rrt_service_vis_only"/>
 	<arg name="package" value="mdi"/>
 	<!-- <arg name="launch-prefix" default="valgrind \-\-leak-check=full"/> -->
 	<!-- <arg name="launch-prefix" default="kitty lldb"/> -->
@@ -11,7 +11,7 @@
 
 
 	<!-- <node pkg="rviz" type="rviz" name="rviz" args="-d $(dirname)/../rviz/$(arg node).rviz"/> -->
-	<node pkg="rviz" type="rviz" name="rviz" args="-d $(dirname)/../rviz/test_octomap.rviz"/>
+	<node pkg="rviz" type="rviz" name="rviz" args="-d $(dirname)/../rviz/$(arg node).rviz"/>
 	<!-- <rosparam command="load" file="$(dirname)/../rosparam/rrt.yaml"/> -->
 	<!-- <rosparam command="load" file="$(dirname)/../rosparam/octomap.yaml"/> -->
 
@@ -28,6 +28,9 @@
 		<!-- <remap from="cloud_in" to="/narrow_stereo/points_filtered2"/> -->
 
 	</node>
+	<node name="rrt_service_vis_only" pkg="$(arg package)" type="rrt_service_vis_only" output="screen" respawn="false" respawn_delay="0"></node>
+	<node name="test_rrt_service" pkg="$(arg package)" type="test_rrt_service" output="screen"/>
+
 	<!-- <arg name="measurements_output_dir" value="~/.cache/"/> -->
 	<!-- <arg name="measurements_output_dir" value="$(dirname)/../measurements"/> -->
 

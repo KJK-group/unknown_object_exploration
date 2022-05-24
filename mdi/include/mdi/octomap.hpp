@@ -18,7 +18,9 @@
 namespace mdi {
 
 class Octomap final {
-   public:  // PUBLIC TYPES --------------------------------------------------------------------------------------------
+   public
+       :  // PUBLIC TYPES
+          // --------------------------------------------------------------------------------------------
     using point_type = octomap::point3d;
     using octree_type = octomap::OcTree;
     using node_type = octree_type::NodeType;
@@ -34,9 +36,13 @@ class Octomap final {
     //     }
     // };  // BBX
 
-   public:  // FRIENDS -------------------------------------------------------------------------------------------------
-            // friend std::ostream& operator<<(std::ostream& os, const Octomap& octomap);
-   public:  // CONSTRUCTORS --------------------------------------------------------------------------------------------
+   public
+       :  // FRIENDS
+          // -------------------------------------------------------------------------------------------------
+          // friend std::ostream& operator<<(std::ostream& os, const Octomap& octomap);
+   public
+       :  // CONSTRUCTORS
+          // --------------------------------------------------------------------------------------------
     Octomap(double resolution) : octree_(resolution) {}
     // Octomap(octree_type&& tree) : octree_(tree) {}
     Octomap(const Octomap& octree) = delete;
@@ -68,14 +74,16 @@ class Octomap final {
 
     // Octomap(OcTree&& tree) : octree_(std:Const:move(tree)) {}
 
-   public:  // PUBLIC INTERFACE ----------------------------------------------------------------------------------------
-    auto raycast_in_direction(const point_type& origin, const point_type& direction, double max_range,
-                              bool ignore_unknown_voxels = true) const -> std::optional<point_type> {
+   public
+       :  // PUBLIC INTERFACE
+          // ----------------------------------------------------------------------------------------
+    auto raycast_in_direction(const point_type& origin, const point_type& direction,
+                              double max_range, bool ignore_unknown_voxels = false) const -> Voxel {
         return raycast_(origin, direction, max_range, ignore_unknown_voxels);
     }
 
-    auto raycast(const point_type& origin, const point_type& end, bool ignore_unknown_voxels = true) const
-        -> std::optional<point_type> {
+    auto raycast(const point_type& origin, const point_type& end,
+                 bool ignore_unknown_voxels = false) const -> Voxel {
         const auto direction = end - origin;
         const auto max_range = direction.norm();
         return raycast_(origin, direction, max_range, ignore_unknown_voxels);
@@ -90,24 +98,26 @@ class Octomap final {
         return VoxelStatus::Unknown;
     }
 
-    auto get_closest_intersection_point(const point_type& origin, const point_type& direction, double delta = 0.0) const
-        -> std::optional<point_type> {
-        if (const auto opt = raycast_(origin, direction)) {
-            const auto center_pt_of_hit_voxel = opt.value();
-            auto intersection = point_type{0, 0, 0};
+    /*    auto get_closest_intersection_point(const point_type& origin, const point_type& direction,
+                                           double delta = 0.0) const -> std::optional<point_type> {
+           if (const auto opt = raycast_(origin, direction)) {
+               const auto center_pt_of_hit_voxel = opt.value();
+               auto intersection = point_type{0, 0, 0};
 
-            const auto intersected =
-                octree_.getRayIntersection(origin, direction, center_pt_of_hit_voxel, intersection, delta);
-            if (intersected) {
-                return intersection;
-            }
-        }
+               const auto intersected = octree_.getRayIntersection(
+                   origin, direction, center_pt_of_hit_voxel, intersection, delta);
+               if (intersected) {
+                   return intersection;
+               }
+           }
 
-        return std::nullopt;
-    }
+           return std::nullopt;
+       } */
 
     // TODO:
-    auto get_closest_occupied_voxel(const point_type& point) const -> std::optional<point_type> { return std::nullopt; }
+    auto get_closest_occupied_voxel(const point_type& point) const -> std::optional<point_type> {
+        return std::nullopt;
+    }
 
     auto resolution() const -> double { return octree_.getResolution(); }
     // TODO:
@@ -138,7 +148,8 @@ class Octomap final {
             return std::make_pair(start, stop);
         }();
 
-        for (auto it = octree_.begin_leafs_bbx(min, max), end = octree_.end_leafs_bbx(); it != end; ++it) {
+        for (auto it = octree_.begin_leafs_bbx(min, max), end = octree_.end_leafs_bbx(); it != end;
+             ++it) {
             const auto voxel_center = it.getCoordinate();
             const auto key = it.getKey();
 
@@ -153,7 +164,8 @@ class Octomap final {
         }
     }
 
-   private:  // --------------------------------------------------------------------------------------------------------
+   private
+       :  // --------------------------------------------------------------------------------------------------------
     octree_type octree_;
 
     // PRIVATE METHODS
@@ -166,15 +178,23 @@ class Octomap final {
     // }
 
     auto raycast_(const point_type& origin, const point_type& direction, double max_range = -1,
-                  bool ignore_unknown_voxels = true) const -> std::optional<point_type> {
+                  bool ignore_unknown_voxels = false) const -> Voxel {
         auto end = point_type{0, 0, 0};
         const auto intersected_occupied_voxel =
             octree_.castRay(origin, direction, end, ignore_unknown_voxels, max_range);
         if (intersected_occupied_voxel) {
-            return end;
+            return Occupied{end};
         }
 
-        return std::nullopt;
+        if (! ignore_unknown_voxels) {
+            if (octree_.search(end) == nullptr) {
+                return Unknown{};
+            } else {
+                return Free{};
+            }
+        }
+
+        return Free{};
     }
 
     auto get_voxelstatus_at_node_using_key_(const octomap::OcTreeKey key) const -> VoxelStatus {
@@ -196,7 +216,8 @@ class Octomap final {
         return std::nullopt;
     }
 
-    auto search_for_node_(const point_type& point, unsigned int depth = 0) const -> std::optional<node_type*> {
+    auto search_for_node_(const point_type& point, unsigned int depth = 0) const
+        -> std::optional<node_type*> {
         const auto node_ptr = octree_.search(point, depth);
         if (node_ptr != nullptr) {
             return node_ptr;

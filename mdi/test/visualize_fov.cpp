@@ -198,8 +198,15 @@ auto main(int argc, char* argv[]) -> int {
             }();
 
             const auto visible = [&](const vec3& v) {
-                auto opt = ocmap.raycast(origin, octomap::point3d{v.x(), v.y(), v.z()});
-                return ! opt.has_value();
+                auto /* opt */ voxel = ocmap.raycast(origin, octomap::point3d{v.x(), v.y(), v.z()});
+                // return ! opt.has_value();
+                auto match = Overload{
+                    [](Free _) { return true; },
+                    [](Unknown _) { return false; },
+                    [](Occupied _) { return false; },
+                };
+
+                return std::visit(match, voxel);
             };
             //
             // double gain = 0;
