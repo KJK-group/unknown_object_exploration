@@ -4,12 +4,11 @@ Panels:
     Name: Displays
     Property Tree Widget:
       Expanded:
-        - /TF1/Frames1
         - /Marker1
-        - /Odometry1
+        - /OccupancyGrid1
         - /Odometry1/Shape1
       Splitter Ratio: 0.550000011920929
-    Tree Height: 925
+    Tree Height: 439
   - Class: rviz/Selection
     Name: Selection
   - Class: rviz/Tool Properties
@@ -28,7 +27,7 @@ Panels:
     Experimental: false
     Name: Time
     SyncMode: 0
-    SyncSource: ""
+    SyncSource: PointCloud2
 Preferences:
   PromptSaveOnExit: true
 Toolbars:
@@ -60,20 +59,12 @@ Visualization Manager:
       Frames:
         All Enabled: false
         PX4:
-          Value: false
+          Value: true
         PX4/odom_local_ned:
           Value: true
         base_link:
           Value: false
         base_link_frd:
-          Value: false
-        inspection_camera_body:
-          Value: false
-        inspection_camera_body/static:
-          Value: false
-        inspection_camera_optical:
-          Value: false
-        inspection_camera_optical/static:
           Value: false
         map:
           Value: false
@@ -82,6 +73,14 @@ Visualization Manager:
         odom:
           Value: false
         odom_ned:
+          Value: false
+        rgbd_camera_body:
+          Value: true
+        rgbd_camera_body/static:
+          Value: false
+        rgbd_camera_optical:
+          Value: true
+        rgbd_camera_optical/static:
           Value: false
         world_enu:
           Value: true
@@ -97,13 +96,13 @@ Visualization Manager:
         world_ned:
           PX4:
             PX4/odom_local_ned:
-              inspection_camera_body/static:
+              rgbd_camera_body/static:
                 {}
-              inspection_camera_optical/static:
+              rgbd_camera_optical/static:
                 {}
-            inspection_camera_body:
+            rgbd_camera_body:
               {}
-            inspection_camera_optical:
+            rgbd_camera_optical:
               {}
           world_enu:
             {}
@@ -162,7 +161,7 @@ Visualization Manager:
       Marker Topic: /mdi/mission/visualisation
       Name: Marker
       Namespaces:
-        "": true
+        {}
       Queue Size: 100
       Value: true
     - Class: octomap_rviz_plugin/OccupancyGrid
@@ -182,7 +181,7 @@ Visualization Manager:
       Marker Topic: /mdi/visualisation
       Name: MarkerArray
       Namespaces:
-        "": true
+        {}
       Queue Size: 10
       Value: true
     - Class: rviz/Marker
@@ -190,126 +189,7 @@ Visualization Manager:
       Marker Topic: /mdi/visualisation/controller
       Name: Marker
       Namespaces:
-        arrow/1652449552: true
-        arrow/1652449553: true
-        arrow/1652449554: true
-        arrow/1652449555: true
-        arrow/1652449556: true
-        arrow/1652449557: true
-        arrow/1652449558: true
-        arrow/1652449559: true
-        arrow/1652449560: true
-        arrow/1652449561: true
-        arrow/1652449562: true
-        arrow/1652449563: true
-        arrow/1652449564: true
-        arrow/1652449565: true
-        arrow/1652449566: true
-        arrow/1652449567: true
-        arrow/1652449568: true
-        arrow/1652449569: true
-        arrow/1652449570: true
-        arrow/1652449571: true
-        arrow/1652449572: true
-        arrow/1652449573: true
-        arrow/1652449574: true
-        arrow/1652449575: true
-        arrow/1652449576: true
-        arrow/1652449577: true
-        arrow/1652449578: true
-        arrow/1652449579: true
-        arrow/1652449580: true
-        arrow/1652449581: true
-        arrow/1652449582: true
-        arrow/1652449583: true
-        arrow/1652449584: true
-        arrow/1652449585: true
-        arrow/1652449586: true
-        arrow/1652449587: true
-        arrow/1652449588: true
-        arrow/1652449589: true
-        arrow/1652449590: true
-        arrow/1652449591: true
-        arrow/1652449592: true
-        arrow/1652449593: true
-        arrow/1652449594: true
-        arrow/1652449595: true
-        arrow/1652449596: true
-        arrow/1652449597: true
-        arrow/1652449598: true
-        arrow/1652449599: true
-        arrow/1652449600: true
-        arrow/1652449601: true
-        arrow/1652449602: true
-        arrow/1652449603: true
-        arrow/1652449604: true
-        arrow/1652449605: true
-        arrow/1652449606: true
-        arrow/1652449607: true
-        arrow/1652449608: true
-        arrow/1652449609: true
-        arrow/1652449610: true
-        arrow/1652449611: true
-        sphere/1652449552: true
-        sphere/1652449553: true
-        sphere/1652449554: true
-        sphere/1652449555: true
-        sphere/1652449556: true
-        sphere/1652449557: true
-        sphere/1652449558: true
-        sphere/1652449559: true
-        sphere/1652449560: true
-        sphere/1652449561: true
-        sphere/1652449562: true
-        sphere/1652449563: true
-        sphere/1652449564: true
-        sphere/1652449565: true
-        sphere/1652449566: true
-        sphere/1652449567: true
-        sphere/1652449568: true
-        sphere/1652449569: true
-        sphere/1652449570: true
-        sphere/1652449571: true
-        sphere/1652449572: true
-        sphere/1652449573: true
-        sphere/1652449574: true
-        sphere/1652449575: true
-        sphere/1652449576: true
-        sphere/1652449577: true
-        sphere/1652449578: true
-        sphere/1652449579: true
-        sphere/1652449580: true
-        sphere/1652449581: true
-        sphere/1652449582: true
-        sphere/1652449583: true
-        sphere/1652449584: true
-        sphere/1652449585: true
-        sphere/1652449586: true
-        sphere/1652449587: true
-        sphere/1652449588: true
-        sphere/1652449589: true
-        sphere/1652449590: true
-        sphere/1652449591: true
-        sphere/1652449592: true
-        sphere/1652449593: true
-        sphere/1652449594: true
-        sphere/1652449595: true
-        sphere/1652449596: true
-        sphere/1652449597: true
-        sphere/1652449598: true
-        sphere/1652449599: true
-        sphere/1652449600: true
-        sphere/1652449601: true
-        sphere/1652449602: true
-        sphere/1652449603: true
-        sphere/1652449604: true
-        sphere/1652449605: true
-        sphere/1652449606: true
-        sphere/1652449607: true
-        sphere/1652449608: true
-        sphere/1652449609: true
-        sphere/1652449610: true
-        sphere/1652449611: true
+        {}
       Queue Size: 100
       Value: true
     - Angle Tolerance: 0.10000000149011612
@@ -347,6 +227,34 @@ Visualization Manager:
       Topic: /airsim_node/PX4/odom_local_ned
       Unreliable: false
       Value: true
+    - Alpha: 1
+      Autocompute Intensity Bounds: true
+      Autocompute Value Bounds:
+        Max Value: 10
+        Min Value: -10
+        Value: true
+      Axis: Z
+      Channel Name: intensity
+      Class: rviz/PointCloud2
+      Color: 255; 255; 255
+      Color Transformer: Intensity
+      Decay Time: 0
+      Enabled: true
+      Invert Rainbow: false
+      Max Color: 255; 255; 255
+      Min Color: 0; 0; 0
+      Name: PointCloud2
+      Position Transformer: XYZ
+      Queue Size: 10
+      Selectable: true
+      Size (Pixels): 3
+      Size (m): 0.009999999776482582
+      Style: Flat Squares
+      Topic: /camera/depth/points
+      Unreliable: false
+      Use Fixed Frame: true
+      Use rainbow: true
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -375,7 +283,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/XYOrbit
-      Distance: 9.369148254394531
+      Distance: 13.813678741455078
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -383,17 +291,17 @@ Visualization Manager:
         Value: false
       Field of View: 0.7853981852531433
       Focal Point:
-        X: 1.5398719310760498
-        Y: 0.6713476181030273
-        Z: 3.7144833186175674e-05
+        X: -0.5760886669158936
+        Y: 1.5087125301361084
+        Z: 3.503654443193227e-05
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.6447960138320923
+      Pitch: 0.4047965407371521
       Target Frame: world_view
-      Yaw: 4.272233963012695
+      Yaw: 2.3703365325927734
     Saved: ~
 Window Geometry:
   Displays:
@@ -401,7 +309,7 @@ Window Geometry:
   Height: 1044
   Hide Left Dock: true
   Hide Right Dock: true
-  QMainWindow State: 000000ff00000000fd000000040000000000000156000003ddfc020000000cfb0000001200530065006c0065006300740069006f006e00000001e10000009b0000005d00fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed0000039500000185000000a3fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afc00000018000003dd0000000000fffffffa000000000100000003fb0000000a0049006d0061006700650000000000ffffffff0000000000000000fb0000002000630061006d005f00660072006f006e0074005f00630065006e0074006500720000000000ffffffff0000000000000000fb000000100044006900730070006c0061007900730000000000000001a60000015600fffffffb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261fb0000000c00430061006d006500720061010000038f000000160000000000000000fb0000003600630061006d005f00660072006f006e0074005f006c006500660074005f00640065007000740068005f0070006c0061006e006100720200000af40000014e0000031c00000231fb0000001c00630061006d005f00660072006f006e0074005f006c0065006600740200000ac00000010f000002d700000196fb0000001e00630061006d005f00660072006f006e0074005f007200690067006800740200000b400000017000000286000001a7000000010000010f000004dafc0200000003fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a00560069006500770073000000003f000004da000000a900fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000490000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e10000019700000003000005730000003efc0100000002fb0000000800540069006d0065000000000000000573000003f400fffffffb0000000800540069006d0065010000000000000450000000000000000000000457000003dd00000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730000000000ffffffff0000000000000000
+  QMainWindow State: 000000ff00000000fd000000040000000000000156000003ddfc020000000cfb0000001200530065006c0065006300740069006f006e00000001e10000009b0000005d00fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed000005c800000185000000a3fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afc00000018000003dd0000000000fffffffa000000000100000003fb0000000a0049006d0061006700650000000000ffffffff0000000000000000fb0000002000630061006d005f00660072006f006e0074005f00630065006e0074006500720000000000ffffffff0000000000000000fb000000100044006900730070006c0061007900730000000000000001a60000015600fffffffb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261fb0000000c00430061006d006500720061010000038f000000160000000000000000fb0000003600630061006d005f00660072006f006e0074005f006c006500660074005f00640065007000740068005f0070006c0061006e006100720200000af40000014e0000031c00000231fb0000001c00630061006d005f00660072006f006e0074005f006c0065006600740200000ac00000010f000002d700000196fb0000001e00630061006d005f00660072006f006e0074005f007200690067006800740200000b400000017000000286000001a7000000010000010f000004dafc0200000003fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a00560069006500770073000000003f000004da000000a900fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000490000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e10000019700000003000005730000003efc0100000002fb0000000800540069006d0065000000000000000573000003f400fffffffb0000000800540069006d0065010000000000000450000000000000000000000457000003dd00000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730000000000ffffffff0000000000000000
   Selection:
     collapsed: false
   Time:
@@ -412,4 +320,4 @@ Window Geometry:
     collapsed: true
   Width: 1111
   X: 809
-  Y: 0
+  Y: 1480

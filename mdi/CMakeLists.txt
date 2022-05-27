@@ -46,17 +46,17 @@ include_directories(${Eigen3_INCLUDE_DIRS})
 # link_directories(${PCL_LIBRARY_DIRS})
 # add_definitions(${PCL_DEFINITIONS})
 
-# find_package(PCL 1.12 REQUIRED)
-# include_directories(${PCL_INCLUDE_DIRS})
-# link_directories(${PCL_LIBRARY_DIRS})
-# add_definitions(${PCL_DEFINITIONS})
+find_package(PCL 1.12 REQUIRED)
+include_directories(${PCL_INCLUDE_DIRS})
+link_directories(${PCL_LIBRARY_DIRS})
+add_definitions(${PCL_DEFINITIONS})
 
 
-file(GLOB PCL_LIBRARIES /usr/local/lib/libpcl_*)
-set(PCL_INCLUDE_DIRS /usr/local/include/pcl-1.12)
+# file(GLOB PCL_LIBRARIES /usr/local/lib/libpcl_*)
+# set(PCL_INCLUDE_DIRS /usr/local/include/pcl-1.12)
 
-INCLUDE_DIRECTORIES(${PROJECT_NAME} ${PCL_INCLUDE_DIRS})
-# TARGET_LINK_LIBRARIES(${PROJECT_NAME} ${PCL_LIBRARIES})
+# include_directories(${PROJECT_NAME} ${PCL_INCLUDE_DIRS})
+# target_link_libraries(${PROJECT_NAME} ${PCL_LIBRARIES})
 
 find_package(octomap REQUIRED)
 include_directories(${OCTOMAP_INCLUDE_DIRS})
@@ -166,6 +166,9 @@ add_executable(object_map src/nodes/object_map.cpp)
 add_ros_dependencies(object_map)
 target_link_libraries(object_map ${catkin_LIBRARIES}
                       ${OCTOMAP_LIBRARIES} ${PCL_LIBRARIES})
+target_compile_options(object_map PUBLIC -O0 -g)
+# target_link_libraries(object_map ${catkin_LIBRARIES}
+#                       ${OCTOMAP_LIBRARIES})
 # target_link_directories(object_map ${PCL_INCLUDE_DIRS})
 
 
@@ -208,6 +211,10 @@ target_link_libraries(octomap_test ${catkin_LIBRARIES} rrt fmt::fmt-header-only
 # ##############################################################################
 # Install ##
 # ##############################################################################
+
+catkin_install_python(PROGRAMS scripts/nodes/segmentation_service.py
+  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
 
 # scripts
 install(PROGRAMS scripts/make_px4_airsim.sh

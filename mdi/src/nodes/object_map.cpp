@@ -23,12 +23,13 @@
 // https://pointclouds.org/documentation/index.html
 // CITE
 
-mdi::Octomap* object_map;
-auto get_object_map(octomap_msgs::GetOctomap::Request& request, octomap_msgs::GetOctomap::Response& response) -> bool {
-    return octomap_msgs::binaryMapToMsg(object_map->octree(), response.map);
-};
+// mdi::Octomap* object_map;
+// auto get_object_map(octomap_msgs::GetOctomap::Request& request, octomap_msgs::GetOctomap::Response& response) -> bool
+// {
+//     return octomap_msgs::binaryMapToMsg(object_map->octree(), response.map);
+// };
 
-pcl::PointCloud<pcl::PointXYZ>::Ptr unfiltered_point_cloud{};
+pcl::PointCloud<pcl::PointXYZ> unfiltered_point_cloud{};
 /**
  * @brief callback for /zed/rgb/image/rect/color converts sensor_msgs::PointCloud2 to pcl::PointCloud2
  *
@@ -36,12 +37,20 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr unfiltered_point_cloud{};
  * @return void
  */
 auto point_cloud_cb(const sensor_msgs::PointCloud2::ConstPtr& cloud) -> void {
-    pcl::PCLPointCloud2::Ptr pc2{};
-    pcl_conversions::toPCL(*cloud, *pc2);
-    pcl::fromPCLPointCloud2(*pc2, *unfiltered_point_cloud);
+    // pcl::PCLPointCloud2::Ptr pc2{};
+    // pcl_conversions::toPCL(*cloud, *pc2);
+    // pcl::fromPCLPointCloud2(*pc2, *unfiltered_point_cloud);
+    // std::cout << cloud->data.size() << std::endl;
+    // for (auto& d : cloud->data) {
+    //     std::cout << d << std::endl;
+    // }
+    pcl::fromROSMsg(*cloud, unfiltered_point_cloud);
 }
 sensor_msgs::Image raw_image;
-auto image_cb(const sensor_msgs::Image::ConstPtr& image) -> void { raw_image = *image; }
+auto image_cb(const sensor_msgs::Image::ConstPtr& image) -> void {
+    // std::cout << image << std::endl;
+    raw_image = *image;
+}
 
 auto main(int argc, char* argv[]) -> int {
     // ros
@@ -49,25 +58,32 @@ auto main(int argc, char* argv[]) -> int {
     auto nh = ros::NodeHandle();
     ros::Rate rate(mdi::utils::DEFAULT_LOOP_RATE);
 
-    auto sub_camera_rgb =
-        nh.subscribe<sensor_msgs::Image>("/zed/rgb/image_rect_color", mdi::utils::DEFAULT_QUEUE_SIZE, image_cb);
-    auto sub_camera_point_cloud = nh.subscribe<sensor_msgs::PointCloud2>(
-        "/zed/point_cloud/cloud_registered ", mdi::utils::DEFAULT_QUEUE_SIZE, point_cloud_cb);
-    auto client_model = nh.serviceClient<mdi_msgs::Model>("/mdi/model");
-
-    double resolution = 0;
-    double thresh_prob_min = 0.1;
-    double thresh_prob_max = 0.5;
+    // double resolution = 0;
+    // double thresh_prob_min = 0.1;
+    // double thresh_prob_max = 0.5;
+    // auto sim = false;
     // arguments
-    if (argc > 1) resolution = std::stod(argv[1]);
-    if (argc > 2) thresh_prob_min = std::stod(argv[2]);
-    if (argc > 3) thresh_prob_max = std::stod(argv[3]);
+    // if (argc > 1 && argv[1] == "true") sim = true;
+    // if (argc > 2) resolution = std::stod(argv[2]);
+    // if (argc > 3) thresh_prob_min = std::stod(argv[3]);
+    // if (argc > 4) thresh_prob_max = std::stod(argv[4]);
 
-    object_map = new mdi::Octomap{resolution, thresh_prob_min, thresh_prob_max};
+    auto sub_camera_rgb = nh.subscribe<sensor_msgs::Image>("/airsim_node/PX4/rgbd_camera/Scene",
+                                                           mdi::utils::DEFAULT_QUEUE_SIZE, image_cb);
+    auto sub_camera_point_cloud =
+        nh.subscribe<sensor_msgs::PointCloud2>("/camera/depth/points", mdi::utils::DEFAULT_QUEUE_SIZE, point_cloud_cb);
 
-    nh.advertiseService<octomap_msgs::GetOctomap::Request, octomap_msgs::GetOctomap::Response>("/mdi/object_map",
-                                                                                               get_object_map);
+    auto pub_pointcloud =
+        nh.advertise<sensor_msgs::PointCloud2>("/mdi/point_cloud/object", mdi::utils::DEFAULT_QUEUE_SIZE);
 
+    auto client_model = nh.serviceClient<mdi_msgs::Model>("/mdi/semantic_segmentation");
+
+    // object_map = new mdi::Octomap{resolution, thresh_prob_min, thresh_prob_max};
+
+    // nh.advertiseService<octomap_msgs::GetOctomap::Request, octomap_msgs::GetOctomap::Response>("/mdi/object_map",
+    //    get_object_map);
+
+    ros::service::waitForService("/mdi/semantic_segmentation");
     while (ros::ok()) {
         // point cloud filter with model output
         auto current_image = raw_image;
@@ -76,9 +92,15 @@ auto main(int argc, char* argv[]) -> int {
 
         mdi_msgs::Model srv;
         srv.request.image = current_image;
+        // std::cout << srv.request.image << std::endl;
 
         // using pcl library to filter point cloud
-        if (client_model.call(srv)) {
+        ROS_INFO("Requesting classification mask");
+        if (client_model.call(srv) && srv.response.successful) {
+            ROS_INFO("Received");
+            for (auto& d : srv.response.data) {
+                std::cout << d << std::endl;
+            }
             // fill the filter with the segmented indices from the model output
             auto indices_filter = pcl::PointIndicesPtr{};
             for (int i = 0; i < srv.response.data.size(); i++) {
@@ -87,15 +109,23 @@ auto main(int argc, char* argv[]) -> int {
 
             // construct index filter
             auto filter = pcl::ExtractIndices<pcl::PointXYZ>();
-            filter.setInputCloud(unfiltered_point_cloud);
+            filter.setInputCloud(std::make_shared<pcl::PointCloud<pcl::PointXYZ>>(unfiltered_point_cloud));
             filter.setIndices(indices_filter);
             // perform filtration and output to filtered cloud
-            auto filtered_cloud = pcl::PointCloud<pcl::PointXYZ>::Ptr{};
-            filter.filter(*filtered_cloud);
+            auto filtered_cloud = pcl::PointCloud<pcl::PointXYZ>{};
+            filter.filter(filtered_cloud);
 
             // inserting the filtered point cloud
-            object_map->insert_points(filtered_cloud->points);
+            // object_map->insert_points(filtered_cloud->points);
+            auto pcl2 = pcl::PCLPointCloud2{};
+            pcl::toPCLPointCloud2(filtered_cloud, pcl2);
+
+            auto msg = sensor_msgs::PointCloud2{};
+            pcl::toROSMsg(filtered_cloud, msg);
+            pub_pointcloud.publish(msg);
         }
+        ros::spinOnce();
+        rate.sleep();
     }
 
     return 0;

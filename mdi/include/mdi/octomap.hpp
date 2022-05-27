@@ -7,6 +7,8 @@
 #include <octomap_msgs/conversions.h>
 #include <octomap_ros/conversions.h>
 
+// #include <pcl-1.12/pcl/impl/point_types.hpp>
+
 #include "common_headers.hpp"
 #include "mdi/common_types.hpp"
 #include "pcl/impl/point_types.hpp"
