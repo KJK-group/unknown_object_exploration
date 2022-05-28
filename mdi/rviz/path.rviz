@@ -8,7 +8,7 @@ Panels:
         - /OccupancyGrid1
         - /Odometry1/Shape1
       Splitter Ratio: 0.550000011920929
-    Tree Height: 925
+    Tree Height: 439
   - Class: rviz/Selection
     Name: Selection
   - Class: rviz/Tool Properties
