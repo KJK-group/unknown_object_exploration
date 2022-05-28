@@ -53,6 +53,8 @@ on-pane-create "bass source ${catkin_ws_dir}/devel/setup.bash"
 layout-2-2
 echo "creating layouts and sending commands please wait :-)"
 
+pane-cmd 0 "bass source ${catkin_ws_dir}/devel/setup.bash"
+
 pane-cmd 1 "cd ${px4_dir} && make px4_sitl_default none_iris"
 
 # argument handling

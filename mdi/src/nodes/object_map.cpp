@@ -11,6 +11,7 @@
 #include <sensor_msgs/PointCloud2.h>
 
 #include "mdi/octomap.hpp"
+#include "mdi/utils/segmentation.hpp"
 #include "mdi/utils/utils.hpp"
 #include "mdi_msgs/ControllerStateStamped.h"
 #include "mdi_msgs/Model.h"
@@ -97,15 +98,22 @@ auto main(int argc, char* argv[]) -> int {
         // using pcl library to filter point cloud
         ROS_INFO("Requesting classification mask");
         if (client_model.call(srv) && srv.response.successful) {
-            ROS_INFO("Received");
-            for (auto& d : srv.response.data) {
-                std::cout << d << std::endl;
-            }
+            ROS_INFO_STREAM("Received Point Cloud size: " << unfiltered_point_cloud.points.size());
+            ROS_INFO_STREAM("Received size: " << srv.response.data.size());
+            // for (auto& d : srv.response.data) {
+            //     std::cout << d << std::endl;
+            // }
             // fill the filter with the segmented indices from the model output
-            auto indices_filter = pcl::PointIndicesPtr{};
-            for (int i = 0; i < srv.response.data.size(); i++) {
-                indices_filter->indices.push_back(i);
+            auto indices_filter = std::make_shared<pcl::PointIndices>();
+            if (indices_filter.get() == nullptr) {
+                ROS_INFO_STREAM("NULLPOINTER");
             }
+            for (int i = 0; i < srv.response.data.size(); i++) {
+                if (srv.response.data[i] != mdi::utils::segmentation::BACKGROUND) {
+                    indices_filter->indices.push_back(i);
+                }
+            }
+            ROS_INFO_STREAM("Filter size: " << indices_filter->indices.size());
 
             // construct index filter
             auto filter = pcl::ExtractIndices<pcl::PointXYZ>();
@@ -114,6 +122,8 @@ auto main(int argc, char* argv[]) -> int {
             // perform filtration and output to filtered cloud
             auto filtered_cloud = pcl::PointCloud<pcl::PointXYZ>{};
             filter.filter(filtered_cloud);
+
+            ROS_INFO_STREAM("Filtered point cloud size: " << filtered_cloud.points.size());
 
             // inserting the filtered point cloud
             // object_map->insert_points(filtered_cloud->points);

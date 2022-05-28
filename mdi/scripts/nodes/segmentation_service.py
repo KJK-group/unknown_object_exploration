@@ -17,6 +17,8 @@ import rospy
 from mdi_msgs.srv import Model, ModelResponse, ModelRequest
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge
+from cv2 import cvtColor, COLOR_BGR2RGB
+import gc
 # from rospy.numpy_msg import numpy_msg
 
 from torch.utils.tensorboard import SummaryWriter
@@ -53,12 +55,12 @@ epoch = loaded_checkpoint["epoch"]
 criterion = nn.CrossEntropyLoss()
 
 
+img_counter = 0
 # Service Inference Callback
 # sensor_msgs/Image Message
 bridge = CvBridge()
 
 
-@torch.inference_mode()
 def semantic_segmentation_inference_CB(image_msg):  # Consider nograd
     resp = ModelResponse()
     resp.header.seq = image_msg.image.header.seq
@@ -72,39 +74,55 @@ def semantic_segmentation_inference_CB(image_msg):  # Consider nograd
         # print(image_msg.image.data)
         cv_image = bridge.imgmsg_to_cv2(
             image_msg.image, desired_encoding='passthrough')
+        cv_image = cvtColor(cv_image, COLOR_BGR2RGB)
         np.asarray(cv_image)
         print(cv_image.shape)
 
-        image = torch.tensor(cv_image, dtype=torch.float32)
+        image = torch.tensor(
+            cv_image, dtype=torch.float32, requires_grad=False)
         image = image.to(device=device)
-        image.resize_(1, 3, image_msg.image.height,
-                      image_msg.image.width)  # [3, H, W]
+        image = torch.permute(image, (2, 0, 1))
+        c, h, w = image.shape
+        image = torch.reshape(image, (1, c, h, w))
+        # image.resize_(1, 3, image_msg.image.height,
+        #               image_msg.image.width)  # [3, H, W]
         print(image.shape)
         print(image.device)
         # print(model.device)
 
         # Inference
-        output = model(image)['out']
+        with torch.inference_mode():
+            output = model(image)['out']
         # output.to("cpu")
         print('Image inference completed')
 
         pred = torch.argmax(output, dim=1)
-        fig, ax = plt.subplots(ncols=2, figsize=(24, 16))
-        ax[0].imshow(pred.to("cpu").detach().squeeze())
-        ax[1].imshow(cv_image)
-        plt.savefig("/home/jens/Desktop/test.png")
-        # Flatten into message and return
+        # fig, ax = plt.subplots(ncols=2, figsize=(24, 16))
+        # ax[0].imshow(cv_image)
+        # ax[1].imshow(pred.to("cpu").detach().squeeze())
+        # global img_counter
+        # plt.savefig(f"/home/jens/Desktop/test{img_counter}.png")
+        # img_counter += 1
+        # plt.clf()
+        # plt.close(fig)
 
+        # Flatten into message and return
         resp.height = image_msg.image.height
         resp.width = image_msg.image.width
         print("before flattenning")
-        resp.data = list(torch.flatten(output))
+        resp.data = torch.flatten(pred).type(
+            torch.uint8).cpu().numpy().tolist()
         print("after flattenning")
         resp.successful = True
 
-        del image
+        # del cv_image
+        # del image
+        # del output
+        # del pred
         print('Returning the classification mask')
 
+    # del image_msg
+    gc.collect()
     return resp
 
 
