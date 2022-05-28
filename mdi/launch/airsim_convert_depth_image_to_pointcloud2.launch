@@ -1,7 +1,7 @@
 <launch>
-	<arg name="drone" value="PX4"/>
-	<arg name="camera" value="rgbd_camera"/>
-	<arg name="camera_type" value="DepthPlanar"/>
+	<arg name="drone" default="PX4"/>
+	<arg name="camera" default="rgbd_camera"/>
+	<arg name="camera_type" default="DepthPlanar"/>
 	<!-- value="DepthPerspective" /> -->
 	<!-- value="DepthVis" /> -->
 
@@ -16,6 +16,5 @@
 		<remap from="/airsim_node/$(arg drone)/$(arg camera)/camera_info" to="/airsim_node/$(arg drone)/$(arg camera)/$(arg camera_type)/camera_info"/>
 		<remap from="image_rect" to="/airsim_node/$(arg drone)/$(arg camera)/$(arg camera_type)"/>
 		<remap from="points" to="/camera/depth/points"/>
-
 	</node>
 </launch>

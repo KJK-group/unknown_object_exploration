@@ -1,0 +1,11 @@
+# request
+sensor_msgs/Image image
+
+---
+# response
+std_msgs/Header header
+bool successful
+uint32 height
+uint32 width
+
+uint8[] data

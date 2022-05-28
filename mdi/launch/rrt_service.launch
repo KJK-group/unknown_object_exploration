@@ -8,6 +8,7 @@
 
 	<include file="$(dirname)/octomap_server.launch">
 		<arg name="frame_id" value="$(arg frame_id)"/>
+		<arg name="name" default="environment_voxel_map"/>
 	</include>
 	<node
 		pkg="$(arg package)"

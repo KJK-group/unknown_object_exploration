@@ -18,6 +18,7 @@
 #include "mdi/rrt/rrt.hpp"
 #include "mdi/rrt/rrt_builder.hpp"
 #include "mdi/utils/rviz.hpp"
+#include "mdi/utils/utils.hpp"
 #include "mdi_msgs/NBV.h"
 #include "mdi_msgs/RrtFindPath.h"
 #include "octomap/octomap_types.h"
@@ -35,7 +36,8 @@ using namespace mdi::types;
 
 // use ptr to forward declare cause otherwise we have to call their constructor,
 // which is not allowed before ros::init(...)
-std::unique_ptr<ros::ServiceClient> clear_octomap_client, clear_region_of_octomap_client, get_octomap_client;
+std::unique_ptr<ros::ServiceClient> clear_octomap_client, clear_region_of_octomap_client,
+    get_octomap_client;
 std::unique_ptr<ros::Publisher> waypoints_path_pub;
 using waypoint_cb = std::function<void(const vec3&, const vec3&)>;
 using raycast_cb = std::function<void(const vec3&, const vec3&, const float, bool)>;
@@ -65,7 +67,8 @@ auto call_clear_octomap() -> void {
 /**
  * @brief max and min defines a bbx. All voxels in the bounding box are set to "free"
  */
-auto call_clear_region_of_octomap(const octomap::point3d& max, const octomap::point3d& min) -> void {
+auto call_clear_region_of_octomap(const octomap::point3d& max, const octomap::point3d& min)
+    -> void {
     const auto convert = [](const octomap::point3d& pt) {
         auto geo_pt = geometry_msgs::Point{};
         geo_pt.x = pt.x();
@@ -81,7 +84,8 @@ auto call_clear_region_of_octomap(const octomap::point3d& max, const octomap::po
     clear_region_of_octomap_client->call(request, response);
 }
 
-auto waypoints_to_geometry_msgs_points(const mdi::rrt::RRT::Waypoints& wps) -> std::vector<geometry_msgs::Point> {
+auto waypoints_to_geometry_msgs_points(const mdi::rrt::RRT::Waypoints& wps)
+    -> std::vector<geometry_msgs::Point> {
     auto points = std::vector<geometry_msgs::Point>(wps.size());
     std::transform(wps.begin(), wps.end(), std::back_inserter(points), [](const auto& pt) {
         auto geo_pt = geometry_msgs::Point{};
@@ -94,7 +98,8 @@ auto waypoints_to_geometry_msgs_points(const mdi::rrt::RRT::Waypoints& wps) -> s
     return points;
 }
 
-auto rrt_find_path_handler(mdi_msgs::RrtFindPath::Request& request, mdi_msgs::RrtFindPath::Response& response) -> bool {
+auto rrt_find_path_handler(mdi_msgs::RrtFindPath::Request& request,
+                           mdi_msgs::RrtFindPath::Response& response) -> bool {
     const auto convert = [](const auto& pt) -> mdi::rrt::vec3 {
         return {static_cast<float>(pt.x), static_cast<float>(pt.y), static_cast<float>(pt.z)};
     };
@@ -131,7 +136,8 @@ auto rrt_find_path_handler(mdi_msgs::RrtFindPath::Request& request, mdi_msgs::Rr
         const auto path = opt.value();
         std::cout << "path.size() = " << path.size() << std::endl;
         response.waypoints = waypoints_to_geometry_msgs_points(path);
-        // std::transform(path.begin(), path.end(), std::back_inserter(response.waypoints), [](const auto& pt) {
+        // std::transform(path.begin(), path.end(), std::back_inserter(response.waypoints), [](const
+        // auto& pt) {
         //     auto geo_pt = geometry_msgs::Point{};
         //     geo_pt.x = pt.x();
         //     geo_pt.y = pt.y();
@@ -160,16 +166,17 @@ auto nbv_handler(mdi_msgs::NBV::Request& request, mdi_msgs::NBV::Response& respo
     const auto depth_range = DepthRange{request.fov.depth_range.min, request.fov.depth_range.max};
 
     // TODO: handle unessary goal in a better way
-    auto rrt = mdi::rrt::RRT::from_builder()
-                   .start_and_goal_position(convert(request.rrt_config.start),
-                                            vec3{500.0f, 500.0f, 500.0f})  // goal is irrelevant
-                   .max_iterations(request.rrt_config.max_iterations)
-                   .goal_bias(request.rrt_config.goal_bias)
-                   .probability_of_testing_full_path_from_new_node_to_goal(
-                       /* request.rrt_config.probability_of_testing_full_path_from_new_node_to_goal */ 0.0)
-                   .max_dist_goal_tolerance(/* request.rrt_config.goal_tolerance */ 0.0)
-                   .step_size(request.rrt_config.step_size)
-                   .build();
+    auto rrt =
+        mdi::rrt::RRT::from_builder()
+            .start_and_goal_position(convert(request.rrt_config.start),
+                                     vec3{500.0f, 500.0f, 500.0f})  // goal is irrelevant
+            .max_iterations(request.rrt_config.max_iterations)
+            .goal_bias(request.rrt_config.goal_bias)
+            .probability_of_testing_full_path_from_new_node_to_goal(
+                /* request.rrt_config.probability_of_testing_full_path_from_new_node_to_goal */ 0.0)
+            .max_dist_goal_tolerance(/* request.rrt_config.goal_tolerance */ 0.0)
+            .step_size(request.rrt_config.step_size)
+            .build();
 
     auto octomap_environment_ptr = call_get_environment_octomap();
 
@@ -194,10 +201,10 @@ auto nbv_handler(mdi_msgs::NBV::Request& request, mdi_msgs::NBV::Response& respo
         const auto pose = Pose{new_point, orientation};
         const auto fov = FoV{pose, horizontal, vertical, depth_range, target};
 
-        const double gain =
-            mdi::gain_of_fov(fov, *octomap_environment_ptr, request.nbv_config.weight_free,
-                             request.nbv_config.weight_unknown, request.nbv_config.weight_occupied,
-                             request.nbv_config.weight_distance_to_object, [](double x) { return x /* x * x */; });
+        const double gain = mdi::gain_of_fov(
+            fov, *octomap_environment_ptr, request.nbv_config.weight_free,
+            request.nbv_config.weight_unknown, request.nbv_config.weight_occupied,
+            request.nbv_config.weight_distance_to_object, [](double x) { return x /* x * x */; });
 
         if (gain > best_gain) {
             best_gain = gain;
@@ -250,7 +257,7 @@ auto main(int argc, char* argv[]) -> int {
 
     ros::init(argc, argv, name_of_node);
     auto nh = ros::NodeHandle();
-    auto rate = ros::Rate(10);
+    auto rate = ros::Rate(mdi::utils::DEFAULT_LOOP_RATE);
 
     waypoints_path_pub = std::make_unique<ros::Publisher>([&] {
         const auto service_name = "/visualization_marker"s;

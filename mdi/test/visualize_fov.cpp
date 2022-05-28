@@ -27,6 +27,7 @@
 #include "mdi/fov.hpp"
 #include "mdi/octomap.hpp"
 #include "mdi/utils/rviz.hpp"
+#include "mdi/utils/utils.hpp"
 #include "mdi/voxelstatus.hpp"
 #include "octomap/OcTree.h"
 #include "octomap/octomap_types.h"
@@ -42,14 +43,15 @@ using mdi::VoxelStatus;
 auto main(int argc, char* argv[]) -> int {
     ros::init(argc, argv, "visualize_raycast");
     auto nh = ros::NodeHandle();
-    auto publish_rate = ros::Rate(50);
+    auto publish_rate = ros::Rate(mdi::utils::DEFAULT_LOOP_RATE * 10);
+
+    ros::Duration(5).sleep();
 
     ros::Duration(1).sleep();
 
     auto pub_visualize_marker = [&nh] {
         const auto topic_name = "/visualization_marker";
-        const auto queue_size = 10;
-        return nh.advertise<visualization_msgs::Marker>(topic_name, queue_size);
+        return nh.advertise<visualization_msgs::Marker>(topic_name, mdi::utils::DEFAULT_QUEUE_SIZE);
     }();
 
     auto publish_marker = [&pub_visualize_marker, &publish_rate](const auto& msg) {
@@ -60,8 +62,8 @@ auto main(int argc, char* argv[]) -> int {
 
     auto pub_visualize_marker_array = [&nh] {
         const auto topic_name = "/visualization_marker_array";
-        const auto queue_size = 10;
-        return nh.advertise<visualization_msgs::MarkerArray>(topic_name, queue_size);
+        return nh.advertise<visualization_msgs::MarkerArray>(topic_name,
+                                                             mdi::utils::DEFAULT_QUEUE_SIZE);
     }();
 
     auto publish_marker_array = [&pub_visualize_marker_array, &publish_rate](const auto& msg) {
@@ -100,9 +102,10 @@ auto main(int argc, char* argv[]) -> int {
 
         {
             auto msg = arrow_msg_gen({pos, pos + fov.direction() * 5});
-            msg.color.r = 0;
-            msg.color.b = 1;
-
+            msg.color.a = 1;
+            msg.color.r = 1;
+            msg.color.g = 0.2;
+            msg.color.b = 0.2;
             publish_marker(msg);
         }
 
@@ -123,8 +126,8 @@ auto main(int argc, char* argv[]) -> int {
             // border
             {
                 const auto fmt_vec3 = [&](const vec3& v) -> std::string {
-                    return "[" + std::to_string(v.x()) + ", " + std::to_string(v.y()) + ", " + std::to_string(v.z()) +
-                           "]";
+                    return "[" + std::to_string(v.x()) + ", " + std::to_string(v.y()) + ", " +
+                           std::to_string(v.z()) + "]";
                 };
                 const vec3 near = fov.pose().position + from * fov.depth_range().min;
                 const vec3 far = fov.pose().position + from * fov.depth_range().max;
@@ -181,7 +184,8 @@ auto main(int argc, char* argv[]) -> int {
         visualize_bbx(bbx);
 
         for (const auto n : fov.plane_normals()) {
-            auto msg = arrow_msg_gen({fov.pose().position, fov.pose().position + n * fov.depth_range().max / 2});
+            auto msg = arrow_msg_gen(
+                {fov.pose().position, fov.pose().position + n * fov.depth_range().max / 2});
             publish_marker(msg);
         }
 

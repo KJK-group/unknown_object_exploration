@@ -5,16 +5,11 @@
 
 #include "mdi/mission.hpp"
 
-mdi_msgs::PointNormStamped error_position;
-auto error_cb(const mdi_msgs::PointNormStamped::ConstPtr& msg) { error_position = *msg; }
-
 auto main(int argc, char** argv) -> int {
     // ros
     ros::init(argc, argv, "mdi_mission_state");
     auto nh = ros::NodeHandle();
     ros::Rate rate(mdi::utils::DEFAULT_LOOP_RATE);
-
-    auto sub_error = nh.subscribe("/mdi/error", mdi::utils::DEFAULT_QUEUE_SIZE, error_cb);
 
     // Points of interest
     // const auto interest_points = std::vector<Eigen::Vector3f>{Eigen::Vector3f(10, 10, 7),  Eigen::Vector3f(18, 9,

@@ -60,3 +60,4 @@ CATKIN_IGNORE
 compile_commands.json
 
 measurements/
+mdi/data/
