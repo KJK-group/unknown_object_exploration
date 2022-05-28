@@ -2,12 +2,17 @@
 
 #include <array>
 
+// #include "Eigen/src/Geometry/Quaternion.h"
 #include "mdi/common_types.hpp"
 
 namespace mdi::types {
 
-auto above_plane3d(const vec3& pt, const vec3& normal, double d) -> bool { return pt.dot(normal) + d > 0.0; }
-auto below_plane3d(const vec3& pt, const vec3& normal, double d) -> bool { return pt.dot(normal) + d < 0.0; }
+auto above_plane3d(const vec3& pt, const vec3& normal, double d) -> bool {
+    return pt.dot(normal) + d > 0.0;
+}
+auto below_plane3d(const vec3& pt, const vec3& normal, double d) -> bool {
+    return pt.dot(normal) + d < 0.0;
+}
 auto in_plane3d(const vec3& pt, const vec3& normal, double d, double tolerance = 1e-6) -> bool {
     return -tolerance <= pt.dot(normal) + d <= tolerance;
 }
@@ -19,7 +24,9 @@ struct Plane3D {
 
     auto above(const vec3& pt) const -> bool { return above_plane3d(pt, normal, d); };
     auto below(const vec3& pt) const -> bool { return below_plane3d(pt, normal, d); };
-    auto in(const vec3& pt, double tolerance = 1e-6) const -> bool { return in_plane3d(pt, normal, d, tolerance); };
+    auto in(const vec3& pt, double tolerance = 1e-6) const -> bool {
+        return in_plane3d(pt, normal, d, tolerance);
+    };
 };
 
 class FoV {
@@ -42,13 +49,26 @@ class FoV {
 
    public:
     FoV(Pose p, const FoVAngle& h, const FoVAngle& v, const DepthRange& d, Position target)
-        : pose_{std::move(p)}, horizontal_{h}, vertical_{v}, depth_range_{d}, target_{std::move(target)} {
+        : pose_{std::move(p)},
+          horizontal_{h},
+          vertical_{v},
+          depth_range_{d},
+          target_{std::move(target)} {
         // pose_.position.normalize();
         const float h2 = horizontal_.angle() / 2.0f;
         const float v2 = vertical_.angle() / 2.0f;
 
         auto [i_basis, j_basis, k_basis] = [&] {
-            vec3 dir = (target - pose_.position).normalized();
+            // TODO: calculate in a different way
+            // auto quat = Eigen::Quaterniond{pose_.orientation.w, pose_.orientation.x,
+            //    pose_.orientation.y, pose_.orientation.z};
+
+            vec3 dir = p.orientation * vec3{1, 0, 0};
+
+            // mat3x3 pitch_rot;
+            // pitch_rot = quat * vec3{r}
+
+            // vec3 dir = (target - pose_.position).normalized();
             direction_towards_target_ = dir;
             // 3d plane ax + by + cz + d = 0
             double a = dir.x();
@@ -77,8 +97,9 @@ class FoV {
                 }
             }();
             // 2. project to global xy plane
-            vec3 foo = vec3{static_cast<float>(i), static_cast<float>(j), static_cast<float>(k)}.normalized();
             // 3. point.normalize();
+            vec3 foo = vec3{static_cast<float>(i), static_cast<float>(j), static_cast<float>(k)}
+                           .normalized();
 
             // 4. find 3rd basis pos.cross(point)
             vec3 bar = dir.cross(foo);
@@ -111,11 +132,6 @@ class FoV {
             lower_left_ = m * direction_towards_target_;
         }
 
-        // planes_ = std::array<Plane3D, 4>{Plane3D{upper_right_.cross(lower_right_), pose().position},
-        //                                  Plane3D{lower_right_.cross(lower_left_), pose().position},
-        //                                  Plane3D{lower_left_.cross(upper_left_), pose().position},
-        //                                  Plane3D{upper_left_.cross(upper_right_), pose().position}};
-
         planes_.emplace_back(upper_right_.cross(lower_right_), pose().position);
         planes_.emplace_back(lower_right_.cross(lower_left_), pose().position);
         planes_.emplace_back(lower_left_.cross(upper_left_), pose().position);
@@ -138,7 +154,8 @@ class FoV {
     [[nodiscard]] auto transform(const vec3& v) const -> vec3 { return T * v + pose().position; }
 
     /**
-     * @brief the order is clockwise starting upper right in the direction facing away from the camera.
+     * @brief the order is clockwise starting upper right in the direction facing away from the
+     * camera.
      *
      * @return std::array<vec3, 4>
      */
@@ -147,8 +164,8 @@ class FoV {
     }
 
     /**
-     * @brief the order is clockwise starting upper right in the direction facing away from the camera.
-     * represented in the same frame as the Pose.
+     * @brief the order is clockwise starting upper right in the direction facing away from the
+     * camera. represented in the same frame as the Pose.
      * @return std::array<vec3, 4>
      */
     [[nodiscard]] auto far_plane_vertices() const -> std::array<vec3, 4> {
@@ -159,8 +176,8 @@ class FoV {
     }
 
     /**
-     * @brief the order is clockwise starting upper right in the direction facing away from the camera.
-     * represented in the same frame as the Pose.
+     * @brief the order is clockwise starting upper right in the direction facing away from the
+     * camera. represented in the same frame as the Pose.
      * @return std::array<vec3, 4>
      */
     [[nodiscard]] auto near_plane_vertices() const -> std::array<vec3, 4> {
@@ -195,8 +212,10 @@ class FoV {
         const auto center = vec2{0, 0};
         // near plane
         const auto coordinate_gen = [&](int x, int y) -> std::array<vec2, 2> {
-            return {/*center + */ offset + vec2{-static_cast<float>(x) * delta_d, static_cast<float>(y) * delta_d},
-                    /*center -*/ offset - vec2{-static_cast<float>(x) * delta_d, static_cast<float>(y) * delta_d}};
+            return {/*center + */ offset +
+                        vec2{-static_cast<float>(x) * delta_d, static_cast<float>(y) * delta_d},
+                    /*center -*/ offset -
+                        vec2{-static_cast<float>(x) * delta_d, static_cast<float>(y) * delta_d}};
         };
 
         for (float x = depth_range_.min; x <= depth_range_.max; x += delta_d) {
@@ -212,14 +231,15 @@ class FoV {
     }
 
     [[nodiscard]] auto plane_normals() const -> std::array<vec3, 4> {
-        return {upper_right_.cross(lower_right_), lower_right_.cross(lower_left_), lower_left_.cross(upper_left_),
-                upper_left_.cross(upper_right_)};
+        return {upper_right_.cross(lower_right_), lower_right_.cross(lower_left_),
+                lower_left_.cross(upper_left_), upper_left_.cross(upper_right_)};
     }
 
     auto inside_fov(const vec3& pt) const -> bool {
         const double dist_from_fov_to_pt = (pt - pose_.position).norm();
         return depth_range_.min <= dist_from_fov_to_pt && dist_from_fov_to_pt <= depth_range_.max &&
-               std::all_of(planes_.begin(), planes_.end(), [&](const Plane3D& plane) { return plane.below(pt); });
+               std::all_of(planes_.begin(), planes_.end(),
+                           [&](const Plane3D& plane) { return plane.below(pt); });
     }
 
     // auto normal_plane() const -> mat3x3 {}
@@ -227,16 +247,18 @@ class FoV {
     // auto far_plane() const -> Pose {  }
 };
 
-auto yaml(FoV& fov, int indentation = 0, int tabsize = 2) -> std::string {
+auto yaml(const FoV& fov, int indentation = 0, int tabsize = 2) -> std::string {
     const auto tab = std::string(tabsize, ' ');
 
     const auto whitespace = std::string(indentation, ' ');
     const auto line = [&](const std::string& s) { return whitespace + s + "\n"; };
 
     return line("FoV:") + yaml(fov.pose(), indentation + tabsize) + line(tab + "horizontal:") +
-           yaml(fov.horizontal(), indentation + tabsize + tabsize, tabsize) + line(tab + "vertical:") +
+           yaml(fov.horizontal(), indentation + tabsize + tabsize, tabsize) +
+           line(tab + "vertical:") +
            yaml(fov.vertical(), indentation + tabsize + tabsize, tabsize) +
-           yaml(fov.depth_range(), indentation + tabsize, tabsize);
+           yaml(fov.depth_range(), indentation + tabsize, tabsize) + line("target:") +
+           yaml(fov.target(), indentation + tabsize, tabsize);
 }
 
 }  // namespace mdi::types

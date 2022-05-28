@@ -1,6 +1,5 @@
 #include "mdi/rrt/rrt.hpp"
 
-#include <fmt/core.h>
 #include <ros/console.h>
 #include <unistd.h>
 
@@ -22,6 +21,7 @@
 #include <stack>
 #include <tuple>
 #include <utility>
+#include <variant>
 #include <vector>
 
 #include "mdi/rrt/rrt_builder.hpp"
@@ -106,7 +106,8 @@ RRT::RRT(const vec3& start_position, const vec3& goal_position, float step_size,
     max_dist_goal_tolerance_ = max_dist_goal_tolerance;
 
     if (! (0 <= goal_bias && goal_bias <= 1.f)) {
-        auto err_msg = "goal_bias must be in the range [0., 1.] but was " + std::to_string(goal_bias);
+        auto err_msg =
+            "goal_bias must be in the range [0., 1.] but was " + std::to_string(goal_bias);
         throw std::invalid_argument(err_msg);
     }
     goal_bias_ = goal_bias;
@@ -120,11 +121,13 @@ RRT::RRT(const vec3& start_position, const vec3& goal_position, float step_size,
         throw std::invalid_argument(err_msg);
     }
 
-    probability_of_testing_full_path_from_new_node_to_goal_ = probability_of_testing_full_path_from_new_node_to_goal;
+    probability_of_testing_full_path_from_new_node_to_goal_ =
+        probability_of_testing_full_path_from_new_node_to_goal;
 }
 
 auto RRT::sample_random_point_() -> vec3 {
-    auto random_pt = rng_.sample_random_point_inside_unit_sphere(direction_from_start_to_goal_, goal_bias_);
+    auto random_pt =
+        rng_.sample_random_point_inside_unit_sphere(direction_from_start_to_goal_, goal_bias_);
     return sampling_radius_ * random_pt + start_position_;
 }
 
@@ -145,7 +148,8 @@ auto RRT::find_nearest_neighbor_(const vec3& pt) -> RRT::node_t* {
                 if (const auto opt = kdtree->nearest(pt)) {
                     const auto [_, shortest_distance, index] = opt.value();
                     // const auto distance = kdtree->distance();
-                    nearest_neighbor_candidates.push_back(nearest_neighbor_candidate_t{shortest_distance, index});
+                    nearest_neighbor_candidates.push_back(
+                        nearest_neighbor_candidate_t{shortest_distance, index});
                 }
             }
         }
@@ -157,8 +161,8 @@ auto RRT::find_nearest_neighbor_(const vec3& pt) -> RRT::node_t* {
         std::size_t index{0};
         auto shortest_distance = std::numeric_limits<double>::max();
         for (std::size_t i = linear_search_start_index_; i < nodes_.size(); ++i) {
-            // TODO: use squared distance instead of sqrt distance. as the size is not of interest, but only relative
-            // ordering of distances between points.
+            // TODO: use squared distance instead of sqrt distance. as the size is not of interest,
+            // but only relative ordering of distances between points.
             const auto distance = (nodes_[i].position_ - pt).norm();
             if (distance < shortest_distance) {
                 shortest_distance = distance;
@@ -170,8 +174,11 @@ auto RRT::find_nearest_neighbor_(const vec3& pt) -> RRT::node_t* {
 
     // 3. compare all candidates and select the nearest one.
     const auto index = [&] {
-        const auto smaller_distance = [](const auto& c1, const auto& c2) { return c1.distance < c2.distance; };
-        std::sort(nearest_neighbor_candidates.begin(), nearest_neighbor_candidates.end(), smaller_distance);
+        const auto smaller_distance = [](const auto& c1, const auto& c2) {
+            return c1.distance < c2.distance;
+        };
+        std::sort(nearest_neighbor_candidates.begin(), nearest_neighbor_candidates.end(),
+                  smaller_distance);
 
         return nearest_neighbor_candidates.front().index;
     }();
@@ -179,8 +186,8 @@ auto RRT::find_nearest_neighbor_(const vec3& pt) -> RRT::node_t* {
     return &nodes_[index];
 }
 
-auto RRT::bft_(const std::function<void(const vec3& parent_pt, const vec3& child_pt)>& f, bool skip_root) const
-    -> void {
+auto RRT::bft_(const std::function<void(const vec3& parent_pt, const vec3& child_pt)>& f,
+               bool skip_root) const -> void {
     const auto root = &nodes_[0];
     assert(root != nullptr);
     // handle special case when node is the root.
@@ -285,7 +292,8 @@ auto RRT::insert_node_(const vec3& pos, node_t* parent) -> node_t& {
 
         const auto number_of_nodes_not_in_kdtrees = n - n_kdtree_nodes_;
         assert(number_of_nodes_not_in_kdtrees >= 0);
-        const auto update_kdtrees = number_of_nodes_not_in_kdtrees == max_number_of_nodes_to_do_linear_search_on_;
+        const auto update_kdtrees =
+            number_of_nodes_not_in_kdtrees == max_number_of_nodes_to_do_linear_search_on_;
 
         if (update_kdtrees) {
             ROS_INFO_STREAM("update kdtrees");
@@ -333,7 +341,8 @@ auto RRT::insert_node_(const vec3& pos, node_t* parent) -> node_t& {
             // compute diff
             const auto bucket_sizes_diff = [&]() {
                 auto& bucket_sizes_updated = bucket_sizes;
-                const auto a_new_bucket_has_been_added = bucket_sizes_before.size() < bucket_sizes_updated.size();
+                const auto a_new_bucket_has_been_added =
+                    bucket_sizes_before.size() < bucket_sizes_updated.size();
                 // append 0, to make difference easier to calculate.
                 if (a_new_bucket_has_been_added) {
                     ROS_INFO_STREAM("a new bucket has been added");
@@ -369,7 +378,9 @@ auto RRT::insert_node_(const vec3& pos, node_t* parent) -> node_t& {
                 if (diff < 0) {
                     // deallocate trees
                     bucket.delete_trees();
-                    ROS_INFO("delete kdtrees in bucket %d and merge them into a kdtree in bucket %d", i, i + 1);
+                    ROS_INFO(
+                        "delete kdtrees in bucket %d and merge them into a kdtree in bucket %d", i,
+                        i + 1);
                 } else if (diff > 0) {
                     // create tree
                     ROS_INFO("create kdtree in bucket %d", i);
@@ -394,9 +405,10 @@ auto RRT::insert_node_(const vec3& pos, node_t* parent) -> node_t& {
                         assert(0 <= start && start < nodes_.size());
                         // assert(0 <= end && end < nodes_.size());
                         auto it = std::next(nodes_.begin(), start);
-                        // the lambda needs to bo mutable because we want a different output for each invocation.
-                        // Otherwise the same output will be generated.
-                        return [it, index = start]() mutable -> std::pair<kdtree3::Point, std::size_t> {
+                        // the lambda needs to bo mutable because we want a different output for
+                        // each invocation. Otherwise the same output will be generated.
+                        return [it,
+                                index = start]() mutable -> std::pair<kdtree3::Point, std::size_t> {
                             // get point and advance iterator
                             const auto pos = (*it++).position_;
                             return {pos, index++};
@@ -409,9 +421,9 @@ auto RRT::insert_node_(const vec3& pos, node_t* parent) -> node_t& {
                     // its correct to only recompute it here because the number of kdtree nodes
                     // only changes when a new kdtree is created,
                     // and only one kdtree at max can be created when this method is called.
-                    n_kdtree_nodes_ =
-                        std::transform_reduce(kdtree3s_.begin(), kdtree3s_.end(), 0, std::plus<>(),
-                                              [](const auto& bucket) { return bucket.number_of_nodes_in_bucket(); });
+                    n_kdtree_nodes_ = std::transform_reduce(
+                        kdtree3s_.begin(), kdtree3s_.end(), 0, std::plus<>(),
+                        [](const auto& bucket) { return bucket.number_of_nodes_in_bucket(); });
                     // update the index from where the linear search should start. we
                     // do not do linear search among the nodes with a kdtree index, so it
                     // should start at the end of the kdtree indexes.
@@ -456,9 +468,8 @@ auto RRT::grow_() -> bool {
         return collision_free_(u, v);
     };
 
-    const auto edge_between_u_and_v_intersects_a_occupied_voxel = [this](const auto& u, const auto& v) {
-        return ! collision_free_(u, v);
-    };
+    const auto edge_between_u_and_v_intersects_a_occupied_voxel =
+        [this](const auto& u, const auto& v) { return ! collision_free_(u, v); };
 
     if (edge_between_u_and_v_intersects_a_occupied_voxel((*v_near).position_, x_new)) {
         return false;
@@ -474,7 +485,8 @@ auto RRT::grow_() -> bool {
 
     call_cbs_for_event_on_new_node_created_(v_near->position_, inserted_node.position_);
 
-    const auto reached_goal = (inserted_node.position_ - goal_position_).norm() <= max_dist_goal_tolerance_;
+    const auto reached_goal =
+        (inserted_node.position_ - goal_position_).norm() <= max_dist_goal_tolerance_;
 
     if (reached_goal) {
         // try direct edge when within tolerance to goal_position_
@@ -546,7 +558,8 @@ auto RRT::optimize_waypoints_() -> void {
     };
 
     const auto fmt_vec3 = [](const vec3& v) {
-        return "[" + std::to_string(v.x()) + ", " + std::to_string(v.y()) + ", " + std::to_string(v.z()) + "]";
+        return "[" + std::to_string(v.x()) + ", " + std::to_string(v.y()) + ", " +
+               std::to_string(v.z()) + "]";
     };
     // distances does not change so we compute them once
 
@@ -710,8 +723,8 @@ auto RRT::backtrack_and_set_waypoints_starting_at_(node_t* start_node) -> bool {
 }
 
 // TODO: change parameters
-auto RRT::collision_free_(const vec3& from, const vec3& to, float x, float y, float z, float padding,
-                          float end_of_raycast_padding) const -> bool {
+auto RRT::collision_free_(const vec3& from, const vec3& to, float x, float y, float z,
+                          float padding, float end_of_raycast_padding) const -> bool {
     if (octomap_ == nullptr) {
         std::cerr << "[INFO] no octomap available, assuming path is collision free" << '\n';
         return true;
@@ -730,8 +743,8 @@ auto RRT::collision_free_(const vec3& from, const vec3& to, float x, float y, fl
     const vec3 j_basis = Rx90 * i_basis;
     // use cross product to find third orthogonal basis vector.
     const vec3 k_basis = i_basis.cross(j_basis).normalized();
-    // T forms a orthonormal basis where i_basis is the direction of from -> to, and j_basis and k_basis
-    // span the plane to which i_basis is a normal vector.
+    // T forms a orthonormal basis where i_basis is the direction of from -> to, and j_basis and
+    // k_basis span the plane to which i_basis is a normal vector.
     mat3x3 T;
     T.col(0) = i_basis;
     T.col(1) = j_basis;
@@ -740,20 +753,40 @@ auto RRT::collision_free_(const vec3& from, const vec3& to, float x, float y, fl
     // TODO: use parameter to determine the offset after the "to" point to cast raycast at.
     const float raycast_length = direction.norm() + 2 * x;
 
-    const auto raycast = [&](const vec3& v) {
+    const auto occupied_or_unknown = [&](const vec3& v) {
         static constexpr auto convert_to_pt = [](const auto& v) -> mdi::Octomap::point_type {
             return {v.x(), v.y(), v.z()};
         };
 
         const vec3 origin = T * v + from;
-        // const vec3 target = origin + static_cast<vec3>((direction.normalized() * raycast_length));
-        const auto opt =
-            octomap_->raycast_in_direction(convert_to_pt(origin), convert_to_pt(direction), raycast_length);
+        // const vec3 target = origin + static_cast<vec3>((direction.normalized() *
+        // raycast_length));
+        const auto voxel = octomap_->raycast_in_direction(
+            convert_to_pt(origin), convert_to_pt(direction), raycast_length, false);
 
-        // std::cout << "origin: " << origin << " direction: " << direction << "opt.has_value " << opt.has_value()
+        // std::cout << "origin: " << origin << " direction: " << direction << "voxel.has_value " <<
+        // voxel.has_value()
         //   << std::endl;
-        // if opt is the some variant, then it means that a occupied voxel was hit.
-        const bool did_hit = opt.has_value();
+        // if voxel is the some variant, then it means that a occupied voxel was hit.
+        // const bool did_hit = voxel.has_value();
+        // auto match = Overload{
+        //     [](Free _) { return false; },
+        //     [](Unknown _) { return true; },
+        //     [](Occupied _) { return true; },
+        // };
+
+        // const bool did_hit = std::visit(match, voxel);
+        const bool did_hit = std::visit(Overload{
+                                            [](Free _) { return false; },
+                                            [](Unknown _) { return true; },
+                                            [](Occupied _) { return true; },
+                                        },
+                                        voxel);
+
+        // const bool did_hit = match({[](Free _) { return false; }, [](Unknown _) { return true; },
+        //                             [](Occupied _) { return true; }},
+        //                            voxel);
+
         call_cbs_for_event_on_raycast_(origin, direction, raycast_length, did_hit);
         return did_hit;
     };
@@ -775,18 +808,19 @@ auto RRT::collision_free_(const vec3& from, const vec3& to, float x, float y, fl
     // | /      | /      | /
     // |/       |/       |/
     // 7--------2--------8
-    return ! (raycast(vec3{0, 0, 0})                 // 0, center
-              || raycast(vec3{0, y / 2, 0})          // 3, left
-              || raycast(vec3{0, -y / 2, 0})         // 4, right
-              || raycast(vec3{0, 0, z / 2})          // 1, up
-              || raycast(vec3{0, 0, -z / 2})         // 2, down
-              || raycast(vec3{0, -y / 2, z / 2})     // 5, up left
-              || raycast(vec3{0, y / 2, z / 2})      // 6, up right
-              || raycast(vec3{0, y / 2, -z / 2})     // 7, down left
-              || raycast(vec3{0, -y / 2, -z / 2}));  // 8, down right
+    return ! (occupied_or_unknown(vec3{0, 0, 0})                 // 0, center
+              || occupied_or_unknown(vec3{0, y / 2, 0})          // 3, left
+              || occupied_or_unknown(vec3{0, -y / 2, 0})         // 4, right
+              || occupied_or_unknown(vec3{0, 0, z / 2})          // 1, up
+              || occupied_or_unknown(vec3{0, 0, -z / 2})         // 2, down
+              || occupied_or_unknown(vec3{0, -y / 2, z / 2})     // 5, up left
+              || occupied_or_unknown(vec3{0, y / 2, z / 2})      // 6, up right
+              || occupied_or_unknown(vec3{0, y / 2, -z / 2})     // 7, down left
+              || occupied_or_unknown(vec3{0, -y / 2, -z / 2}));  // 8, down right
 }
 
-auto RRT::call_cbs_for_event_on_new_node_created_(const vec3& parent_pt, const vec3& new_pt) const -> void {
+auto RRT::call_cbs_for_event_on_new_node_created_(const vec3& parent_pt, const vec3& new_pt) const
+    -> void {
     if (on_new_node_created_status_) {
         std::for_each(on_new_node_created_cb_list.begin(), on_new_node_created_cb_list.end(),
                       [&](const auto& cb) { cb(parent_pt, new_pt); });
@@ -800,36 +834,41 @@ auto RRT::call_cbs_for_event_on_goal_reached_(const vec3& pt) const -> void {
     }
 }
 
-auto RRT::call_cbs_for_event_on_trying_full_path_(const vec3& new_node, const vec3& goal) const -> void {
+auto RRT::call_cbs_for_event_on_trying_full_path_(const vec3& new_node, const vec3& goal) const
+    -> void {
     if (on_trying_full_path_status_) {
         std::for_each(on_trying_full_path_cb_list.begin(), on_trying_full_path_cb_list.end(),
                       [&](const auto& cb) { cb(new_node, goal); });
     }
 }
 
-auto RRT::call_cbs_for_event_after_optimizing_waypoints_(const vec3& from, const vec3& to) const -> void {
+auto RRT::call_cbs_for_event_after_optimizing_waypoints_(const vec3& from, const vec3& to) const
+    -> void {
     if (after_optimizing_waypoints_status_) {
-        std::for_each(after_optimizing_waypoints_cb_list.begin(), after_optimizing_waypoints_cb_list.end(),
+        std::for_each(after_optimizing_waypoints_cb_list.begin(),
+                      after_optimizing_waypoints_cb_list.end(),
                       [&](const auto& cb) { cb(from, to); });
     }
 }
 
-auto RRT::call_cbs_for_event_before_optimizing_waypoints_(const vec3& from, const vec3& to) const -> void {
+auto RRT::call_cbs_for_event_before_optimizing_waypoints_(const vec3& from, const vec3& to) const
+    -> void {
     if (before_optimizing_waypoints_status_) {
-        std::for_each(before_optimizing_waypoints_cb_list.begin(), before_optimizing_waypoints_cb_list.end(),
+        std::for_each(before_optimizing_waypoints_cb_list.begin(),
+                      before_optimizing_waypoints_cb_list.end(),
                       [&](const auto& cb) { cb(from, to); });
     }
 }
 
 auto RRT::call_cbs_for_event_on_clearing_nodes_in_tree_() const -> void {
     if (on_clearing_nodes_in_tree_status_) {
-        std::for_each(on_clearing_nodes_in_tree_cb_list.begin(), on_clearing_nodes_in_tree_cb_list.end(),
-                      [&](const auto& cb) { cb(); });
+        std::for_each(on_clearing_nodes_in_tree_cb_list.begin(),
+                      on_clearing_nodes_in_tree_cb_list.end(), [&](const auto& cb) { cb(); });
     }
 }
 
-auto RRT::call_cbs_for_event_on_raycast_(const vec3& origin, const vec3& direction, const float length,
-                                         bool did_hit) const -> void {
+auto RRT::call_cbs_for_event_on_raycast_(const vec3& origin, const vec3& direction,
+                                         const float length, bool did_hit) const -> void {
     if (on_raycast_status_) {
         std::for_each(on_raycast_cb_list.begin(), on_raycast_cb_list.end(),
                       [&](const auto& cb) { cb(origin, direction, length, did_hit); });
@@ -839,7 +878,9 @@ auto RRT::call_cbs_for_event_on_raycast_(const vec3& origin, const vec3& directi
 auto RRT::from_builder() -> RRTBuilder { return {}; }
 
 auto RRT::from_rosparam(std::string_view prefix) -> RRT {
-    const auto prepend_prefix = [&](std::string_view key) { return fmt::format("{}/{}", prefix, key); };
+    const auto prepend_prefix = [&](std::string_view key) {
+        return std::string(prefix) + "/" + std::string(key);
+    };
 
     const auto get_int = [&](std::string_view key) {
         auto default_value = int{};
@@ -847,7 +888,8 @@ auto RRT::from_rosparam(std::string_view prefix) -> RRT {
             return default_value;
         }
 
-        const auto error_msg = fmt::format("key {} does not exist in the parameter server.", key);
+        const auto error_msg =
+            "key " + std::string(key) + " does not exist in the parameter server.";
         throw std::invalid_argument(error_msg);
     };
 
@@ -858,14 +900,14 @@ auto RRT::from_rosparam(std::string_view prefix) -> RRT {
             return default_value;
         }
 
-        const auto error_msg = fmt::format("key {} does not exist in the parameter server.", key);
+        const auto error_msg =
+            "key " + std::string(key) + " does not exist in the parameter server.";
         throw std::invalid_argument(error_msg);
     };
 
     const auto get_vec3 = [&](std::string_view key) {
         auto default_value = std::vector<float>{};
-        std::cerr << "[DEBUG] " << __FILE__ << ":" << __LINE__ << ": "
-                  << " key " << prepend_prefix(key) << '\n';
+
         if (ros::param::get(prepend_prefix(key), default_value)) {
             assert(default_value.size() == 3);
             const auto x = default_value[0];
@@ -874,7 +916,8 @@ auto RRT::from_rosparam(std::string_view prefix) -> RRT {
             return vec3{x, y, z};
         }
 
-        const auto error_msg = fmt::format("key {} does not exist in the parameter server.", key);
+        const auto error_msg =
+            "key " + std::string(key) + " does not exist in the parameter server.";
         throw std::invalid_argument(error_msg);
     };
 
@@ -895,16 +938,18 @@ RRT::~RRT() {
             const auto file_exists = std::filesystem::is_regular_file(file_path_csv_);
             if (file_exists) {
                 std::cerr << "[INFO] "
-                          << "the perf output file " << file_path_csv_ << " already exists" << std::endl;
+                          << "the perf output file " << file_path_csv_ << " already exists"
+                          << std::endl;
 
                 const auto unix_timestamp = [] {
                     using namespace std::chrono;
                     const auto now = high_resolution_clock::now();
-                    return static_cast<std::uint32_t>(duration_cast<seconds>(now.time_since_epoch()).count());
+                    return static_cast<std::uint32_t>(
+                        duration_cast<seconds>(now.time_since_epoch()).count());
                 }();
-                const auto fmt_str = file_path_csv_.stem().string() + "-{}" + ".csv";
-
-                return std::filesystem::path(fmt::format(fmt_str, unix_timestamp));
+                const auto fmt_str =
+                    file_path_csv_.stem().string() + "-" + std::to_string(unix_timestamp) + ".csv";
+                return std::filesystem::path(fmt_str);
             }
 
             return file_path_csv_;
@@ -916,11 +961,14 @@ RRT::~RRT() {
         auto file = std::ofstream(output_file);
         if (file.is_open()) {
             file << "t,nodes\n";  // write csv header
-            const auto nanoseconds_to_seconds = [](double nanoseconds) { return nanoseconds / 1e9; };
+            const auto nanoseconds_to_seconds = [](double nanoseconds) {
+                return nanoseconds / 1e9;
+            };
             // write rows
             for (std::size_t i = 0; i < timimg_measurements_.size(); ++i) {
                 const auto& measurement = timimg_measurements_[i];
-                file << i << "," << nanoseconds_to_seconds(static_cast<double>(measurement.count())) << '\n';
+                file << i << "," << nanoseconds_to_seconds(static_cast<double>(measurement.count()))
+                     << '\n';
             }
             file.close();
         }

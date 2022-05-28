@@ -1,6 +1,5 @@
 #pragma once
 
-#include <fmt/core.h>
 #include <ros/ros.h>
 
 #include <exception>
@@ -19,7 +18,7 @@ auto get(std::string_view key) -> T {
         return default_value;
     }
 
-    const auto error_msg = fmt::format("key {} does not exist in the parameter server.", key);
+    const auto error_msg = "key " + std::string(key) + " does not exist in the parameter server.";
     throw std::invalid_argument(error_msg);
 }
 

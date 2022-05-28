@@ -193,7 +193,7 @@ auto main(int argc, char* argv[]) -> int {
             // const auto min = bbx.min();
             // const auto max = bbx.max();
             auto cube_msg_gen = mdi::utils::rviz::cube_msg_gen{resolution};
-            cube_msg_gen.color = {1, 0, 1, 0.4};
+            cube_msg_gen.color = {0, 0, 0, 0.4};
 
             const auto origin = [&] {
                 const auto pos = fov.pose().position;
@@ -201,8 +201,15 @@ auto main(int argc, char* argv[]) -> int {
             }();
 
             const auto visible = [&](const vec3& v) {
-                auto opt = ocmap.raycast(origin, octomap::point3d{v.x(), v.y(), v.z()});
-                return ! opt.has_value();
+                auto /* opt */ voxel = ocmap.raycast(origin, octomap::point3d{v.x(), v.y(), v.z()});
+                // return ! opt.has_value();
+                auto match = Overload{
+                    [](Free _) { return true; },
+                    [](Unknown _) { return false; },
+                    [](Occupied _) { return false; },
+                };
+
+                return std::visit(match, voxel);
             };
             //
             // double gain = 0;
@@ -215,6 +222,19 @@ auto main(int argc, char* argv[]) -> int {
                 const vec3 v = vec3{pt.x(), pt.y(), pt.z()};
                 if (fov.inside_fov(v) && visible(v)) {
                     auto msg = cube_msg_gen(v);
+                    switch (vs) {
+                        case VoxelStatus::Free:
+                            msg.color.g = 1;
+                            break;
+
+                        case VoxelStatus::Occupied:
+                            msg.color.r = 1;
+                            break;
+
+                        case VoxelStatus::Unknown:
+                            msg.color.b = 1;
+                            break;
+                    }
                     // msg.scale.x = 0.5;
                     // msg.scale.y = 0.5;
                     // msg.scale.z = 0.5;

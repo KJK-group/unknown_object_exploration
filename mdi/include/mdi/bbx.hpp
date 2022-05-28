@@ -28,11 +28,13 @@ struct BBX {
     }
 
     [[nodiscard]] auto min() const -> vec3 {
-        return {static_cast<float>(center.x() - width / 2), static_cast<float>(center.y() - depth / 2),
+        return {static_cast<float>(center.x() - width / 2),
+                static_cast<float>(center.y() - depth / 2),
                 static_cast<float>(center.z() - height / 2)};
     }
     [[nodiscard]] auto max() const -> vec3 {
-        return {static_cast<float>(center.x() + width / 2), static_cast<float>(center.y() + depth / 2),
+        return {static_cast<float>(center.x() + width / 2),
+                static_cast<float>(center.y() + depth / 2),
                 static_cast<float>(center.z() + height / 2)};
     }
 
@@ -69,10 +71,12 @@ struct BBX {
     [[nodiscard]] auto bounding_edges() const -> std::array<std::pair<vec3, vec3>, 12> {
         const auto vs = vertices();
         return {
-            std::make_pair(vs[0], vs[1]), std::make_pair(vs[1], vs[2]), std::make_pair(vs[2], vs[3]),
-            std::make_pair(vs[3], vs[0]), std::make_pair(vs[4], vs[5]), std::make_pair(vs[5], vs[6]),
-            std::make_pair(vs[6], vs[7]), std::make_pair(vs[7], vs[4]), std::make_pair(vs[0], vs[4]),
-            std::make_pair(vs[1], vs[5]), std::make_pair(vs[2], vs[6]), std::make_pair(vs[3], vs[7]),
+            std::make_pair(vs[0], vs[1]), std::make_pair(vs[1], vs[2]),
+            std::make_pair(vs[2], vs[3]), std::make_pair(vs[3], vs[0]),
+            std::make_pair(vs[4], vs[5]), std::make_pair(vs[5], vs[6]),
+            std::make_pair(vs[6], vs[7]), std::make_pair(vs[7], vs[4]),
+            std::make_pair(vs[0], vs[4]), std::make_pair(vs[1], vs[5]),
+            std::make_pair(vs[2], vs[6]), std::make_pair(vs[3], vs[7]),
         };
     }
 };
@@ -84,7 +88,8 @@ using types::FoV;
 
 auto compute_bbx(const FoV& fov) -> BBX {
     using mdi::types::vec3;
-    auto vertices = std::vector<vec3>{fov.pose().position + fov.direction() * fov.depth_range().max};
+    auto vertices =
+        std::vector<vec3>{fov.pose().position + fov.direction() * fov.depth_range().max};
 
     for (const auto& v : fov.bounding_direction_vectors()) {
         // const auto near_dist = fov.depth_range().min;
@@ -97,20 +102,22 @@ auto compute_bbx(const FoV& fov) -> BBX {
         const auto compare_in_dim = [dim](const vec3& a, const vec3& b) { return a[dim] < b[dim]; };
         // const auto min = std::min_element(vertices.begin(), vertices.end(), compare_in_dim);
         // const auto max = std::max_element(vertices.begin(), vertices.end(), compare_in_dim);
-        const auto [min, max] = std::minmax_element(vertices.begin(), vertices.end(), compare_in_dim);
+        const auto [min, max] =
+            std::minmax_element(vertices.begin(), vertices.end(), compare_in_dim);
 
         return {(*min)[dim], (*max)[dim]};
     };
 
     const auto fmt_vec3 = [&](const vec3& v) -> std::string {
-        return "[" + std::to_string(v.x()) + ", " + std::to_string(v.y()) + ", " + std::to_string(v.z()) + "]";
+        return "[" + std::to_string(v.x()) + ", " + std::to_string(v.y()) + ", " +
+               std::to_string(v.z()) + "]";
     };
 
-    std::cout << "vertices" << '\n';
-    for (const auto& v : vertices) {
-        // std::cout << mdi::types::yaml(v) << '\n';
-        std::cout << fmt_vec3(v) << '\n';
-    }
+    // std::cout << "vertices" << '\n';
+    // for (const auto& v : vertices) {
+    //     // std::cout << mdi::types::yaml(v) << '\n';
+    //     std::cout << fmt_vec3(v) << '\n';
+    // }
 
     const auto [x_min, x_max] = minmax_in_dim(0);
     const auto [y_min, y_max] = minmax_in_dim(1);
@@ -119,10 +126,10 @@ auto compute_bbx(const FoV& fov) -> BBX {
     vec3 min{x_min, y_min, z_min};
     vec3 max{x_max, y_max, z_max};
 
-    std::cout << "min:" << '\n';
-    std::cout << fmt_vec3(min) << '\n';
-    std::cout << "max:" << '\n';
-    std::cout << fmt_vec3(max) << '\n';
+    // std::cout << "min:" << '\n';
+    // std::cout << fmt_vec3(min) << '\n';
+    // std::cout << "max:" << '\n';
+    // std::cout << fmt_vec3(max) << '\n';
 
     return BBX{min, max};
 }
