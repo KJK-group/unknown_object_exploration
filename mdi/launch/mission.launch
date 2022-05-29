@@ -13,19 +13,28 @@
     <arg name="z_i" default="0"/>
     <arg name="z_d" default="0"/>
     <arg name="vel" default="0.5"/>
+    <arg name="alt" default="5"/>
+    <arg name="target_x" default="5"/>
+    <arg name="target_y" default="5"/>
 
     <!-- <arg name="lp" default="valgrind"/> -->
     <arg name="lp" default=""/>
 
+
+    <env name="ROSCONSOLE_CONFIG_FILE" value="$(arg package_path)/launch/log.conf"/>
+    <rosparam file="$(arg package_path)/rosparam/nbv.yaml" command="load" />
+
 	<!-- <rosparam command="load" file="$(dirname)/../rosparam/rrt.yaml"/> -->
 
     <include file="$(arg package_path)/launch/rrt_service.launch" />
+    <include file="$(arg package_path)/launch/segmentation.launch" />
 
     <node
         pkg="$(arg package)"
         type="mission_manager"
         name="mission_manager"
-        args="$(arg vel)"
+        args="$(arg vel) $(arg alt) $(arg target_x) $(arg target_y)"
+        output="screen"
         launch-prefix="$(arg lp)" />
     <node
         pkg="$(arg package)"

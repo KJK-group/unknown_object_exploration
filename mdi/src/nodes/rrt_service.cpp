@@ -25,6 +25,7 @@
 #include "mdi/rrt/rrt.hpp"
 #include "mdi/rrt/rrt_builder.hpp"
 #include "mdi/utils/rviz.hpp"
+#include "mdi/utils/transform.hpp"
 #include "mdi/utils/utils.hpp"
 #include "mdi_msgs/NBV.h"
 #include "mdi_msgs/RrtFindPath.h"
@@ -41,6 +42,9 @@
 
 std::unique_ptr<ros::Publisher> marker_pub;
 std::unique_ptr<ros::Publisher> marker_array_pub;
+
+// marker_array.markers
+// visualization_msgs::MarkerArray marker_array;
 
 #endif  // VISUALIZE_MARKERS_IN_RVIZ
 
@@ -104,7 +108,7 @@ auto call_clear_region_of_octomap(const octomap::point3d& max, const octomap::po
 
 auto waypoints_to_geometry_msgs_points(const mdi::rrt::RRT::Waypoints& wps)
     -> std::vector<geometry_msgs::Point> {
-    auto points = std::vector<geometry_msgs::Point>(wps.size());
+    auto points = std::vector<geometry_msgs::Point>();
     std::transform(wps.begin(), wps.end(), std::back_inserter(points), [](const auto& pt) {
         auto geo_pt = geometry_msgs::Point{};
         geo_pt.x = pt.x();
@@ -175,8 +179,6 @@ auto rrt_find_path_handler(mdi_msgs::RrtFindPath::Request& request,
 }
 
 auto nbv_handler(mdi_msgs::NBV::Request& request, mdi_msgs::NBV::Response& response) -> bool {
-    bool success = false;
-
     ROS_INFO("nbv request received");
 
     const auto geometry_msgs_point_to_vec3 = [](const auto& pt) -> mdi::rrt::vec3 {
@@ -187,11 +189,19 @@ auto nbv_handler(mdi_msgs::NBV::Request& request, mdi_msgs::NBV::Response& respo
     const auto vertical = FoVAngle::from_degrees(request.fov.vertical.angle);
     const auto depth_range = DepthRange{request.fov.depth_range.min, request.fov.depth_range.max};
 
+    std::cout << request.fov.horizontal.angle << "\n" << request.fov.vertical.angle << std::endl;
+
+    std::cout << yaml(horizontal) << "\n"
+              << yaml(vertical) << "\n"
+              << yaml(depth_range) << std::endl;
+
     // TODO: handle unessary goal in a better way
     auto rrt =
         mdi::rrt::RRT::from_builder()
-            .start_and_goal_position(geometry_msgs_point_to_vec3(request.rrt_config.start),
-                                     vec3{500.0f, 500.0f, 500.0f})  // goal is irrelevant
+            .start_and_goal_position(
+                geometry_msgs_point_to_vec3(request.rrt_config.start),
+                geometry_msgs_point_to_vec3(
+                    request.rrt_config.goal))  // goal is irrelevant - not really though
             .max_iterations(request.rrt_config.max_iterations)
             .goal_bias(request.rrt_config.goal_bias)
             .probability_of_testing_full_path_from_new_node_to_goal(
@@ -200,21 +210,53 @@ auto nbv_handler(mdi_msgs::NBV::Request& request, mdi_msgs::NBV::Response& respo
             .step_size(request.rrt_config.step_size)
             .build();
 
-    // ROS_INFO_STREAM("" << rrt);
+    ROS_INFO_STREAM("" << rrt);
 
     auto octomap_environment_ptr = call_get_environment_octomap();
 
     if (octomap_environment_ptr != nullptr) {
         ROS_INFO("there is a octomap available");
         rrt.assign_octomap(octomap_environment_ptr);
+
+        // auto pos = request.rrt_config.start;
+
+        // auto xmin = pos.x - request.rrt_config.step_size;
+        // auto xmax = pos.x + request.rrt_config.step_size;
+        // auto ymin = pos.y - request.rrt_config.step_size;
+        // auto ymax = pos.y + request.rrt_config.step_size;
+        // auto zmin = pos.z - request.rrt_config.step_size;
+        // auto zmax = pos.z + request.rrt_config.step_size;
+
+        // for (double x = xmin; x < xmax; x += octomap_environment_ptr->resolution()) {
+        //     for (double y = ymin; y < ymax; y += octomap_environment_ptr->resolution()) {
+        //         for (double z = zmin; z < zmax; z += octomap_environment_ptr->resolution()) {
+        //             octomap_environment_ptr->octree().updateNode(x, y, z, 0.f);
+        //         }
+        //     }
+        // }
     }
 
-    double best_gain = -std::numeric_limits<double>::infinity();
-    auto best_point = vec3{0, 0, 0};
+    double best_gain = std::numeric_limits<double>::lowest();
+    auto best_point =
+        vec3{request.rrt_config.start.x, request.rrt_config.start.y, request.rrt_config.start.z};
 
     bool found_suitable_nbv = false;
 
     const vec3 target = geometry_msgs_point_to_vec3(request.rrt_config.goal);
+
+#ifdef VISUALIZE_MARKERS_IN_RVIZ
+    visualization_msgs::MarkerArray marker_array;
+    auto new_node_arrow_msg_gen = mdi::utils::rviz::arrow_msg_gen::builder()
+                                      .arrow_head_width(0.05f)
+                                      .arrow_length(0.1f)
+                                      .arrow_width(0.1f)
+                                      .color({0, 1, 0, 1})
+                                      .build();
+    rrt.register_cb_for_event_on_new_node_created([&](const auto& from, const auto& to) {
+        auto msg = new_node_arrow_msg_gen({from, to});
+        marker_array.markers.push_back(msg);
+    });
+#endif  // VISUALIZE_MARKERS_IN_RVIZ
 
     rrt.register_cb_for_event_on_new_node_created([&](const auto&, const vec3& new_point) {
         vec3 dir = target - new_point;
@@ -223,14 +265,14 @@ auto nbv_handler(mdi_msgs::NBV::Request& request, mdi_msgs::NBV::Response& respo
         // construct fov
         Eigen::Quaternionf orientation =
             Eigen::AngleAxisf(yaw, Eigen::Vector3f::UnitZ()) *
-            Eigen::AngleAxisf(deg2rad(request.fov.pitch.angle), Eigen::Vector3f::UnitY());
+            Eigen::AngleAxisf(deg2rad(-request.fov.pitch.angle), Eigen::Vector3f::UnitY());
 
         const auto pose = Pose{new_point, orientation};
         const auto fov = FoV{pose, horizontal, vertical, depth_range, target};
 
 #ifdef VISUALIZE_MARKERS_IN_RVIZ
-        mdi::visualization::visualize_fov(fov, *marker_pub);
-        mdi::visualization::visualize_bbx(mdi::compute_bbx(fov), *marker_pub);
+        // mdi::visualization::visualize_fov(fov, *marker_pub);
+        // mdi::visualization::visualize_bbx(mdi::compute_bbx(fov), *marker_pub);
         /* mdi::visualization::visualize_voxels_inside_fov(
             fov, *octomap_environment_ptr, octomap_environment_ptr->resolution(),
             *marker_array_pub); */
@@ -240,8 +282,12 @@ auto nbv_handler(mdi_msgs::NBV::Request& request, mdi_msgs::NBV::Response& respo
         const double gain = mdi::gain_of_fov(
             fov, *octomap_environment_ptr, request.nbv_config.weight_free,
             request.nbv_config.weight_occupied, request.nbv_config.weight_unknown,
-            request.nbv_config.weight_distance_to_object, [](double x) { return x /* x * x */; });
-        ROS_INFO_STREAM("gain is " << std::to_string(gain));
+            request.nbv_config.weight_distance_to_object,
+            mdi::utils::transform::geometry_mgs_point_to_vec(request.rrt_config.start),
+            [](double x) { return x /* x * x */; });
+        ROS_INFO_STREAM("" << request.rrt_config.max_iterations - rrt.remaining_iterations() << "/"
+                           << request.rrt_config.max_iterations << " gain is "
+                           << std::to_string(gain));
 
         if (gain > best_gain) {
             ROS_INFO_STREAM("gain (" << std::to_string(gain)
@@ -258,7 +304,7 @@ auto nbv_handler(mdi_msgs::NBV::Request& request, mdi_msgs::NBV::Response& respo
     });
 
     for (std::size_t i = 0; i < request.rrt_config.max_iterations; ++i) {
-        ROS_INFO("trying to grow rrt by 1");
+        // ROS_INFO("trying to grow rrt by 1");
         rrt.grow1();
 
         if (found_suitable_nbv) {
@@ -268,25 +314,30 @@ auto nbv_handler(mdi_msgs::NBV::Request& request, mdi_msgs::NBV::Response& respo
                 const auto path = opt.value();
                 response.waypoints = waypoints_to_geometry_msgs_points(path);
                 response.found_nbv_with_sufficent_gain = true;
-                success = true;
             } else {
                 // should not happen, but just in case
                 response.found_nbv_with_sufficent_gain = false;
-                success = false;
             }
 
             break;
         }
     }
 
-    if (! success) {
+#ifdef VISUALIZE_MARKERS_IN_RVIZ
+    std::cout << "publishing RRT tree..." << std::endl;
+    marker_array_pub->publish(marker_array);
+    ros::spinOnce();
+    ros::Rate(mdi::utils::DEFAULT_LOOP_RATE).sleep();
+    marker_array.markers.clear();
+#endif  // VISUALIZE_MARKERS_IN_RVIZ
+
+    if (! response.found_nbv_with_sufficent_gain) {
         // a suitable nbv has not been found, so we use best found instead
         ROS_INFO("no suitable nbv found, use best found instead");
 
         if (const auto opt = rrt.get_waypoints_from_nearsest_node_to(best_point)) {
             const auto path = opt.value();
             response.waypoints = waypoints_to_geometry_msgs_points(path);
-            response.found_nbv_with_sufficent_gain = false;
         }
     }
 
@@ -295,7 +346,9 @@ auto nbv_handler(mdi_msgs::NBV::Request& request, mdi_msgs::NBV::Response& respo
         delete octomap_environment_ptr;
     }
 
-    return success;
+    ROS_INFO_STREAM("information gain: " << best_gain);
+
+    return true;
 }
 
 auto main(int argc, char* argv[]) -> int {
@@ -305,6 +358,7 @@ auto main(int argc, char* argv[]) -> int {
     auto nh = ros::NodeHandle();
 
 #ifdef VISUALIZE_MARKERS_IN_RVIZ
+    // marker_array.markers = std::vector<visualization_msgs::Marker>{};
     auto rate = ros::Rate(mdi::utils::DEFAULT_LOOP_RATE);
 
     waypoints_path_pub = std::make_unique<ros::Publisher>([&] {
@@ -370,6 +424,7 @@ auto main(int argc, char* argv[]) -> int {
 
     new_node_created = [&](const vec3& from, const vec3& to) {
         auto msg = new_node_arrow_msg_gen({from, to});
+        // marker_array.markers.push_back(msg);
         waypoints_path_pub->publish(msg);
         rate.sleep();
         ros::spinOnce();
@@ -390,17 +445,17 @@ auto main(int argc, char* argv[]) -> int {
 #endif  // VISUALIZE_MARKERS_IN_RVIZ
 
     get_octomap_client = std::make_unique<ros::ServiceClient>([&] {
-        const auto service_name = "/octomap_binary"s;
+        const auto service_name = "/environment_voxel_map/octomap_binary"s;
         return nh.serviceClient<octomap_msgs::GetOctomap>(service_name);
     }());
 
     clear_octomap_client = std::make_unique<ros::ServiceClient>([&] {
-        const auto service_name = "/octomap_server/reset"s;
+        const auto service_name = "/environment_voxel_map/environment_voxel_map/reset"s;
         return nh.serviceClient<std_srvs::Empty>(service_name);
     }());
 
     clear_region_of_octomap_client = std::make_unique<ros::ServiceClient>([&] {
-        const auto service_name = "/octomap_server/clear_bbx"s;
+        const auto service_name = "/environment_voxel_map/environment_voxel_map/clear_bbx"s;
         return nh.serviceClient<octomap_msgs::BoundingBoxQuery>(service_name);
     }());
 

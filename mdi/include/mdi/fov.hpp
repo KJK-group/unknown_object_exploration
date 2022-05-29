@@ -55,8 +55,8 @@ class FoV {
           depth_range_{d},
           target_{std::move(target)} {
         // pose_.position.normalize();
-        const float h2 = horizontal_.angle() / 2.0f;
-        const float v2 = vertical_.angle() / 2.0f;
+        const float h2 = horizontal_.as_degree() / 2.0f;
+        const float v2 = vertical_.as_degree() / 2.0f;
 
         auto [i_basis, j_basis, k_basis] = [&] {
             // TODO: calculate in a different way

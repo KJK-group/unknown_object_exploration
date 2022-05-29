@@ -21,11 +21,14 @@ using std::vector;
 //--------------------------------------------------------------------------------------------------
 // Generates the binomial LUT for a Bezier pline with `n` points
 // This will be used to generate the spline
-const int binomial_lut_size = 20;
-constexpr auto generate_binomial_lut() -> std::array<float, binomial_lut_size> {
-    auto lut = std::array<float, binomial_lut_size>{};
-    for (int i = 0; i < binomial_lut_size; i++) {
-        lut[i] = (mdi::utils::binomial_coefficient(binomial_lut_size, i));
+const int binomial_coefficient_amount = 20;
+const int binomial_lut_size = binomial_coefficient_amount * binomial_coefficient_amount;
+constexpr auto generate_binomial_lut() -> std::array<int, binomial_lut_size> {
+    auto lut = std::array<int, binomial_lut_size>{};
+    for (int r = 0; r < binomial_coefficient_amount; r++) {
+        for (int c = 0; c < r; c++) {
+            lut[r * (binomial_coefficient_amount) + c] = (mdi::utils::binomial_coefficient(r, c));
+        }
     }
     return lut;
 }
@@ -71,7 +74,7 @@ class BezierSpline {
     vector<Vector3f> spline_points;        // idx: output point number, element: 3D output point
     // static vector<int> binomial_lut;       // idx: input point number, element: binomial
     // coeffient
-    static constexpr std::array<float, binomial_lut_size> binomial_lut = generate_binomial_lut();
+    static constexpr std::array<int, binomial_lut_size> binomial_lut = generate_binomial_lut();
     vector<float> distance_lut;  // idx: time, element: distance - arc length at last idx
     Vector3f offset;             // translation from origin
     int resolution;              // output size

@@ -199,12 +199,8 @@ class Octomap final {
             return Occupied{end};
         }
 
-        if (! ignore_unknown_voxels) {
-            if (octree_.search(end) == nullptr) {
-                return Unknown{};
-            } else {
-                return Free{};
-            }
+        if (! ignore_unknown_voxels && octree_.search(end) == nullptr) {
+            return Unknown{};
         }
 
         return Free{};

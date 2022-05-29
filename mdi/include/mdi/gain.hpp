@@ -14,8 +14,8 @@ namespace mdi {
 
 auto gain_of_fov(const types::FoV& fov, const mdi::Octomap& octomap, const double weight_free,
                  const double weight_occupied, const double weight_unknown,
-                 const double weight_distance_to_target, std::function<double(double)> distance_tf)
-    -> double {
+                 const double weight_distance_to_target, types::vec3 root,
+                 std::function<double(double)> distance_tf) -> double {
     using namespace mdi::types;
     using mdi::VoxelStatus;
     using point = mdi::Octomap::point_type;
@@ -51,34 +51,49 @@ auto gain_of_fov(const types::FoV& fov, const mdi::Octomap& octomap, const doubl
         return match(voxel);
     };
 
-    const double dist_to_target = distance_tf((fov.target() - fov.pose().position).norm());
-
     double gain = 0;
+    // int free_counter = 0;
+    // int occupied_counter = 0;
+    // int unknown_counter = 0;
+    // int inside_fov_counter = 0;
+    // int visible_counter = 0;
+    const double distance_total = distance_tf((fov.target() - root).norm());
+    // std::cout << "distance_total: " << distance_total << std::endl;
 
     octomap.iterate_over_bbx(bbx, [&](const auto& pt, VoxelStatus vs) {
         const vec3 v = vec3{pt.x(), pt.y(), pt.z()};
-        // static const auto match = Overload{
-        //     [=](Free _) { return weight_free; },
-        //     [=](Unknown _) { return weight_occupied; },
-        //     [=](Occupied _) { return weight_unknown + weight_distance_to_target * (1.0 /
-        //     dist_to_target); },
-        // };
+        const double distance_to_target = distance_tf((fov.target() - v).norm());
+        // std::cout << "distance_to_target: " << distance_to_target << std::endl;
+
+        // if (fov.inside_fov(v)) {
+        //     inside_fov_counter++;
+        // }
+        // if (visible(v)) {
+        //     visible_counter++;
+        // }
 
         if (fov.inside_fov(v) && visible(v)) {
             switch (vs) {
                 case VoxelStatus::Free:
                     gain += weight_free;
+                    // free_counter++;
                     break;
                 case VoxelStatus::Occupied:
                     gain += weight_occupied;
+                    // occupied_counter++;
                     break;
-
                 case VoxelStatus::Unknown:
-                    gain += weight_unknown + weight_distance_to_target * (1.0 / dist_to_target);
+                    gain += weight_unknown +
+                            weight_distance_to_target * (distance_total / distance_to_target);
+                    // unknown_counter++;
                     break;
             }
         }
     });
+
+    // ROS_INFO_STREAM("\ninside fov: " << inside_fov_counter << "\nvisible: " << visible_counter
+    //                                  << "\nfree: " << free_counter << "\noccupied: "
+    //                                  << occupied_counter << "\nunknown: " << unknown_counter);
 
     // scale with volume
     gain *= std::pow(octomap.resolution(), 3.0);

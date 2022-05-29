@@ -14,11 +14,16 @@ auto main(int argc, char** argv) -> int {
     // arguments
     auto velocity_target = 0.f;
     auto altitude = 2.f;
+    auto target_x = 5.f;
+    auto target_y = 5.f;
     if (argc > 1) velocity_target = std::stof(argv[1]);
     if (argc > 2) altitude = std::stof(argv[2]);
+    if (argc > 3) target_x = std::stof(argv[3]);
+    if (argc > 4) target_y = std::stof(argv[4]);
 
     // mission instance
-    auto mission = mdi::Mission(nh, rate, {2.5, 2.5}, velocity_target, {0, 0, altitude}, true);
+    auto mission =
+        mdi::Mission(nh, rate, {target_x, target_y}, velocity_target, {0, 0, altitude}, true);
 
     // wait for FCU connection
     while (ros::ok() && ! mission.get_drone_state().connected) {

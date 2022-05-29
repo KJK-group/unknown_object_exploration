@@ -1,5 +1,7 @@
 #include "mdi/mission.hpp"
 
+#include <unordered_map>
+
 #include "mdi_msgs/NBV.h"
 
 namespace mdi {
@@ -7,6 +9,7 @@ Mission::Mission(ros::NodeHandle& nh, ros::Rate& rate, types::vec2 target, float
                  Eigen::Vector3f home, bool visualise)
     : inspection_complete_(false),
       exploration_complete_(false),
+      takeoff_initiated(false),
       step_count_(0),
       seq_point_(0),
       seq_state_(0),
@@ -21,7 +24,7 @@ Mission::Mission(ros::NodeHandle& nh, ros::Rate& rate, types::vec2 target, float
       trajectory_({nh, rate, {{0, 0, 0}, home_position_}, visualise}),
       target_(target),
       object_center_(target),
-      timeout_({5}) {
+      timeout_({120}) {
     // publishers
     pub_mission_state_ = nh.advertise<mdi_msgs::MissionStateStamped>("/mdi/mission/state",
                                                                      utils::DEFAULT_QUEUE_SIZE);
@@ -78,7 +81,7 @@ auto Mission::odom_cb_(const nav_msgs::Odometry::ConstPtr& odom) -> void { drone
 auto Mission::compute_attitude_() -> void {
     auto pos = drone_odom_.pose.pose.position;
 
-    std::cout << "target:\n" << target_ << std::endl;
+    // std::cout << "target:\n" << target_ << std::endl;
     auto diff_x = target_.x() - pos.x;
     auto diff_y = target_.y() - pos.y;
     auto expected_yaw = std::atan2(diff_y, diff_x);
@@ -298,18 +301,20 @@ auto Mission::find_nbv_path_(Eigen::Vector3f start) -> std::vector<Eigen::Vector
     rrt.start.x = start.x();
     rrt.start.y = start.y();
     rrt.start.z = start.z();
-    // rrt.goal.x = end.x();
-    // rrt.goal.y = end.y();
-    // rrt.goal.z = end.z();
-    rrt.max_iterations = 10000;
-    rrt.step_size = 1.5;
+    rrt.goal.x = object_center_.x();
+    rrt.goal.y = object_center_.y();
+    rrt.max_iterations = 1000;
+    rrt.step_size = 2;
+
+    auto nbv_param = std::map<std::string, double>();
+    ros::param::get("/mdi/nbv", nbv_param);
 
     auto& nbv = nbv_msg.request.nbv_config;
-    nbv.gain_of_interest_threshold = 50;
-    nbv.weight_free = -1;
-    nbv.weight_occupied = -1;
-    nbv.weight_unknown = 3;
-    nbv.weight_distance_to_object = 5;
+    nbv.gain_of_interest_threshold = nbv_param["information_threshold"];
+    nbv.weight_free = nbv_param["free"];
+    nbv.weight_occupied = nbv_param["occupied"];
+    nbv.weight_unknown = nbv_param["unknown"];
+    nbv.weight_distance_to_object = nbv_param["distance_to_object"];
 
     auto& fov = nbv_msg.request.fov;
     fov.depth_range.max = 15;
@@ -320,11 +325,11 @@ auto Mission::find_nbv_path_(Eigen::Vector3f start) -> std::vector<Eigen::Vector
 
     std::vector<Eigen::Vector3f> path;
     if (client_nbv_.call(nbv_msg)) {
+        std::cout << "Waypoint size: " << nbv_msg.response.waypoints.size() << std::endl;
         auto& waypoints = nbv_msg.response.waypoints;
-        path = std::vector<Eigen::Vector3f>();
         // std::cout << "before for loop" << std::endl;
         for (auto& wp : waypoints) {
-            // std::cout << wp << std::endl;
+            std::cout << wp << std::endl;
             path.emplace_back(wp.x, wp.y, wp.z);
         }
     }
@@ -421,7 +426,7 @@ auto Mission::exploration_step_() -> bool {
     // publish();
     if (success) {
         // std::cout << "SUCCESS" << std::endl;
-        trajectory_step_();
+        trajectory_step_(velocity_target_);
     }
 
     // step_count++;
@@ -435,7 +440,7 @@ auto Mission::exploration_step_() -> bool {
  * @return true if the end of the current trajectory is reached
  * @return false as long as the end hasn't been reached
  */
-auto Mission::trajectory_step_() -> bool {
+auto Mission::trajectory_step_(float vel, bool look_forwards) -> bool {
     auto end_reached = false;
     timeout_start_time_ = ros::Time::now();  // reset mission countdown
 
@@ -446,7 +451,7 @@ auto Mission::trajectory_step_() -> bool {
 
     // the trajectory progress
     delta_time_ = ros::Time::now() - start_time_;
-    auto distance = delta_time_.toSec() * velocity_target_;
+    auto distance = delta_time_.toSec() * vel;
     auto remaining_distance = trajectory_.get_length() - distance;
     // std::cout << mdi::utils::GREEN << "distance: " << distance << mdi::utils::RESET << std::endl;
     // std::cout << mdi::utils::GREEN << "remaining_distance: " << remaining_distance
@@ -464,7 +469,9 @@ auto Mission::trajectory_step_() -> bool {
     } else {  // otherwise the next expected position is computed for the current time step
         expected_position_ = trajectory_.get_point_at_distance(distance);
         // here the heading should be towards the expected position
-        target_ = {expected_position_.x(), expected_position_.y()};
+        if (look_forwards) {
+            target_ = {expected_position_.x(), expected_position_.y()};
+        }
 
         // // std::cout << "Got point " << expected_position << std::endl;
 
@@ -485,14 +492,34 @@ auto Mission::set_home_trajectory_() -> void {
         trajectory_ = *trajectory_opt;
         step_count_ = 0;
     }
+}
 
-    // step_count_ = 0;
-    // while (ros::ok() && ! end_reached) {
-    //     end_reached = trajectory_step_();
-    //     // std::cout << "step_count: " << step_count << std::endl;
-    //     ros::spinOnce();
-    //     rate_.sleep();
-    // }
+auto Mission::set_takeoff_trajectory_() -> void {
+    auto offset = 2.5f;
+    auto path = std::vector<Eigen::Vector3f>{
+        {0, 0, 0},
+        home_position_,
+        {home_position_.x() - offset, home_position_.y(), home_position_.z() + offset / 2},
+        {home_position_.x() - offset, home_position_.y() - offset, home_position_.z() + offset / 2},
+        {home_position_.x(), home_position_.y() - offset, home_position_.z() + offset / 2},
+        {home_position_.x() + offset, home_position_.y() - offset, home_position_.z() + offset / 2},
+        {home_position_.x() + offset, home_position_.y(), home_position_.z() + offset / 2},
+        {home_position_.x() + offset, home_position_.y() + offset, home_position_.z() + offset / 2},
+        {home_position_.x(), home_position_.y() + offset, home_position_.z() + offset / 2},
+        {home_position_.x() - offset, home_position_.y() + offset, home_position_.z() + offset / 2},
+        {home_position_.x() - offset, home_position_.y(), home_position_.z() + offset / 2},
+        {home_position_.x() - offset, home_position_.y() - offset, home_position_.z() + offset / 2},
+        {home_position_.x(), home_position_.y() - offset, home_position_.z() + offset / 2},
+        {home_position_.x() + offset, home_position_.y() - offset, home_position_.z() + offset / 2},
+        {home_position_.x() + offset, home_position_.y(), home_position_.z() + offset / 2},
+        home_position_};
+
+    if (auto trajectory_opt = fit_trajectory_(path)) {
+        trajectory_ = *trajectory_opt;
+        step_count_ = 0;
+    }
+
+    target_ = {home_position_.x(), home_position_.y()};
 }
 
 auto Mission::run_step() -> void {
@@ -511,13 +538,19 @@ auto Mission::run_step() -> void {
         case HOME:
             if (inspection_complete_) {
                 set_home_trajectory_();
-                if (trajectory_step_()) {
+                if (trajectory_step_(velocity_target_)) {
                     set_state(LAND);
                 }
                 // std::cout << "state: " << state_to_string((enum state)state.state) << std::endl;
             } else {
-                drone_takeoff(home_position_.z());
-                set_state(EXPLORATION);
+                if (! takeoff_initiated) {
+                    set_takeoff_trajectory_();
+                    takeoff_initiated = true;
+                }
+                // drone_takeoff(home_position_.z());
+                if (trajectory_step_(0.5f, false)) {
+                    set_state(EXPLORATION);
+                }
             }
             break;
         case EXPLORATION:
@@ -525,7 +558,7 @@ auto Mission::run_step() -> void {
             //     std::cout << std::setw(5) << (timeout_ - timeout_delta_time_).toSec()
             //               << " Waiting for new interest point..." << std::endl;
             // }
-            if (trajectory_step_()) {
+            if (trajectory_step_(velocity_target_)) {
                 ROS_INFO_STREAM((timeout_ - timeout_delta_time_).toSec()
                                 << "Finding new NBV interest point...");
 

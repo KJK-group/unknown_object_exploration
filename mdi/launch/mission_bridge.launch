@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<launch>
+    <include file="$(find mdi)/launch/mission.launch">
+        <arg name="xy_p" default="1"/>
+        <arg name="xy_i" default="0"/>
+        <arg name="xy_d" default="8"/>
+        <arg name="yaw_p" default="1"/>
+        <arg name="yaw_i" default="0"/>
+        <arg name="yaw_d" default="15"/>
+        <arg name="z_p" default="1"/>
+        <arg name="z_i" default="0"/>
+        <arg name="z_d" default="8"/>
+        <arg name="vel" default="1"/>
+        <arg name="alt" default="5"/>
+        <arg name="target_x" default="5"/>
+        <arg name="target_y" default="-42"/>
+    </include>
+</launch>

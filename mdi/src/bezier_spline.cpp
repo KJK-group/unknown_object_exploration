@@ -83,23 +83,34 @@ auto BezierSpline::f(float t) -> Vector3f {
     // sum up all bezier terms, using the explicit definition given by:
     // https://en.wikipedia.org/wiki/B%C3%A9zier_curve
     auto spline_point = Vector3f(0, 0, 0);
-    auto half_integer_size = this->size / 2;
+    auto half_integer_size = size / 2;
     auto odd = ! (size % 2 == 0);
 
     std::vector<int> bin;
     for (int i = 0; i < half_integer_size; i++) {
-        bin.push_back(binomial_lut[i]);
+        bin.push_back(binomial_lut[i + (size * binomial_coefficient_amount)]);
     }
     if (odd) {
-        bin.push_back(binomial_lut[half_integer_size]);
+        bin.push_back(binomial_lut[half_integer_size + (size * binomial_coefficient_amount)]);
     }
     for (int i = 0; i < half_integer_size; i++) {
-        bin.push_back(binomial_lut[half_integer_size - 1 - i]);
+        bin.push_back(
+            binomial_lut[half_integer_size - 1 - i + (size * binomial_coefficient_amount)]);
     }
+    // std::cout << bin.size() << std::endl;
+    // for (auto& b : bin) {
+    //     std::cout << b << "\t";
+    // }
+    // std::cout << std::endl;
 
-    for (int i = 0; i < this->size; i++) {
-        auto w = bin[i] * pow(t, i) * pow(1 - t, this->size - i);
-        spline_point += w * this->offset_input_points[i];
+    // for (auto& bc : binomial_lut) {
+    //     std::cout << bc << " ";
+    // }
+    // std::cout << std::endl;
+
+    for (int i = 0; i < size; i++) {
+        auto w = bin[i] * pow(t, i) * pow(1 - t, size - i);
+        spline_point += w * offset_input_points[i];
     }
     return spline_point;
 }

@@ -47,8 +47,8 @@ auto yaml(std::vector<T> xs, int indentation = 0, int tabsize = 2) -> std::strin
     }
 }
  */
-constexpr inline auto rad2deg(double a) -> double { return a * 180.0f / static_cast<float>(M_PI); };
-constexpr inline auto deg2rad(double a) -> double { return a * static_cast<float>(M_PI) / 180.0f; };
+constexpr inline auto rad2deg(double a) -> double { return a * 180.0 / M_PI; };
+constexpr inline auto deg2rad(double a) -> double { return a * M_PI / 180.0; };
 
 enum class AngleEncoding { Radian, Degree };
 

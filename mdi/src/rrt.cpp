@@ -464,14 +464,15 @@ auto RRT::grow_() -> bool {
     Eigen::Vector3f x_new;
     x_new << x, y, z;
 
-    const auto edge_between_u_and_v_is_free = [this](const auto& u, const auto& v) -> bool {
-        return collision_free_(u, v);
-    };
+    // const auto edge_between_u_and_v_is_free = [this](const auto& u, const auto& v) -> bool {
+    //     return collision_free_(u, v);
+    // };
 
-    const auto edge_between_u_and_v_intersects_a_occupied_voxel =
-        [this](const auto& u, const auto& v) { return ! collision_free_(u, v); };
+    // const auto not_collision_free = [this](const auto& u, const auto& v) {
+    //     return ! collision_free_(u, v);
+    // };
 
-    if (edge_between_u_and_v_intersects_a_occupied_voxel((*v_near).position_, x_new)) {
+    if (! collision_free_((*v_near).position_, x_new)) {
         return false;
     }
 
@@ -490,7 +491,7 @@ auto RRT::grow_() -> bool {
 
     if (reached_goal) {
         // try direct edge when within tolerance to goal_position_
-        if (edge_between_u_and_v_is_free(inserted_node.position_, goal_position_)) {
+        if (collision_free_(inserted_node.position_, goal_position_)) {
             auto& new_node = insert_node_(goal_position_, &inserted_node);
             call_cbs_for_event_on_new_node_created_(inserted_node.position_, goal_position_);
             // a path has been found from the start coordinate to the goal coordinate,
@@ -509,7 +510,7 @@ auto RRT::grow_() -> bool {
         probability_of_testing_full_path_from_new_node_to_goal_ > rng_.random01();
     if (test_full_edge_from_new_point_to_goal) {
         call_cbs_for_event_on_trying_full_path_(inserted_node.position_, goal_position_);
-        if (edge_between_u_and_v_is_free(inserted_node.position_, goal_position_)) {
+        if (collision_free_(inserted_node.position_, goal_position_)) {
             auto& new_node = insert_node_(goal_position_, &inserted_node);
             backtrack_and_set_waypoints_starting_at_(&new_node);
 

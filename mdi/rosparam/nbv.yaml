@@ -1,0 +1,7 @@
+mdi:
+  nbv:
+    free: -1
+    occupied: -1
+    unknown: 1
+    distance_to_object: 100
+    information_threshold: 50

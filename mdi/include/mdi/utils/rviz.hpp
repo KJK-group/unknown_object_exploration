@@ -26,7 +26,7 @@ struct Scale {
 struct Header {
     unsigned long long id = 0;
     std::string ns = "";
-    std::string frame_id = "map";
+    std::string frame_id = "world_enu";
 };
 
 enum class MarkerType {

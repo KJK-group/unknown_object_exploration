@@ -3,7 +3,7 @@
 	<arg name="name" default="voxel_map"/>
 	<arg name="node" default="octomap_server"/>
 	<arg name="package" default="mdi"/>
-	<arg name="map_resolution" default="0.25"/>
+	<arg name="map_resolution" default="0.5"/>
 	<arg name="frame_id" default="world_enu"/>
 	<arg name="pointcloud_topic" default="/camera/depth/points"/>
 	<!-- <arg name="bt_file" value="$(dirname)/../data/simple_tree.bt"/> -->

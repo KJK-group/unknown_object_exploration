@@ -4,6 +4,7 @@
 	<arg name="package" default="mdi"/>
 	<arg name="frame_id" default="world_enu"/>
 	<!-- <arg name="launch-prefix" default="kitty lldb"/> -->
+	<!-- <arg name="launch-prefix" default="gdb"/> -->
 	<arg name="launch-prefix" default=""/>
 	<arg name="bt_file" default=""/>
 

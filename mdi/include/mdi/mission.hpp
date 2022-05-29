@@ -57,7 +57,8 @@ class Mission {
     auto drone_set_mode_(std::string mode = "OFFBOARD") -> bool;
 
     auto set_home_trajectory_() -> void;
-    auto trajectory_step_() -> bool;
+    auto set_takeoff_trajectory_() -> void;
+    auto trajectory_step_(float vel, bool look_forwards = true) -> bool;
     auto explore_() -> bool;
     auto exploration_step_() -> bool;
     auto publish_() -> void;
@@ -126,6 +127,7 @@ class Mission {
     int step_count_;
     bool inspection_complete_;
     bool exploration_complete_;
+    bool takeoff_initiated;
 
     // visualisation
     float marker_scale_;
