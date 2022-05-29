@@ -112,7 +112,12 @@ struct arrow_msg_gen : public visualization_marker_msg_gen {
                     ros::Duration lifetime = ros::Duration(0)) -> visualization_msgs::MarkerArray {
         auto markerarray = visualization_msgs::MarkerArray();
         std::transform(arrows.cbegin(), arrows.cend(), markerarray.markers.begin(),
-                       [this](const auto& arrow) { return this->operator()(arrow); });
+                       [&](const auto& arrow) {
+                           auto marker = this->operator()(arrow);
+                           marker.lifetime = lifetime;
+                           marker.header.stamp = timestamp;
+                           return marker;
+                       });
 
         return markerarray;
     }

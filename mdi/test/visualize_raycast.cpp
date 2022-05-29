@@ -64,9 +64,7 @@ auto main(int argc, char* argv[]) -> int {
     const auto raycast_vis = [&](const vec3& from, const vec3& to, float x, float y, float z) {
         using std::cos, std::sin, std::acos;
         using mat3x3 = Eigen::Matrix3f;
-        using mat4x4 = Eigen::Matrix4f;
         using vec3 = Eigen::Vector3f;
-        using vec4 = Eigen::Vector4f;
 
         mat3x3 Rx90;
         Rx90 << 1.0f, 0.0f, 0.0f, 0.0f, cos(M_PI_2), sin(M_PI_2), 0.0f, -sin(M_PI_2), cos(M_PI_2);
@@ -78,15 +76,16 @@ auto main(int argc, char* argv[]) -> int {
         // use cross product to find third orthogonal basis vector.
         const vec3 k_basis = i_basis.cross(j_basis).normalized();
         const auto fmt_vec3 = [](const vec3& v) {
-            return "[" + std::to_string(v.x()) + ", " + std::to_string(v.y()) + ", " + std::to_string(v.z()) + "]";
+            return "[" + std::to_string(v.x()) + ", " + std::to_string(v.y()) + ", " +
+                   std::to_string(v.z()) + "]";
         };
 
         std::cout << "i_basis " << fmt_vec3(i_basis) << '\n';
         std::cout << "j_basis " << fmt_vec3(j_basis) << '\n';
         std::cout << "k_basis " << fmt_vec3(k_basis) << '\n';
 
-        // T forms a orthonormal basis where i_basis is the direction of from -> to, and j_basis and k_basis
-        // span the plane to which i_basis is a normal vector.
+        // T forms a orthonormal basis where i_basis is the direction of from -> to, and j_basis and
+        // k_basis span the plane to which i_basis is a normal vector.
         mat3x3 T;
         T.col(0) = i_basis;
         T.col(1) = j_basis;
@@ -103,7 +102,8 @@ auto main(int argc, char* argv[]) -> int {
             // };
 
             const vec3 origin = T * v + from;
-            const vec3 target = origin + static_cast<vec3>((direction.normalized() * raycast_length));
+            const vec3 target =
+                origin + static_cast<vec3>((direction.normalized() * raycast_length));
             std::cout << "origin: " << fmt_vec3(origin) << " -> " << fmt_vec3(target) << '\n';
 
             publish(arrow_msg_gen({origin, target}));

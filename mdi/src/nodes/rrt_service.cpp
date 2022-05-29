@@ -216,7 +216,7 @@ auto nbv_handler(mdi_msgs::NBV::Request& request, mdi_msgs::NBV::Response& respo
 
     const vec3 target = geometry_msgs_point_to_vec3(request.rrt_config.goal);
 
-    rrt.register_cb_for_event_on_new_node_created([&](const auto& parent, const vec3& new_point) {
+    rrt.register_cb_for_event_on_new_node_created([&](const auto&, const vec3& new_point) {
         vec3 dir = target - new_point;
 
         const auto yaw = std::atan2(dir.y(), dir.x());
@@ -228,7 +228,8 @@ auto nbv_handler(mdi_msgs::NBV::Request& request, mdi_msgs::NBV::Response& respo
         const auto pose = Pose{new_point, orientation};
         const auto fov = FoV{pose, horizontal, vertical, depth_range, target};
 
-#ifdef VISUALIZE_MARKERS_IN_RVIZ mdi::visualization::visualize_fov(fov, *marker_pub);
+#ifdef VISUALIZE_MARKERS_IN_RVIZ
+        mdi::visualization::visualize_fov(fov, *marker_pub);
         mdi::visualization::visualize_bbx(mdi::compute_bbx(fov), *marker_pub);
         /* mdi::visualization::visualize_voxels_inside_fov(
             fov, *octomap_environment_ptr, octomap_environment_ptr->resolution(),
@@ -302,9 +303,10 @@ auto main(int argc, char* argv[]) -> int {
 
     ros::init(argc, argv, name_of_node);
     auto nh = ros::NodeHandle();
-    auto rate = ros::Rate(mdi::utils::DEFAULT_LOOP_RATE);
 
 #ifdef VISUALIZE_MARKERS_IN_RVIZ
+    auto rate = ros::Rate(mdi::utils::DEFAULT_LOOP_RATE);
+
     waypoints_path_pub = std::make_unique<ros::Publisher>([&] {
         const auto service_name = "/visualization_marker"s;
         return nh.advertise<visualization_msgs::Marker>(service_name, 10);

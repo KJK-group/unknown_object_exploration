@@ -66,11 +66,11 @@ auto main(int argc, char* argv[]) -> int {
                                                              mdi::utils::DEFAULT_QUEUE_SIZE);
     }();
 
-    auto publish_marker_array = [&pub_visualize_marker_array, &publish_rate](const auto& msg) {
-        pub_visualize_marker_array.publish(msg);
-        publish_rate.sleep();
-        ros::spinOnce();
-    };
+    // auto publish_marker_array = [&](const auto& msg) {
+    //     pub_visualize_marker_array.publish(msg);
+    //     publish_rate.sleep();
+    //     ros::spinOnce();
+    // };
 
     auto sphere_msg_gen = mdi::utils::rviz::sphere_msg_gen();
     sphere_msg_gen.scale.x = 0.9;
@@ -96,7 +96,7 @@ auto main(int argc, char* argv[]) -> int {
         const auto depth_range = DepthRange{0.1, 15};
 
         auto fov = FoV{pose, horizontal, vertical, depth_range, target};
-        const auto direction = fov.direction();
+        // const auto direction = fov.direction();
 
         publish_marker(arrow_msg_gen({pos, target}));
 
@@ -204,9 +204,9 @@ auto main(int argc, char* argv[]) -> int {
                 auto /* opt */ voxel = ocmap.raycast(origin, octomap::point3d{v.x(), v.y(), v.z()});
                 // return ! opt.has_value();
                 auto match = Overload{
-                    [](Free _) { return true; },
-                    [](Unknown _) { return false; },
-                    [](Occupied _) { return false; },
+                    [](Free) { return true; },
+                    [](Unknown) { return false; },
+                    [](Occupied) { return false; },
                 };
 
                 return std::visit(match, voxel);

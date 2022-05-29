@@ -199,13 +199,13 @@ auto main(int argc, char* argv[]) -> int {
         arrow_msg_gen.color.r = 0.0f;
         arrow_msg_gen.color.g = 1.0f;
         arrow_msg_gen.color.b = 0.0f;
-        int i = 1;
+
         arrow_msg_gen.scale.x = 0.1f;
         arrow_msg_gen.scale.y = 0.1f;
         arrow_msg_gen.scale.z = 0.1f;
 
         auto markerarray = visualization_msgs::MarkerArray{};
-        for (int i = 1; i < path.size(); ++i) {
+        for (size_t i = 1; i < path.size(); ++i) {
             auto& p1 = path[i - 1];
             auto& p2 = path[i];
             auto arrow = arrow_msg_gen({p1, p2});

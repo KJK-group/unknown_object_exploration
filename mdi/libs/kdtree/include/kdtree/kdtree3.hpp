@@ -60,7 +60,7 @@ class kdtree3 final {
      * @param n number of points to add
      */
     using fn = std::function<std::pair<Point, Value>()>;
-    kdtree3(fn&& f, int n) {
+    kdtree3(fn&& f, size_t n) {
         if (n < 0) {
             throw std::invalid_argument("n must be positive");
         }

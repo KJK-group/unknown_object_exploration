@@ -105,9 +105,9 @@ auto visualize_voxels_inside_fov(const FoV& fov, const mdi::Octomap& ocmap, floa
         // return ! opt.has_value();
 
         auto match = Overload{
-            [](Free _) { return true; },
-            [](Unknown _) { return false; },
-            [](Occupied _) { return false; },
+            [](Free) { return true; },
+            [](Unknown) { return false; },
+            [](Occupied) { return false; },
         };
 
         return std::visit(match, voxel);

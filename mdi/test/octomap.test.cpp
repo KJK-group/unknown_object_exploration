@@ -100,14 +100,14 @@ class OcTreeWrapper final {
         return VoxelStatus::unknown;
     }
 
-    auto get_closest_intersection_point(const point_type& origin, const point_type& direction, double delta = 0.0) const
-        -> std::optional<point_type> {
+    auto get_closest_intersection_point(const point_type& origin, const point_type& direction,
+                                        double delta = 0.0) const -> std::optional<point_type> {
         if (const auto opt = raycast_(origin, direction)) {
             const auto center_pt_of_hit_voxel = opt.value();
             auto intersection = point_type{0, 0, 0};
 
-            const auto intersected =
-                octree_.getRayIntersection(origin, direction, center_pt_of_hit_voxel, intersection, delta);
+            const auto intersected = octree_.getRayIntersection(
+                origin, direction, center_pt_of_hit_voxel, intersection, delta);
             if (intersected) {
                 return intersection;
             }
@@ -116,8 +116,10 @@ class OcTreeWrapper final {
         return std::nullopt;
     }
 
-    // TODO:
-    auto get_closest_occupied_voxel(const point_type& point) const -> std::optional<point_type> { return std::nullopt; }
+    // // TODO:
+    // auto get_closest_occupied_voxel(const point_type& point) const -> std::optional<point_type> {
+    //     return std::nullopt;
+    // }
 
     auto resolution() const -> double { return octree_.getResolution(); }
     // TODO:
@@ -163,7 +165,8 @@ class OcTreeWrapper final {
         return std::nullopt;
     }
 
-    auto search_for_node_(const point_type& point, unsigned int depth = 0) const -> std::optional<node_type*> {
+    auto search_for_node_(const point_type& point, unsigned int depth = 0) const
+        -> std::optional<node_type*> {
         const auto node_ptr = octree_.search(point, depth);
         if (node_ptr != nullptr) {
             return node_ptr;
@@ -181,65 +184,65 @@ void print_query_info(point3d query, OcTreeNode* node) {
         cout << "occupancy probability at " << query << ":\t is unknown" << endl;
 }
 
-auto octomap_cb(const octomap_msgs::Octomap::ConstPtr& msg) -> void {
-    const auto binary = msg->binary;
-    const auto resolution = msg->resolution;
-    const auto& data = msg->data;
-}
+// auto octomap_cb(const octomap_msgs::Octomap::ConstPtr& msg) -> void {
+//     // const auto binary = msg->binary;
+//     // const auto resolution = msg->resolution;
+//     // const auto& data = msg->data;
+// }
 
 auto main(int argc, char* argv[]) -> int {
     ros::init(argc, argv, "octomap_test");
     auto nh = ros::NodeHandle();
 
-    auto octomap_sub = [&] {
-        const auto topic_name = "/octomap_binary";
-        const auto queue_size = 10;
-        return nh.subscribe<octomap_msgs::Octomap>(topic_name, queue_size, octomap_cb);
-    }();
+    // auto octomap_sub = [&] {
+    //     const auto topic_name = "/octomap_binary";
+    //     const auto queue_size = 10;
+    //     return nh.subscribe<octomap_msgs::Octomap>(topic_name, queue_size, octomap_cb);
+    // }();
 
     auto clear_octomap_client = [&] {
         const auto service_name = "reset";
         return nh.serviceClient<std_srvs::Empty>(service_name);
     }();
 
-    /**
-     * @brief reset octomap
-     *
-     */
-    const auto clear_octomap = [&] {
-        using Request = std_srvs::Empty::Request;
-        using Response = std_srvs::Empty::Response;
-        auto request = Request{};
-        auto response = Response{};
+    // /**
+    //  * @brief reset octomap
+    //  *
+    //  */
+    // const auto clear_octomap = [&] {
+    //     using Request = std_srvs::Empty::Request;
+    //     using Response = std_srvs::Empty::Response;
+    //     auto request = Request{};
+    //     auto response = Response{};
 
-        clear_octomap_client.call(request, response);
-    };
+    //     clear_octomap_client.call(request, response);
+    // };
 
     auto clear_region_of_octomap_client = [&] {
         const auto service_name = "clear_bbx";
         return nh.serviceClient<octomap_msgs::BoundingBoxQuery>(service_name);
     }();
 
-    /**
-     * @brief max and min defines a bbx. All voxels in the bounding box are set to "free"
-     */
-    const auto clear_region_of_octomap = [&](const point3d& max, const point3d& min) {
-        using Request = octomap_msgs::BoundingBoxQuery::Request;
-        using Response = octomap_msgs::BoundingBoxQuery::Response;
+    // /**
+    //  * @brief max and min defines a bbx. All voxels in the bounding box are set to "free"
+    //  */
+    // const auto clear_region_of_octomap = [&](const point3d& max, const point3d& min) {
+    //     using Request = octomap_msgs::BoundingBoxQuery::Request;
+    //     using Response = octomap_msgs::BoundingBoxQuery::Response;
 
-        const auto convert = [](const point3d& pt) {
-            auto geo_pt = geometry_msgs::Point{};
-            geo_pt.x = pt.x();
-            geo_pt.y = pt.y();
-            geo_pt.z = pt.z();
-            return geo_pt;
-        };
-        auto request = Request{};
-        request.max = convert(max);
-        request.min = convert(min);
-        auto response = Response{};  // is empty
-        clear_octomap_client.call(request, response);
-    };
+    //     const auto convert = [](const point3d& pt) {
+    //         auto geo_pt = geometry_msgs::Point{};
+    //         geo_pt.x = pt.x();
+    //         geo_pt.y = pt.y();
+    //         geo_pt.z = pt.z();
+    //         return geo_pt;
+    //     };
+    //     auto request = Request{};
+    //     request.max = convert(max);
+    //     request.min = convert(min);
+    //     auto response = Response{};  // is empty
+    //     clear_octomap_client.call(request, response);
+    // };
 
     const auto resolution = 0.1f;
     auto tree = octomap::OcTree(resolution);
@@ -265,8 +268,9 @@ auto main(int argc, char* argv[]) -> int {
     // for (int x = -30; x < 30; x++) {
     //     for (int y = -30; y < 30; y++) {
     //         for (int z = -30; z < 30; z++) {
-    //             octomap::point3d endpoint((float)x * 0.02f - 1.0f, (float)y * 0.02f - 1.0f, (float)z * 0.02f - 1.0f);
-    //             tree.updateNode(endpoint, false);  // integrate 'free' measurement
+    //             octomap::point3d endpoint((float)x * 0.02f - 1.0f, (float)y * 0.02f - 1.0f,
+    //             (float)z * 0.02f - 1.0f); tree.updateNode(endpoint, false);  // integrate 'free'
+    //             measurement
     //         }
     //     }
     // }
@@ -327,8 +331,8 @@ auto main(int argc, char* argv[]) -> int {
     }
 
     cout << endl;
-    // tree.getRayIntersection(const point3d& origin, const point3d& direction, const point3d& center,
-    // point3d& intersection)
+    // tree.getRayIntersection(const point3d& origin, const point3d& direction, const point3d&
+    // center, point3d& intersection)
     tree.writeBinary("data/simple_tree.bt");
     cout << "wrote example file simple_tree.bt" << endl << endl;
     cout << "now you can use octovis to visualize: octovis simple_tree.bt" << endl;

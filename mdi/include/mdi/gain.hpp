@@ -39,9 +39,9 @@ auto gain_of_fov(const types::FoV& fov, const mdi::Octomap& octomap, const doubl
 
         const auto match = [&](auto&& x) {
             auto visitor = Overload{
-                [](Free _) { return true; },
-                [](Unknown _) { return false; },
-                [](Occupied _) { return false; },
+                [](Free) { return true; },
+                [](Unknown) { return false; },
+                [](Occupied) { return false; },
             };
 
             return std::visit(visitor, x);

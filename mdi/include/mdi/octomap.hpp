@@ -127,10 +127,10 @@ class Octomap final {
            return std::nullopt;
        } */
 
-    // TODO:
-    auto get_closest_occupied_voxel(const point_type& point) const -> std::optional<point_type> {
-        return std::nullopt;
-    }
+    // // TODO:
+    // auto get_closest_occupied_voxel(const point_type& point) const -> std::optional<point_type> {
+    //     return std::nullopt;
+    // }
 
     auto resolution() const -> double { return octree_.getResolution(); }
     // TODO:

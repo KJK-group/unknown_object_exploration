@@ -14,7 +14,7 @@ auto below_plane3d(const vec3& pt, const vec3& normal, double d) -> bool {
     return pt.dot(normal) + d < 0.0;
 }
 auto in_plane3d(const vec3& pt, const vec3& normal, double d, double tolerance = 1e-6) -> bool {
-    return -tolerance <= pt.dot(normal) + d <= tolerance;
+    return -tolerance <= pt.dot(normal) + d && pt.dot(normal) + d <= tolerance;
 }
 
 struct Plane3D {
@@ -209,7 +209,7 @@ class FoV {
         if (even(y_span(d_near_plane))) {
             offset.y() = delta_d / 2.0f;
         }
-        const auto center = vec2{0, 0};
+        // const auto center = vec2{0, 0};
         // near plane
         const auto coordinate_gen = [&](int x, int y) -> std::array<vec2, 2> {
             return {/*center + */ offset +

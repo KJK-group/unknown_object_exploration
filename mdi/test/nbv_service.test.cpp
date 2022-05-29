@@ -145,7 +145,7 @@ auto main(int argc, char* argv[]) -> int {
     // arrow_msg_gen.color.r = 1.0f;
     // arrow_msg_gen.color.g = 0.0f;
     // arrow_msg_gen.color.b = 0.0f;
-    int i = 1;
+    size_t i = 1;
     ROS_INFO("visualizing waypoints");
     while (ros::ok() && i < path.size()) {
         auto& p1 = path[i - 1];

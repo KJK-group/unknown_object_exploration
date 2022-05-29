@@ -145,7 +145,7 @@ auto main(int argc, char* argv[]) -> int {
         // arrow_msg_gen.header.frame_id = utils::FRAME_WORLD;
 
         // visualize result
-        int i = 1;
+        size_t i = 1;
         while (ros::ok() && i < path.size()) {
             auto& p1 = path[i - 1];
             auto& p2 = path[i];

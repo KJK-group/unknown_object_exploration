@@ -15,7 +15,7 @@ namespace mdi {
 namespace types {
 
 struct BBX {
-    double width{}, height{}, depth{};
+    double width{}, depth{}, height{};
     vec3 center{};
 
     BBX(vec3 min, vec3 max)
@@ -108,10 +108,10 @@ auto compute_bbx(const FoV& fov) -> BBX {
         return {(*min)[dim], (*max)[dim]};
     };
 
-    const auto fmt_vec3 = [&](const vec3& v) -> std::string {
-        return "[" + std::to_string(v.x()) + ", " + std::to_string(v.y()) + ", " +
-               std::to_string(v.z()) + "]";
-    };
+    // const auto fmt_vec3 = [&](const vec3& v) -> std::string {
+    //     return "[" + std::to_string(v.x()) + ", " + std::to_string(v.y()) + ", " +
+    //            std::to_string(v.z()) + "]";
+    // };
 
     // std::cout << "vertices" << '\n';
     // for (const auto& v : vertices) {

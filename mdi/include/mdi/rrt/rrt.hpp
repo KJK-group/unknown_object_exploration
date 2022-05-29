@@ -61,7 +61,7 @@ class RRT {
      */
     auto grow1() -> bool { return growN(1); }
 
-    auto get_newest_node() const -> const void {}
+    // auto get_newest_node() const -> const void {}
 
     /**
      * @brief // deallocate all nodes in the tree.
@@ -71,7 +71,8 @@ class RRT {
     auto clear() -> void {
         nodes_.clear();
 #ifdef USE_KDTREE
-        std::for_each(kdtree3s_.begin(), kdtree3s_.end(), [&](auto& bucket) { bucket.delete_trees(); });
+        std::for_each(kdtree3s_.begin(), kdtree3s_.end(),
+                      [&](auto& bucket) { bucket.delete_trees(); });
         kdtree3s_.erase(kdtree3s_.begin() + 1, kdtree3s_.end());
 #endif  // USE_KDTREE
 
@@ -113,7 +114,7 @@ class RRT {
      */
     auto bft(const std::function<void(const vec3& pt)>& f) const -> void {
         const auto skip_root = false;
-        bft_([&](const vec3& _, const vec3& pt) { f(pt); }, skip_root);
+        bft_([&](const vec3&, const vec3& pt) { f(pt); }, skip_root);
     }
     /**
      * @brief traverse tree in breath first order, and call @ref f, for every edge
@@ -121,7 +122,8 @@ class RRT {
      * @param f the function to call.
      * @param skip_root if true then @ref f will be called with itself as parent and child.
      */
-    auto bft(const std::function<void(const vec3& pt, const vec3& parent_pt)>& f, bool skip_root = true) const -> void {
+    auto bft(const std::function<void(const vec3& pt, const vec3& parent_pt)>& f,
+             bool skip_root = true) const -> void {
         bft_(f, skip_root);
     }
 
@@ -132,7 +134,7 @@ class RRT {
      */
     [[nodiscard]] auto reachable_nodes() const -> std::size_t {
         std::size_t count = 0;
-        bft([&](const auto& _) { ++count; });
+        bft([&](const auto&) { ++count; });
         return count;
     }
     /**
@@ -162,7 +164,9 @@ class RRT {
         after_optimizing_waypoints_cb_list.push_back(cb);
     }
 
-    auto register_cb_for_event_on_goal_reached(on_goal_reached_cb cb) { on_goal_reached_cb_list.push_back(cb); }
+    auto register_cb_for_event_on_goal_reached(on_goal_reached_cb cb) {
+        on_goal_reached_cb_list.push_back(cb);
+    }
     auto register_cb_for_event_on_trying_full_path(on_trying_full_path_cb cb) {
         on_trying_full_path_cb_list.push_back(cb);
     }
@@ -170,14 +174,26 @@ class RRT {
         on_clearing_nodes_in_tree_cb_list.push_back(cb);
     }
 
-    auto register_cb_for_event_on_raycast(on_raycast_cb cb) -> void { on_raycast_cb_list.push_back(cb); }
+    auto register_cb_for_event_on_raycast(on_raycast_cb cb) -> void {
+        on_raycast_cb_list.push_back(cb);
+    }
 
-    auto unregister_cbs_for_event_on_new_node_created() -> void { on_new_node_created_cb_list.clear(); }
-    auto unregister_cbs_for_event_on_trying_full_path() -> void { on_trying_full_path_cb_list.clear(); }
-    auto unregister_cbs_for_event_before_optimizing_waypoints() -> void { before_optimizing_waypoints_cb_list.clear(); }
-    auto unregister_cbs_for_event_after_optimizing_waypoints() -> void { after_optimizing_waypoints_cb_list.clear(); }
+    auto unregister_cbs_for_event_on_new_node_created() -> void {
+        on_new_node_created_cb_list.clear();
+    }
+    auto unregister_cbs_for_event_on_trying_full_path() -> void {
+        on_trying_full_path_cb_list.clear();
+    }
+    auto unregister_cbs_for_event_before_optimizing_waypoints() -> void {
+        before_optimizing_waypoints_cb_list.clear();
+    }
+    auto unregister_cbs_for_event_after_optimizing_waypoints() -> void {
+        after_optimizing_waypoints_cb_list.clear();
+    }
     auto unregister_cbs_for_event_on_goal_reached() -> void { on_goal_reached_cb_list.clear(); }
-    auto unregister_cbs_for_event_on_clearing_nodes_in_tree() -> void { on_clearing_nodes_in_tree_cb_list.clear(); }
+    auto unregister_cbs_for_event_on_clearing_nodes_in_tree() -> void {
+        on_clearing_nodes_in_tree_cb_list.clear();
+    }
     auto unregister_cbs_for_event_on_raycast() -> void { on_raycast_cb_list.clear(); }
 
     auto unregister_cbs_for_all_events() -> void {
@@ -191,19 +207,35 @@ class RRT {
     }
 
     auto enable_cbs_for_event_on_new_node_created() -> void { on_new_node_created_status_ = true; }
-    auto enable_cbs_for_event_before_optimizing_waypoints() -> void { before_optimizing_waypoints_status_ = true; }
-    auto enable_cbs_for_event_after_optimizing_waypoints() -> void { after_optimizing_waypoints_status_ = true; }
+    auto enable_cbs_for_event_before_optimizing_waypoints() -> void {
+        before_optimizing_waypoints_status_ = true;
+    }
+    auto enable_cbs_for_event_after_optimizing_waypoints() -> void {
+        after_optimizing_waypoints_status_ = true;
+    }
     auto enable_cbs_for_event_on_goal_reached() -> void { on_goal_reached_status_ = true; }
     auto enable_cbs_for_event_on_trying_full_path() -> void { on_trying_full_path_status_ = true; }
-    auto enable_cbs_for_event_on_clearing_nodes_in_tree() -> void { on_clearing_nodes_in_tree_status_ = true; }
+    auto enable_cbs_for_event_on_clearing_nodes_in_tree() -> void {
+        on_clearing_nodes_in_tree_status_ = true;
+    }
     auto enable_cbs_for_event_on_raycast() -> void { on_raycast_status_ = true; }
 
-    auto disable_cbs_for_event_on_new_node_created() -> void { on_new_node_created_status_ = false; }
-    auto disable_cbs_for_event_before_optimizing_waypoints() -> void { before_optimizing_waypoints_status_ = false; }
-    auto disable_cbs_for_event_after_optimizing_waypoints() -> void { after_optimizing_waypoints_status_ = false; }
+    auto disable_cbs_for_event_on_new_node_created() -> void {
+        on_new_node_created_status_ = false;
+    }
+    auto disable_cbs_for_event_before_optimizing_waypoints() -> void {
+        before_optimizing_waypoints_status_ = false;
+    }
+    auto disable_cbs_for_event_after_optimizing_waypoints() -> void {
+        after_optimizing_waypoints_status_ = false;
+    }
     auto disable_cbs_for_event_on_goal_reached() -> void { on_goal_reached_status_ = false; }
-    auto disable_cbs_for_event_on_trying_full_path() -> void { on_trying_full_path_status_ = false; }
-    auto disable_cbs_for_event_on_clearing_nodes_in_tree() -> void { on_clearing_nodes_in_tree_status_ = false; }
+    auto disable_cbs_for_event_on_trying_full_path() -> void {
+        on_trying_full_path_status_ = false;
+    }
+    auto disable_cbs_for_event_on_clearing_nodes_in_tree() -> void {
+        on_clearing_nodes_in_tree_status_ = false;
+    }
     auto disable_cbs_for_event_on_raycast() -> void { on_raycast_status_ = false; }
 
     auto toggle_cbs_for_event_on_new_node_created() -> void {
@@ -215,7 +247,9 @@ class RRT {
     auto toggle_cbs_for_event_after_optimizing_waypoints() -> void {
         after_optimizing_waypoints_status_ = ! after_optimizing_waypoints_status_;
     }
-    auto toggle_cbs_for_event_on_goal_reached() -> void { on_goal_reached_status_ = ! on_goal_reached_status_; }
+    auto toggle_cbs_for_event_on_goal_reached() -> void {
+        on_goal_reached_status_ = ! on_goal_reached_status_;
+    }
     auto toggle_cbs_for_event_on_trying_full_path() -> void {
         on_trying_full_path_status_ = ! on_trying_full_path_status_;
     }
@@ -223,7 +257,9 @@ class RRT {
         on_clearing_nodes_in_tree_status_ = ! on_clearing_nodes_in_tree_status_;
     }
 
-    auto toggle_cbs_for_event_on_raycast() -> void { on_raycast_status_ = ! on_clearing_nodes_in_tree_status_; }
+    auto toggle_cbs_for_event_on_raycast() -> void {
+        on_raycast_status_ = ! on_clearing_nodes_in_tree_status_;
+    }
 
     [[nodiscard]] auto empty() const -> bool { return nodes_.empty(); }
     [[nodiscard]] auto size() const -> std::size_t { return nodes_.size(); };
@@ -243,7 +279,8 @@ class RRT {
 
     struct node_t {
        public:
-        node_t(vec3 pos, node_t* parent_ = nullptr) : parent(parent_), children{}, position_(std::move(pos)) {}
+        node_t(vec3 pos, node_t* parent_ = nullptr)
+            : parent(parent_), children{}, position_(std::move(pos)) {}
 
         node_t* parent = nullptr;
         std::vector<node_t*> children{};
@@ -279,8 +316,8 @@ class RRT {
      * @param f the function to call.
      * @param skip_root if true then @ref f will be called with itself as parent and child.
      */
-    auto bft_(const std::function<void(const vec3& parent_pt, const vec3& child_pt)>& f, bool skip_root = true) const
-        -> void;
+    auto bft_(const std::function<void(const vec3& parent_pt, const vec3& child_pt)>& f,
+              bool skip_root = true) const -> void;
     [[nodiscard]] auto grow_() -> bool;
 
     auto insert_node_(const vec3& pos, node_t* parent) -> node_t&;
@@ -351,14 +388,17 @@ class RRT {
         kdtree3_bucket_t(int size_of_a_tree_) : size_of_a_tree(size_of_a_tree_) {}
 
         [[nodiscard]] auto number_of_trees() const {
-            return std::count_if(forest.begin(), forest.end(), [](const auto& tree) { return tree != nullptr; });
+            return std::count_if(forest.begin(), forest.end(),
+                                 [](const auto& tree) { return tree != nullptr; });
         }
         [[nodiscard]] auto bucket_is_full() const -> bool {
             return number_of_trees() == max_number_of_kdtrees_per_bucket_;
         }
         [[nodiscard]] auto empty() const { return number_of_trees() == 0; }
 
-        [[nodiscard]] auto number_of_nodes_in_bucket() const { return number_of_trees() * size_of_a_tree; }
+        [[nodiscard]] auto number_of_nodes_in_bucket() const {
+            return number_of_trees() * size_of_a_tree;
+        }
 
         auto delete_trees() {
             std::for_each(forest.begin(), forest.end(), [&](auto& tree) {
@@ -394,8 +434,9 @@ class RRT {
     std::vector<kdtree3_bucket_t> kdtree3s_{{max_number_of_nodes_to_do_linear_search_on_}};
 
     auto add_bucket() -> void {
-        kdtree3s_.emplace_back(static_cast<int>(max_number_of_nodes_to_do_linear_search_on_ *
-                                                std::pow(max_number_of_kdtrees_per_bucket_, kdtree3s_.size())));
+        kdtree3s_.emplace_back(
+            static_cast<int>(max_number_of_nodes_to_do_linear_search_on_ *
+                             std::pow(max_number_of_kdtrees_per_bucket_, kdtree3s_.size())));
     }
 
 #endif  // USE_KDTREE

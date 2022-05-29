@@ -63,8 +63,10 @@ class Angle {
         switch (encoding) {
             case AngleEncoding::Degree:
                 angle_ = deg2rad(a);
+                break;
             case AngleEncoding::Radian:
                 angle_ = a;
+                break;
         }
     }
 
