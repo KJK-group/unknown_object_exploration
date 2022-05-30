@@ -662,31 +662,54 @@ auto RRT::optimize_waypoints_() -> void {
         return;  // nothing to do  ¯\_(ツ)_/¯
     }
 
-    auto solution_waypoints = std::vector<Waypoint>();
     // interpolate points a long path so bezier spline interpolation is better
-    for (std::size_t i = 0; i < solution_indices.size() - 1; ++i) {
-        const auto idx = solution_indices[i];
-        const auto next_idx = solution_indices[i + 1];
-        const auto& from = waypoints_[idx];
-        const auto& to = waypoints_[next_idx];
-        solution_waypoints.push_back(from);
+    const auto optimize_waypoints = [&]() {
+        auto solution_waypoints = std::vector<Waypoint>();
+        for (std::size_t i = 0; i < solution_indices.size() - 1; ++i) {
+            const auto idx = solution_indices[i];
+            const auto next_idx = solution_indices[i + 1];
+            const auto& from = waypoints_[idx];
+            const auto& to = waypoints_[next_idx];
+            solution_waypoints.push_back(from);
 
-        const float half_step_size = step_size_ / 2;
+            // const double half_step_size = step_size_ / 2;
 
-        const auto edge_cost = cost(idx, next_idx);
-        const bool should_interpolate_along_edge = edge_cost > static_cast<double>(half_step_size);
-        if (should_interpolate_along_edge) {
-            const double percentage_offset = 1 / (edge_cost / static_cast<double>(half_step_size));
-            // then n <= steps should be n < steps
-            const int steps = std::floor(edge_cost / static_cast<double>(half_step_size));
-            const auto direction = to - from;
-            for (std::size_t n = 1; n <= steps; ++n) {
-                solution_waypoints.emplace_back(from + n * percentage_offset * direction);
+            // const auto edge_cost = cost(idx, next_idx);  // dist
+            // const auto ss = step_size_;
+            // const auto k = edge_cost / ss;
+            // const auto o = std::ceil(k);
+            // const auto oss = o / edge_cost;
+
+            // const bool should_interpolate_along_edge = edge_cost > half_step_size;
+            const auto edge_cost = cost(idx, next_idx);  // dist
+            const bool should_interpolate_along_edge = edge_cost > step_size_;
+
+            if (should_interpolate_along_edge) {
+                const auto num_interpolations = std::ceil(edge_cost / step_size_);
+                const auto dist_between_interpolated_points = num_interpolations / edge_cost;
+
+                for (std::size_t i = 1; i <= static_cast<std::size_t>(num_interpolations); ++i) {
+                    solution_waypoints.emplace_back(from + i * dist_between_interpolated_points);
+                }
+
+                // // const double percentage_offset = 1 / (edge_cost / half_step_size);
+                // const double percentage_offset = 1 / (edge_cost / half_step_size);
+                // // then n <= steps should be n < steps
+                // const int steps = std::floor(edge_cost / half_step_size);
+                // const auto direction = to - from;
+                // for (std::size_t n = 1; n <= steps; ++n) {
+                //     solution_waypoints.emplace_back(from + n * percentage_offset * direction);
+                // }
             }
         }
-    }
-    // the above loop does not iterate over the last optimized waypoint, so we have to add it.
-    solution_waypoints.push_back(waypoints_[solution_indices.back()]);
+
+        // the above loop does not iterate over the last optimized waypoint, so we have to add it.
+        solution_waypoints.push_back(waypoints_[solution_indices.back()]);
+
+        return solution_waypoints;
+    };
+
+    const auto solution_waypoints = optimize_waypoints();
 
     for (std::size_t i = 0; i < solution_waypoints.size() - 1; ++i) {
         const auto& from = solution_waypoints[i];
