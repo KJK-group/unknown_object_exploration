@@ -162,7 +162,7 @@ Visualization Manager:
       Marker Topic: /mdi/mission/visualisation
       Name: Marker
       Namespaces:
-        "": true
+        {}
       Queue Size: 100
       Value: true
     - Class: octomap_rviz_plugin/OccupancyGrid
@@ -182,7 +182,7 @@ Visualization Manager:
       Marker Topic: /mdi/visualisation
       Name: MarkerArray
       Namespaces:
-        "": true
+        {}
       Queue Size: 10
       Value: true
     - Class: rviz/Marker
@@ -258,13 +258,13 @@ Visualization Manager:
       Value: true
     - Alpha: 1
       Class: rviz/Axes
-      Enabled: true
+      Enabled: false
       Length: 100
       Name: Axes
       Radius: 0.10000000149011612
       Reference Frame: <Fixed Frame>
       Show Trail: false
-      Value: true
+      Value: false
     - Class: rviz/MarkerArray
       Enabled: true
       Marker Topic: visualization_marker_array
@@ -309,7 +309,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/XYOrbit
-      Distance: 24.39389419555664
+      Distance: 35.69904708862305
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -317,17 +317,17 @@ Visualization Manager:
         Value: false
       Field of View: 0.7853981852531433
       Focal Point:
-        X: -9.949692726135254
-        Y: -9.58940601348877
-        Z: 3.1731644412502646e-05
+        X: -3.171426296234131
+        Y: -4.2506818771362305
+        Z: 2.7916947146877646e-05
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.6297965049743652
+      Pitch: 0.35479676723480225
       Target Frame: world_view
-      Yaw: 0.6303414106369019
+      Yaw: 1.8303403854370117
     Saved: ~
 Window Geometry:
   Displays:

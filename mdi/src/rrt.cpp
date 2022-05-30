@@ -753,7 +753,7 @@ auto RRT::collision_free_(const vec3& from, const vec3& to, double depth, double
     T.col(2) = k_basis;
 
     // TODO: use parameter to determine the offset after the "to" point to cast raycast at.
-    const float raycast_length = direction.norm() + 0.5 * depth;
+    const float raycast_length = direction.norm() + depth;
 
     const auto occupied_or_unknown = [&](const vec3& v) {
         static constexpr auto convert_to_pt = [](const auto& v) -> mdi::Octomap::point_type {

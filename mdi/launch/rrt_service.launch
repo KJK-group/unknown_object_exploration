@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <launch>
-	<arg name="node" default="rrt_service"/>
+	<arg name="node" default="rrt_service_vis_only"/>
 	<arg name="package" default="mdi"/>
 	<arg name="frame_id" default="world_enu"/>
 	<!-- <arg name="launch-prefix" default="kitty lldb"/> -->

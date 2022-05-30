@@ -20,14 +20,11 @@
     <!-- <arg name="lp" default="valgrind"/> -->
     <arg name="lp" default=""/>
 
-
     <env name="ROSCONSOLE_CONFIG_FILE" value="$(arg package_path)/launch/log.conf"/>
     <rosparam file="$(arg package_path)/rosparam/drone.yaml" command="load" />
     <rosparam file="$(arg package_path)/rosparam/rrt.yaml" command="load" />
     <rosparam file="$(arg package_path)/rosparam/nbv.yaml" command="load" />
     <rosparam file="$(arg package_path)/rosparam/camera.yaml" command="load" />
-
-	<!-- <rosparam command="load" file="$(dirname)/../rosparam/rrt.yaml"/> -->
 
     <include file="$(arg package_path)/launch/rrt_service.launch" />
     <include file="$(arg package_path)/launch/segmentation.launch" />

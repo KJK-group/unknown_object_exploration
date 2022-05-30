@@ -149,11 +149,6 @@ auto rrt_find_path_handler(mdi_msgs::RrtFindPath::Request& request,
 
     // rrt.register_cb_for_event_on_new_node_created(new_node);
 
-    // TODO: comment
-    rrt.register_cb_for_event_before_optimizing_waypoints(before_waypoint_optimization);
-    rrt.register_cb_for_event_after_optimizing_waypoints(after_waypoint_optimization);
-    rrt.register_cb_for_event_on_raycast(raycast);
-
     auto octomap_ptr = call_get_environment_octomap();
 
     if (octomap_ptr != nullptr) {
@@ -255,10 +250,10 @@ auto nbv_handler(mdi_msgs::NBV::Request& request, mdi_msgs::NBV::Response& respo
                                       .arrow_width(0.1f)
                                       .color({0, 1, 0, 1})
                                       .build();
-    rrt.register_cb_for_event_on_new_node_created([&](const auto& from, const auto& to) {
-        auto msg = new_node_arrow_msg_gen({from, to});
-        marker_array.markers.push_back(msg);
-    });
+    // rrt.register_cb_for_event_on_new_node_created([&](const auto& from, const auto& to) {
+    //     auto msg = new_node_arrow_msg_gen({from, to});
+    //     marker_array.markers.push_back(msg);
+    // });
 #endif  // VISUALIZE_MARKERS_IN_RVIZ
 
     rrt.register_cb_for_event_on_new_node_created([&](const auto&, const vec3& new_point) {
@@ -274,6 +269,12 @@ auto nbv_handler(mdi_msgs::NBV::Request& request, mdi_msgs::NBV::Response& respo
         const auto fov = FoV{pose, horizontal, vertical, depth_range, target};
 
 #ifdef VISUALIZE_MARKERS_IN_RVIZ
+
+        // TODO: comment
+        rrt.register_cb_for_event_before_optimizing_waypoints(before_waypoint_optimization);
+        rrt.register_cb_for_event_after_optimizing_waypoints(after_waypoint_optimization);
+        rrt.register_cb_for_event_on_raycast(raycast);
+
         // mdi::visualization::visualize_fov(fov, *marker_pub);
         // mdi::visualization::visualize_bbx(mdi::compute_bbx(fov), *marker_pub);
         /* mdi::visualization::visualize_voxels_inside_fov(
@@ -413,6 +414,7 @@ auto main(int argc, char* argv[]) -> int {
             msg.color.r = 1;
             msg.color.g = 0;
         }
+        std::cout << "PUBLISHIN RAYCAST" << std::endl;
         waypoints_path_pub->publish(msg);
         rate.sleep();
         ros::spinOnce();
