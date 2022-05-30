@@ -48,9 +48,34 @@ class RRTBuilder final {
         rrt_.max_dist_goal_tolerance_ = max_dist_goal_tolerance;
         return *this;
     }
+    RRTBuilder& drone_width(double width) {
+        if (width < 0.f) {
+            auto err_msg = "drone_width must be greater than 0.f";
+            throw std::invalid_argument(err_msg);
+        }
+        rrt_.drone_width_ = width;
+        return *this;
+    }
+    RRTBuilder& drone_height(double height) {
+        if (height < 0.f) {
+            auto err_msg = "drone_height must be greater than 0.f";
+            throw std::invalid_argument(err_msg);
+        }
+        rrt_.drone_height_ = height;
+        return *this;
+    }
+    RRTBuilder& drone_depth(double depth) {
+        if (depth < 0.f) {
+            auto err_msg = "drone_depth must be greater than 0.f";
+            throw std::invalid_argument(err_msg);
+        }
+        rrt_.drone_depth_ = depth;
+        return *this;
+    }
     RRTBuilder& goal_bias(float goal_bias) {
         if (! (0 <= goal_bias && goal_bias <= 1.f)) {
-            auto err_msg = "goal_bias must be in the range [0., 1.] but was " + std::to_string(goal_bias);
+            auto err_msg =
+                "goal_bias must be in the range [0., 1.] but was " + std::to_string(goal_bias);
             throw std::invalid_argument(err_msg);
         }
         rrt_.goal_bias_ = goal_bias;
@@ -59,7 +84,8 @@ class RRTBuilder final {
 
     RRTBuilder& probability_of_testing_full_path_from_new_node_to_goal(float probability) {
         if (! (0 <= probability && probability <= 1.f)) {
-            auto err_msg = "probability must be in the range [0., 1.] but was " + std::to_string(probability);
+            auto err_msg =
+                "probability must be in the range [0., 1.] but was " + std::to_string(probability);
             throw std::invalid_argument(err_msg);
         }
         rrt_.probability_of_testing_full_path_from_new_node_to_goal_ = probability;
@@ -67,11 +93,13 @@ class RRTBuilder final {
     }
 
     RRTBuilder& on_new_node_created(
-        std::function<void(const Eigen::Vector3f& parent_node, const Eigen::Vector3f& new_node)> cb) {
+        std::function<void(const Eigen::Vector3f& parent_node, const Eigen::Vector3f& new_node)>
+            cb) {
         rrt_.on_new_node_created_cb_list.push_back(cb);
         return *this;
     }
-    RRTBuilder& on_goal_reached(std::function<void(const Eigen::Vector3f& goal_node, std::size_t n_iterations)> cb) {
+    RRTBuilder& on_goal_reached(
+        std::function<void(const Eigen::Vector3f& goal_node, std::size_t n_iterations)> cb) {
         rrt_.on_goal_reached_cb_list.push_back(cb);
         return *this;
     }

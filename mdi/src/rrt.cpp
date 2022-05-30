@@ -724,8 +724,9 @@ auto RRT::backtrack_and_set_waypoints_starting_at_(node_t* start_node) -> bool {
 }
 
 // TODO: change parameters
-auto RRT::collision_free_(const vec3& from, const vec3& to, float x, float y, float z,
-                          float padding, float end_of_raycast_padding) const -> bool {
+auto RRT::collision_free_(const vec3& from, const vec3& to, double depth, double width,
+                          double height
+                          /*, float padding, float end_of_raycast_padding */) const -> bool {
     if (octomap_ == nullptr) {
         std::cerr << "[INFO] no octomap available, assuming path is collision free" << '\n';
         return true;
@@ -752,7 +753,7 @@ auto RRT::collision_free_(const vec3& from, const vec3& to, float x, float y, fl
     T.col(2) = k_basis;
 
     // TODO: use parameter to determine the offset after the "to" point to cast raycast at.
-    const float raycast_length = direction.norm() + 2 * x;
+    const float raycast_length = direction.norm() + 0.5 * depth;
 
     const auto occupied_or_unknown = [&](const vec3& v) {
         static constexpr auto convert_to_pt = [](const auto& v) -> mdi::Octomap::point_type {
@@ -784,10 +785,6 @@ auto RRT::collision_free_(const vec3& from, const vec3& to, float x, float y, fl
                                         },
                                         voxel);
 
-        // const bool did_hit = match({[](Free _) { return false; }, [](Unknown _) { return true; },
-        //                             [](Occupied _) { return true; }},
-        //                            voxel);
-
         call_cbs_for_event_on_raycast_(origin, direction, raycast_length, did_hit);
         return did_hit;
     };
@@ -809,15 +806,15 @@ auto RRT::collision_free_(const vec3& from, const vec3& to, float x, float y, fl
     // | /      | /      | /
     // |/       |/       |/
     // 7--------2--------8
-    return ! (occupied_or_unknown(vec3{0, 0, 0})                 // 0, center
-              || occupied_or_unknown(vec3{0, y / 2, 0})          // 3, left
-              || occupied_or_unknown(vec3{0, -y / 2, 0})         // 4, right
-              || occupied_or_unknown(vec3{0, 0, z / 2})          // 1, up
-              || occupied_or_unknown(vec3{0, 0, -z / 2})         // 2, down
-              || occupied_or_unknown(vec3{0, -y / 2, z / 2})     // 5, up left
-              || occupied_or_unknown(vec3{0, y / 2, z / 2})      // 6, up right
-              || occupied_or_unknown(vec3{0, y / 2, -z / 2})     // 7, down left
-              || occupied_or_unknown(vec3{0, -y / 2, -z / 2}));  // 8, down right
+    return ! (occupied_or_unknown(vec3{0, 0, 0})                          // 0, center
+              || occupied_or_unknown(vec3{0, width / 2, 0})               // 3, left
+              || occupied_or_unknown(vec3{0, -width / 2, 0})              // 4, right
+              || occupied_or_unknown(vec3{0, 0, height / 2})              // 1, up
+              || occupied_or_unknown(vec3{0, 0, -height / 2})             // 2, down
+              || occupied_or_unknown(vec3{0, -width / 2, height / 2})     // 5, up left
+              || occupied_or_unknown(vec3{0, width / 2, height / 2})      // 6, up right
+              || occupied_or_unknown(vec3{0, width / 2, -height / 2})     // 7, down left
+              || occupied_or_unknown(vec3{0, -width / 2, -height / 2}));  // 8, down right
 }
 
 auto RRT::call_cbs_for_event_on_new_node_created_(const vec3& parent_pt, const vec3& new_pt) const

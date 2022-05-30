@@ -11,7 +11,7 @@
         <arg name="z_i" default="0"/>
         <arg name="z_d" default="8"/>
         <arg name="vel" default="1"/>
-        <arg name="alt" default="5"/>
+        <arg name="alt" default="15"/>
         <arg name="target_x" default="5"/>
         <arg name="target_y" default="-42"/>
     </include>

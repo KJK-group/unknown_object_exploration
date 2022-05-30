@@ -139,6 +139,9 @@ auto rrt_find_path_handler(mdi_msgs::RrtFindPath::Request& request,
                        request.rrt_config.probability_of_testing_full_path_from_new_node_to_goal)
                    .max_dist_goal_tolerance(request.rrt_config.goal_tolerance)
                    .step_size(request.rrt_config.step_size)
+                   .drone_width(request.drone_config.width)
+                   .drone_height(request.drone_config.height)
+                   .drone_depth(request.drone_config.depth)
                    .build();
 
     // rrt.register_cb_for_event_on_new_node_created(

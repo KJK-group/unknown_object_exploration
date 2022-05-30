@@ -325,19 +325,22 @@ class RRT {
     auto backtrack_and_set_waypoints_starting_at_(node_t* start_node) -> bool;
     auto optimize_waypoints_() -> void;
 
-    auto collision_free_(const vec3& a, const vec3& b, float x, float y, float z, float padding,
-                         float end_of_raycast_padding = 1.0f) const -> bool;
-    inline auto collision_free_(const vec3& a, const vec3& b, float r, float padding,
-                                float end_of_raycast_padding = 1.0f) const -> bool {
-        return collision_free_(a, b, r, r, r, padding, end_of_raycast_padding);
-    }
-    inline auto collision_free_(const vec3& a, const vec3& b) const -> bool {
-        return collision_free_(a, b, drone_radius_, padding_, end_of_raycast_padding_);
+    [[nodiscard]] auto collision_free_(const vec3& a, const vec3& b, double depth, double width, double height/* , double padding,
+                         double end_of_raycast_padding = 1.0f */) const -> bool;
+    // inline auto collision_free_(const vec3& a, const vec3& b, double r, double padding,
+    //                             double end_of_raycast_padding = 1.0f) const -> bool {
+    //     return collision_free_(a, b, r, r, r, padding, end_of_raycast_padding);
+    // }
+    [[nodiscard]] inline auto collision_free_(const vec3& a, const vec3& b) const -> bool {
+        return collision_free_(a, b, drone_depth_, drone_width_, drone_height_);
     }
 
-    float drone_radius_ = 2.5f;
-    float padding_ = 0.1f;
-    float end_of_raycast_padding_ = 1.0f;
+    double drone_width_;
+    double drone_height_;
+    double drone_depth_;
+    // float drone_radius_ = 2.5f;
+    // float padding_ = 0.1f;
+    // float end_of_raycast_padding_ = 1.0f;
 
     float step_size_{};
     // float max_step_size_;

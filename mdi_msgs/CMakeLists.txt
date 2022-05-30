@@ -18,6 +18,7 @@ add_message_files(
   NbvConfig.msg
   RrtConfig.msg
   Waypoints.msg
+  DroneConfig.msg
 )
 
 add_service_files(

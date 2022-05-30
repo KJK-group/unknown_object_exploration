@@ -292,22 +292,46 @@ auto Mission::find_path_(Eigen::Vector3f start, Eigen::Vector3f end)
 
 auto Mission::find_nbv_path_(Eigen::Vector3f start) -> std::vector<Eigen::Vector3f> {
     // std::cout << "Finding path from " << start << " to " << end << std::endl;
-    const auto goal_tolerance = 2;
+
     auto nbv_msg = mdi_msgs::NBV{};
+
+    auto drone_param = std::map<std::string, double>();
+    ros::param::get("/mdi/drone", drone_param);
+    if (drone_param.empty()) {
+        std::cerr << "drone_param is empty" << std::endl;
+        std::exit(EXIT_FAILURE);
+    }
+    auto& drone = nbv_msg.request.drone_config;
+    drone.width = drone_param["width"];
+    drone.height = drone_param["height"];
+    drone.depth = drone_param["depth"];
+
+    auto rrt_param = std::map<std::string, float>();
+    ros::param::get("/mdi/rrt/params", rrt_param);
+    if (rrt_param.empty()) {
+        std::cerr << "rrt_param is empty" << std::endl;
+        std::exit(EXIT_FAILURE);
+    }
+
     auto& rrt = nbv_msg.request.rrt_config;
-    rrt.probability_of_testing_full_path_from_new_node_to_goal = 0;
-    rrt.goal_bias = 0.7;
-    rrt.goal_tolerance = goal_tolerance;
+    rrt.probability_of_testing_full_path_from_new_node_to_goal =
+        rrt_param["probability_of_testing_full_path_from_new_node_to_goal"];
+    rrt.goal_bias = rrt_param["goal_bias"];
+    rrt.goal_tolerance = rrt_param["goal_tolerance"];
     rrt.start.x = start.x();
     rrt.start.y = start.y();
     rrt.start.z = start.z();
     rrt.goal.x = object_center_.x();
     rrt.goal.y = object_center_.y();
-    rrt.max_iterations = 1000;
-    rrt.step_size = 2;
+    rrt.max_iterations = static_cast<uint>(rrt_param["max_iterations"]);
+    rrt.step_size = rrt_param["step_size"];
 
     auto nbv_param = std::map<std::string, double>();
     ros::param::get("/mdi/nbv", nbv_param);
+    if (nbv_param.empty()) {
+        std::cerr << "nbv_param is empty" << std::endl;
+        std::exit(EXIT_FAILURE);
+    }
 
     auto& nbv = nbv_msg.request.nbv_config;
     nbv.gain_of_interest_threshold = nbv_param["information_threshold"];
@@ -316,12 +340,15 @@ auto Mission::find_nbv_path_(Eigen::Vector3f start) -> std::vector<Eigen::Vector
     nbv.weight_unknown = nbv_param["unknown"];
     nbv.weight_distance_to_object = nbv_param["distance_to_object"];
 
+    auto camera_param = std::map<std::string, float>();
+    ros::param::get("/mdi/camera", camera_param);
+
     auto& fov = nbv_msg.request.fov;
-    fov.depth_range.max = 15;
-    fov.depth_range.min = 0.1;
-    fov.horizontal.angle = 90;
-    fov.vertical.angle = 60;
-    fov.pitch.angle = -10;
+    fov.depth_range.max = camera_param["depth_max"];
+    fov.depth_range.min = camera_param["depth_min"];
+    fov.horizontal.angle = camera_param["horisontal_fov"];
+    fov.vertical.angle = camera_param["vertical_fov"];
+    fov.pitch.angle = camera_param["pitch"];
 
     std::vector<Eigen::Vector3f> path;
     if (client_nbv_.call(nbv_msg)) {
@@ -560,7 +587,7 @@ auto Mission::run_step() -> void {
             // }
             if (trajectory_step_(velocity_target_)) {
                 ROS_INFO_STREAM((timeout_ - timeout_delta_time_).toSec()
-                                << "Finding new NBV interest point...");
+                                << " Finding new NBV interest point...");
 
                 if (auto trajectory_opt =
                         fit_trajectory_(find_nbv_path_(interest_points_.back()))) {

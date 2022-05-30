@@ -8,7 +8,8 @@ geometry_msgs/Point goal
 # float32 probability_of_testing_full_path_from_new_node_to_goal
 # float32 collision_padding
 
-RrtConfig rrt_config
+mdi_msgs/RrtConfig rrt_config
+mdi_msgs/DroneConfig drone_config
 # uint32 max_waypoints
 ---
 # response
