@@ -34,6 +34,7 @@
 #include "ros/duration.h"
 #include "ros/init.h"
 #include "ros/publisher.h"
+#include "ros/rate.h"
 #include "ros/service_client.h"
 #include "ros/service_server.h"
 
@@ -217,7 +218,7 @@ auto nbv_handler(mdi_msgs::NBV::Request& request, mdi_msgs::NBV::Response& respo
     }
 
     // TODO: how to initialize this maybe std::optional ?
-    auto best_fov_gain = mdi::FoVGainMetric{};
+    auto best_fov_gain_metric = mdi::FoVGainMetric{};
     double best_gain = std::numeric_limits<double>::lowest();
     vec3 best_point = geometry_msgs_point_to_vec3(request.rrt_config.start);
     const vec3 target = geometry_msgs_point_to_vec3(request.rrt_config.goal);
@@ -280,7 +281,7 @@ auto nbv_handler(mdi_msgs::NBV::Request& request, mdi_msgs::NBV::Response& respo
             ROS_INFO_STREAM("gain (" << std::to_string(gain)
                                      << ") is better that the current best gain ("
                                      << std::to_string(best_gain) << ")");
-            best_fov_gain = fov_gain_metric;
+            best_fov_gain_metric = fov_gain_metric;
             best_gain = gain;
             best_point = fov.pose().position;
         }
@@ -320,6 +321,10 @@ auto nbv_handler(mdi_msgs::NBV::Request& request, mdi_msgs::NBV::Response& respo
             response.waypoints = waypoints_to_geometry_msgs_points(path);
         }
     }
+
+    nbv_metric_pub->publish(mdi::to_ros_msg(best_fov_gain_metric));
+    ros::spinOnce();
+    ros::Rate(10).sleep();
 
 #ifdef VISUALIZE_MARKERS_IN_RVIZ
     // std::cout << "publishing RRT tree..." << std::endl;
@@ -488,7 +493,7 @@ auto main(int argc, char* argv[]) -> int {
     }();
 
     nbv_metric_pub = std::make_unique<ros::Publisher>([&] {
-        const auto topic_name = "/mdi/best_nbv_fov_metric";
+        const auto topic_name = "/mdi/best_nbv_fov_metric"s;
         const auto queue_size = 10;
         return nh.advertise<mdi_msgs::FoVGainMetric>(topic_name, queue_size);
     }());
