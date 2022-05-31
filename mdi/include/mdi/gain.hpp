@@ -14,11 +14,12 @@
 namespace mdi {
 
 struct FoVGainMetric {
-    double gain_free, gain_unknown, gain_occupied, gain_distance;
+    double gain_free, gain_unknown, gain_occupied, gain_distance, gain_not_visible;
     double gain_total;
     std::size_t n_inside_fov;
     std::size_t n_visible;
     std::size_t n_free_voxels;
+    std::size_t n_not_visible;
     std::size_t n_occupied_voxels;
     std::size_t n_unknown_voxels;
     std::size_t n_total;
@@ -37,9 +38,11 @@ auto yaml(const FoVGainMetric metric, int indentation = 0, int tabsize = 2) -> s
            line(tab2 + "occupied: " + std::to_string(metric.gain_occupied)) +
            line(tab2 + "unknown: " + std::to_string(metric.gain_unknown)) +
            line(tab2 + "distance: " + std::to_string(metric.gain_distance)) +
+           line(tab2 + "not_visible: " + std::to_string(metric.gain_not_visible)) +
            line(tab2 + "total: " + std::to_string(metric.gain_total)) + line(tab + "fov:") +
            line(tab2 + "total: " + std::to_string(metric.n_total)) +
            line(tab2 + "visible: " + std::to_string(metric.n_visible)) +
+           line(tab2 + "not_visible: " + std::to_string(metric.n_not_visible)) +
            line(tab2 + "inside: " + std::to_string(metric.n_inside_fov)) +
            line(tab2 +
                 "included: " + std::to_string(std::min(metric.n_inside_fov, metric.n_visible)));
@@ -48,7 +51,7 @@ auto yaml(const FoVGainMetric metric, int indentation = 0, int tabsize = 2) -> s
 auto gain_of_fov(
     const types::FoV& fov, const mdi::Octomap& octomap, const double weight_free,
     const double weight_occupied, const double weight_unknown,
-    const double weight_distance_to_target, types::vec3 root,
+    const double weight_distance_to_target, const double weight_not_visible, types::vec3 root,
     std::function<double(double)> distance_tf,
     std::function<void(const types::vec3&, const types::vec3&, float, const bool)> visit_cb)
     -> FoVGainMetric {
@@ -93,9 +96,9 @@ auto gain_of_fov(
         m.n_total += 1;
 
         if (fov.inside_fov(v)) {
-            m.n_visible += 1;
+            m.n_inside_fov += 1;
             if (visible(v)) {
-                m.n_inside_fov += 1;
+                m.n_visible += 1;
                 switch (vs) {
                     case VoxelStatus::Free:
                         m.gain_free += weight_free;
@@ -112,6 +115,9 @@ auto gain_of_fov(
                         m.n_unknown_voxels += 1;
                         break;
                 }
+            } else {
+                m.n_not_visible += 1;
+                m.gain_not_visible += weight_not_visible;
             }
         }
     });
@@ -122,8 +128,10 @@ auto gain_of_fov(
     m.gain_occupied *= resolution_scale_factor;
     m.gain_unknown *= resolution_scale_factor;
     m.gain_distance *= resolution_scale_factor;
+    m.gain_not_visible *= resolution_scale_factor;
 
-    m.gain_total = m.gain_free + m.gain_occupied + m.gain_unknown + m.gain_distance;
+    m.gain_total =
+        m.gain_free + m.gain_occupied + m.gain_unknown + m.gain_distance + m.gain_not_visible;
 
     return m;
 }

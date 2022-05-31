@@ -269,7 +269,7 @@ auto nbv_handler(mdi_msgs::NBV::Request& request, mdi_msgs::NBV::Response& respo
         const auto fov_gain_metric = mdi::gain_of_fov(
             fov, *octomap_environment_ptr, request.nbv_config.weight_free,
             request.nbv_config.weight_occupied, request.nbv_config.weight_unknown,
-            request.nbv_config.weight_distance_to_object,
+            request.nbv_config.weight_distance_to_object, request.nbv_config.weight_not_visible,
             mdi::utils::transform::geometry_mgs_point_to_vec(request.rrt_config.start),
             [](double x) { return x /* x * x */; },
             [](const mdi::types::vec3&, const mdi::types::vec3&, float, const bool) {});
@@ -347,16 +347,6 @@ auto nbv_handler(mdi_msgs::NBV::Request& request, mdi_msgs::NBV::Response& respo
                                      .arrow_width(0.05f)
                                      .color({0, 1, 0, 1})
                                      .build();
-
-    mdi::gain_of_fov(
-        fov, *octomap_environment_ptr, 0, 0, 0, 0, {0, 0, 0}, [](double x) { return x; },
-        [&](const mdi::types::vec3 origin, const mdi::types::vec3 direction, float length,
-            const bool visible) {
-            if (visible) {
-                auto msg = raycast_arrow_msg_gen({origin, origin + direction * length});
-                ray_marker_array.markers.push_back(msg);
-            }
-        });
 
     marker_array_pub->publish(ray_marker_array);
     ros::spinOnce();
