@@ -53,9 +53,9 @@ auto gain_of_fov(
     };
 
     double gain = 0;
-    // int free_counter = 0;
-    // int occupied_counter = 0;
-    // int unknown_counter = 0;
+    int free_counter = 0;
+    int occupied_counter = 0;
+    int unknown_counter = 0;
     // int inside_fov_counter = 0;
     // int visible_counter = 0;
     const double distance_total = distance_tf((fov.target() - root).norm());
@@ -82,25 +82,26 @@ auto gain_of_fov(
             switch (vs) {
                 case VoxelStatus::Free:
                     gain_free += weight_free;
-                    // free_counter++;
+                    free_counter++;
                     break;
                 case VoxelStatus::Occupied:
                     gain_occupied += weight_occupied;
-                    // occupied_counter++;
+                    occupied_counter++;
                     break;
                 case VoxelStatus::Unknown:
                     gain_unknown += weight_unknown;
                     gain_distance +=
-                        weight_distance_to_target * (distance_total / distance_to_target);
-                    // unknown_counter++;
+                        weight_distance_to_target * (1 - (distance_to_target / distance_total));
+                    unknown_counter++;
                     break;
             }
         }
     });
 
-    std::cout << "\n\ngain_free: " << gain_free << "\ngain_occupied: " << gain_occupied
-              << "\ngain_unknown: " << gain_unknown << "\ngain_distance: " << gain_distance
-              << std::endl;
+    std::cout << "\n\nfree:\t" << free_counter << "\twith gain:\t" << gain_free << "\noccupied:\t"
+              << occupied_counter << "\twith gain:\t" << gain_occupied << "\nunknown:\t"
+              << unknown_counter << "\twith gain:\t" << gain_unknown << "\nand distance gain:\t"
+              << gain_distance << std::endl;
 
     // ROS_INFO_STREAM("\ninside fov: " << inside_fov_counter << "\nvisible: " << visible_counter
     //                                  << "\nfree: " << free_counter << "\noccupied: "

@@ -487,6 +487,7 @@ auto Mission::run_step() -> void {
                                 << " Finding new NBV interest point...");
                 publish_();
                 set_nbv_trajectory_();
+                ros::Duration(10).sleep();
             }
             break;
         case INSPECTION:

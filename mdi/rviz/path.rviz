@@ -162,7 +162,7 @@ Visualization Manager:
       Marker Topic: /mdi/mission/visualisation
       Name: Marker
       Namespaces:
-        {}
+        "": true
       Queue Size: 100
       Value: true
     - Class: octomap_rviz_plugin/OccupancyGrid
@@ -182,7 +182,7 @@ Visualization Manager:
       Marker Topic: /mdi/visualisation
       Name: MarkerArray
       Namespaces:
-        {}
+        "": true
       Queue Size: 10
       Value: true
     - Class: rviz/Marker
@@ -266,21 +266,21 @@ Visualization Manager:
       Show Trail: false
       Value: false
     - Class: rviz/MarkerArray
-      Enabled: true
+      Enabled: false
       Marker Topic: visualization_marker_array
       Name: MarkerArray
       Namespaces:
         {}
       Queue Size: 100
-      Value: true
+      Value: false
     - Class: rviz/Marker
-      Enabled: true
+      Enabled: false
       Marker Topic: visualization_marker
       Name: Marker
       Namespaces:
         {}
       Queue Size: 100
-      Value: true
+      Value: false
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -309,7 +309,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/XYOrbit
-      Distance: 35.69904708862305
+      Distance: 39.82270050048828
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -317,17 +317,17 @@ Visualization Manager:
         Value: false
       Field of View: 0.7853981852531433
       Focal Point:
-        X: -3.171426296234131
-        Y: -4.2506818771362305
-        Z: 2.7916947146877646e-05
+        X: 0.5682305097579956
+        Y: -33.084877014160156
+        Z: 3.083573028561659e-05
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.35479676723480225
+      Pitch: 0.4547966718673706
       Target Frame: world_view
-      Yaw: 1.8303403854370117
+      Yaw: 2.785343647003174
     Saved: ~
 Window Geometry:
   Displays:
@@ -346,4 +346,4 @@ Window Geometry:
     collapsed: true
   Width: 1436
   X: 1920
-  Y: 1368
+  Y: 1404

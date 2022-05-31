@@ -30,6 +30,12 @@
     <include file="$(arg package_path)/launch/rrt_service.launch" />
     <include file="$(arg package_path)/launch/segmentation.launch" />
 
+    	<node
+		pkg="rqt_multiplot"
+		type="rqt_multiplot"
+		name="rqt_multiplot"
+		args="--multiplot-config $(arg package_path)/rqt/error.xml --multiplot-run-all" />
+
     <node
         pkg="$(arg package)"
         type="mission_manager"
