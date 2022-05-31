@@ -10,6 +10,7 @@
 #include "mdi/fov.hpp"
 #include "mdi/octomap.hpp"
 #include "mdi/voxelstatus.hpp"
+#include "mdi_msgs/FoVGainMetric.h"
 
 namespace mdi {
 
@@ -18,8 +19,8 @@ struct FoVGainMetric {
     double gain_total;
     std::size_t n_inside_fov;
     std::size_t n_visible;
-    std::size_t n_free_voxels;
     std::size_t n_not_visible;
+    std::size_t n_free_voxels;
     std::size_t n_occupied_voxels;
     std::size_t n_unknown_voxels;
     std::size_t n_total;
@@ -46,6 +47,26 @@ auto yaml(const FoVGainMetric metric, int indentation = 0, int tabsize = 2) -> s
            line(tab2 + "inside: " + std::to_string(metric.n_inside_fov)) +
            line(tab2 +
                 "included: " + std::to_string(std::min(metric.n_inside_fov, metric.n_visible)));
+}
+
+auto to_ros_msg(const FoVGainMetric& m) -> mdi_msgs::FoVGainMetric {
+    auto msg = mdi_msgs::FoVGainMetric{};
+
+    msg.gain_free = m.gain_free;
+    msg.gain_unknown = m.gain_unknown;
+    msg.gain_occupied = m.gain_occupied;
+    msg.gain_distance = m.gain_distance;
+    msg.gain_total = m.gain_total;
+
+    msg.n_inside_fov = m.n_inside_fov;
+    msg.n_visible = m.n_visible;
+    msg.n_not_visible = m.n_not_visible;
+    msg.n_free_voxels = m.n_free_voxels;
+    msg.n_occupied_voxels = m.n_occupied_voxels;
+    msg.n_unknown_voxels = m.n_unknown_voxels;
+    msg.n_total = m.n_total;
+
+    return msg;
 }
 
 auto gain_of_fov(
