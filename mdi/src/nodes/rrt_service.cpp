@@ -42,7 +42,6 @@
 #include "mdi/visualization/bbx.hpp"
 #include "mdi/visualization/fov.hpp"
 
-std::unique_ptr<ros::Publisher> nbv_metric_pub;
 std::unique_ptr<ros::Publisher> marker_pub;
 std::unique_ptr<ros::Publisher> marker_array_pub;
 
@@ -61,6 +60,8 @@ using namespace mdi::types;
 // which is not allowed before ros::init(...)
 std::unique_ptr<ros::ServiceClient> clear_octomap_client, clear_region_of_octomap_client,
     get_octomap_client;
+
+std::unique_ptr<ros::Publisher> nbv_metric_pub;
 std::unique_ptr<ros::Publisher> waypoints_path_pub;
 using waypoint_cb = std::function<void(const vec3&, const vec3&)>;
 using new_node_cb = std::function<void(const vec3&, const vec3&)>;
@@ -199,7 +200,7 @@ auto nbv_handler(mdi_msgs::NBV::Request& request, mdi_msgs::NBV::Response& respo
                    .max_iterations(request.rrt_config.max_iterations)
                    .goal_bias(request.rrt_config.goal_bias)
                    .probability_of_testing_full_path_from_new_node_to_goal(0.0)
-                   .max_dist_goal_tolerance(/ 0.0)
+                   .max_dist_goal_tolerance(0.0)
                    .step_size(request.rrt_config.step_size)
                    .drone_width(request.drone_config.width)
                    .drone_height(request.drone_config.height)
@@ -357,6 +358,8 @@ auto nbv_handler(mdi_msgs::NBV::Request& request, mdi_msgs::NBV::Response& respo
     ros::spinOnce();
     ros::Rate(10).sleep();
 #endif  // VISUALIZE_MARKERS_IN_RVIZ
+
+    std::cout << yaml(best_fov_gain_metric) << std::endl;
 
     if (octomap_environment_ptr != nullptr) {
         ROS_INFO("deallocating octomap copy");
