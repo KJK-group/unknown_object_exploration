@@ -296,6 +296,7 @@ auto Mission::find_nbv_path_(Eigen::Vector3f start) -> std::vector<Eigen::Vector
     nbv.weight_free = nbv_param["free"];
     nbv.weight_occupied = nbv_param["occupied"];
     nbv.weight_unknown = nbv_param["unknown"];
+    nbv.weight_not_visible = nbv_param["not_visible"];
     nbv.weight_distance_to_object = nbv_param["distance_to_object"];
 
     auto camera_param = std::map<std::string, float>();
