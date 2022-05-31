@@ -27,6 +27,7 @@
 #include "mdi/utils/rviz.hpp"
 #include "mdi/utils/transform.hpp"
 #include "mdi/utils/utils.hpp"
+#include "mdi_msgs/FoVGainMetric.h"
 #include "mdi_msgs/NBV.h"
 #include "mdi_msgs/RrtFindPath.h"
 #include "octomap/octomap_types.h"
@@ -40,6 +41,7 @@
 #include "mdi/visualization/bbx.hpp"
 #include "mdi/visualization/fov.hpp"
 
+std::unique_ptr<ros::Publisher> nbv_metric_pub;
 std::unique_ptr<ros::Publisher> marker_pub;
 std::unique_ptr<ros::Publisher> marker_array_pub;
 
@@ -188,22 +190,20 @@ auto nbv_handler(mdi_msgs::NBV::Request& request, mdi_msgs::NBV::Response& respo
     const auto vertical = FoVAngle::from_degrees(request.fov.vertical.angle);
     const auto depth_range = DepthRange{request.fov.depth_range.min, request.fov.depth_range.max};
 
-    auto rrt =
-        mdi::rrt::RRT::from_builder()
-            .start_and_goal_position(
-                geometry_msgs_point_to_vec3(request.rrt_config.start),
-                geometry_msgs_point_to_vec3(
-                    request.rrt_config.goal))  // goal is irrelevant - not really though
-            .max_iterations(request.rrt_config.max_iterations)
-            .goal_bias(request.rrt_config.goal_bias)
-            .probability_of_testing_full_path_from_new_node_to_goal(
-                /* request.rrt_config.probability_of_testing_full_path_from_new_node_to_goal */ 0.0)
-            .max_dist_goal_tolerance(/* request.rrt_config.goal_tolerance */ 0.0)
-            .step_size(request.rrt_config.step_size)
-            .drone_width(request.drone_config.width)
-            .drone_height(request.drone_config.height)
-            .drone_depth(request.drone_config.depth)
-            .build();
+    auto rrt = mdi::rrt::RRT::from_builder()
+                   .start_and_goal_position(
+                       geometry_msgs_point_to_vec3(request.rrt_config.start),
+                       geometry_msgs_point_to_vec3(
+                           request.rrt_config.goal))  // goal is irrelevant - not really though
+                   .max_iterations(request.rrt_config.max_iterations)
+                   .goal_bias(request.rrt_config.goal_bias)
+                   .probability_of_testing_full_path_from_new_node_to_goal(0.0)
+                   .max_dist_goal_tolerance(/ 0.0)
+                   .step_size(request.rrt_config.step_size)
+                   .drone_width(request.drone_config.width)
+                   .drone_height(request.drone_config.height)
+                   .drone_depth(request.drone_config.depth)
+                   .build();
 
     ROS_INFO_STREAM("" << rrt);
 
@@ -496,6 +496,12 @@ auto main(int argc, char* argv[]) -> int {
         const auto url = "/mdi/rrt_service/nbv";
         return nh.advertiseService(url, nbv_handler);
     }();
+
+    nbv_metric_pub = std::make_unique<ros::Publisher>([&] {
+        const auto topic_name = "/mdi/best_nbv_fov_metric";
+        const auto queue_size = 10;
+        return nh.advertise<mdi_msgs::FoVGainMetric>(topic_name, queue_size);
+    }());
 
     ros::spin();
 

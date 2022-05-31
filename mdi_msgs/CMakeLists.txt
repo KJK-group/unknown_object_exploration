@@ -7,26 +7,21 @@ find_package(catkin REQUIRED ${MSG_DEPENDENCIES} message_generation)
 
 add_message_files(
   FILES
-  MissionStateStamped.msg
-  PointNorm.msg
-  PointNormStamped.msg
-  Error.msg
   ControllerStateStamped.msg
   Degree.msg
   DepthRange.msg
-  FoV.msg
-  NbvConfig.msg
-  RrtConfig.msg
-  Waypoints.msg
   DroneConfig.msg
-)
+  Error.msg
+  FoV.msg
+  FoVGainMetric.msg
+  MissionStateStamped.msg
+  NbvConfig.msg
+  PointNorm.msg
+  PointNormStamped.msg
+  RrtConfig.msg
+  Waypoints.msg)
 
-add_service_files(
-    FILES
-    Model.srv
-    RrtFindPath.srv
-    NBV.srv
-)
+add_service_files(FILES Model.srv NBV.srv RrtFindPath.srv)
 
 generate_messages(DEPENDENCIES ${MSG_DEPENDENCIES})
 
