@@ -52,19 +52,19 @@ auto yaml(const FoVGainMetric metric, int indentation = 0, int tabsize = 2) -> s
 auto to_ros_msg(const FoVGainMetric& m) -> mdi_msgs::FoVGainMetric {
     auto msg = mdi_msgs::FoVGainMetric{};
 
-    msg.gain_free = m.gain_free;
-    msg.gain_unknown = m.gain_unknown;
-    msg.gain_occupied = m.gain_occupied;
-    msg.gain_distance = m.gain_distance;
-    msg.gain_total = m.gain_total;
+    msg.gain.free = m.gain_free;
+    msg.gain.unknown = m.gain_unknown;
+    msg.gain.occupied = m.gain_occupied;
+    msg.gain.distance = m.gain_distance;
+    msg.gain.total = m.gain_total;
 
-    msg.n_inside_fov = m.n_inside_fov;
-    msg.n_visible = m.n_visible;
-    msg.n_not_visible = m.n_not_visible;
-    msg.n_free_voxels = m.n_free_voxels;
-    msg.n_occupied_voxels = m.n_occupied_voxels;
-    msg.n_unknown_voxels = m.n_unknown_voxels;
-    msg.n_total = m.n_total;
+    msg.fov.n_inside = m.n_inside_fov;
+    msg.fov.n_visible = m.n_visible;
+    msg.fov.n_not_visible = m.n_not_visible;
+    msg.fov.n_total = m.n_total;
+    msg.voxels.n_free = m.n_free_voxels;
+    msg.voxels.n_occupied = m.n_occupied_voxels;
+    msg.voxels.n_unknown = m.n_unknown_voxels;
 
     return msg;
 }
