@@ -29,24 +29,21 @@
 
 namespace mdi {
 constexpr auto INITIAL_ALTITUDE = 5;
+constexpr auto DEFAULT_TIMEOUT = 120;
 class Mission {
    public:
-    Mission(ros::NodeHandle& nh, ros::Rate& rate, types::vec2 target, float velocity_target = 1,
+    Mission(ros::NodeHandle& nh, ros::Rate& rate, types::vec3 target,
+            float timeout = DEFAULT_TIMEOUT, float velocity_target = 1,
             Eigen::Vector3f home = {0, 0, INITIAL_ALTITUDE}, bool visualise = false);
     enum state { PASSIVE, HOME, EXPLORATION, INSPECTION, LAND };
     static auto state_to_string(enum state s) -> std::string;
-    auto add_interest_point(Eigen::Vector3f interest_point) -> void;
 
     auto get_drone_state() -> mavros_msgs::State;
     auto get_trajectory() -> trajectory::CompoundTrajectory;
-    auto drone_takeoff(float altitude = INITIAL_ALTITUDE) -> bool;
-    auto drone_land() -> bool;
-    auto drone_arm() -> bool;
     auto run() -> void;
     auto run_step() -> void;
     auto end() -> void;
 
-    auto set_state(state state) -> void;
     auto get_state() -> state;
 
    private:
@@ -55,12 +52,17 @@ class Mission {
     auto fit_trajectory_(std::vector<Eigen::Vector3f> path)
         -> std::optional<trajectory::CompoundTrajectory>;
     auto drone_set_mode_(std::string mode = "OFFBOARD") -> bool;
+    // auto set_state(state state) -> void;
+
+    // auto drone_takeoff(float altitude = INITIAL_ALTITUDE) -> bool;
+    auto drone_land() -> bool;
+    auto drone_arm() -> bool;
 
     auto set_home_trajectory_() -> void;
     auto set_takeoff_trajectory_() -> void;
+    auto set_nbv_trajectory_() -> void;
+
     auto trajectory_step_(float vel, bool look_forwards = true) -> bool;
-    auto explore_() -> bool;
-    auto exploration_step_() -> bool;
     auto publish_() -> void;
 
     auto mavros_state_cb_(const mavros_msgs::State::ConstPtr& state) -> void;
@@ -103,8 +105,8 @@ class Mission {
     // points
     Eigen::Vector3f home_position_;
     Eigen::Vector3f expected_position_;
-    Eigen::Vector2f target_;
-    Eigen::Vector2f object_center_;
+    Eigen::Vector3f target_;
+    Eigen::Vector3f object_center_;
     tf2::Quaternion expected_attitude_;
 
     // time
@@ -112,6 +114,7 @@ class Mission {
     ros::Time timeout_start_time_;
     ros::Duration delta_time_;
     ros::Duration timeout_delta_time_;
+    ros::Duration time_since_last_iteration_;
     ros::Duration timeout_;
 
     // path
@@ -127,7 +130,7 @@ class Mission {
     int step_count_;
     bool inspection_complete_;
     bool exploration_complete_;
-    bool takeoff_initiated;
+    bool takeoff_initiated_;
 
     // visualisation
     float marker_scale_;

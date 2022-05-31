@@ -670,7 +670,7 @@ auto RRT::optimize_waypoints_() -> void {
             const auto next_idx = solution_indices[i + 1];
             const auto& from = waypoints_[idx];
             const auto& to = waypoints_[next_idx];
-            solution_waypoints.push_back(from);
+            // solution_waypoints.push_back(from);
 
             // const double half_step_size = step_size_ / 2;
 
@@ -682,14 +682,18 @@ auto RRT::optimize_waypoints_() -> void {
 
             // const bool should_interpolate_along_edge = edge_cost > half_step_size;
             const auto edge_cost = cost(idx, next_idx);  // dist
-            const bool should_interpolate_along_edge = edge_cost > step_size_;
+            const bool should_interpolate_along_edge = edge_cost > step_size_ / 2;
 
             if (should_interpolate_along_edge) {
-                const auto num_interpolations = std::ceil(edge_cost / step_size_);
-                const auto dist_between_interpolated_points = num_interpolations / edge_cost;
+                const auto num_interpolations = std::ceil(edge_cost / (step_size_ / 2));
+                const auto dist_between_interpolated_points = edge_cost / num_interpolations;
+                std::cout << "distance between points: " << dist_between_interpolated_points
+                          << std::endl;
+                const auto direction = (to - from).normalized();
 
-                for (std::size_t i = 1; i <= static_cast<std::size_t>(num_interpolations); ++i) {
-                    solution_waypoints.emplace_back(from + i * dist_between_interpolated_points);
+                for (std::size_t i = 0; i < static_cast<std::size_t>(num_interpolations); ++i) {
+                    solution_waypoints.emplace_back(from + i * dist_between_interpolated_points *
+                                                               direction);
                 }
 
                 // // const double percentage_offset = 1 / (edge_cost / half_step_size);
@@ -1016,6 +1020,10 @@ std::ostream& operator<<(std::ostream& os, const RRT& rrt) {
     os << "    x: " << rrt.goal_position_.x() << '\n';
     os << "    y: " << rrt.goal_position_.y() << '\n';
     os << "    z: " << rrt.goal_position_.z() << '\n';
+    os << "  drone:\n";
+    os << "    depth: " << rrt.drone_depth_ << '\n';
+    os << "    width: " << rrt.drone_width_ << '\n';
+    os << "    height: " << rrt.drone_height_ << '\n';
     os << "  number_of_nodes: " << rrt.size() << '\n';
     const auto reachable_nodes = rrt.reachable_nodes();
     os << "  reachable_nodes: " << reachable_nodes << '\n';

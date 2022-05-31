@@ -16,6 +16,7 @@
     <arg name="alt" default="5"/>
     <arg name="target_x" default="5"/>
     <arg name="target_y" default="5"/>
+    <arg name="target_z" default="5"/>
 
     <!-- <arg name="lp" default="valgrind"/> -->
     <arg name="lp" default=""/>
@@ -33,7 +34,7 @@
         pkg="$(arg package)"
         type="mission_manager"
         name="mission_manager"
-        args="$(arg vel) $(arg alt) $(arg target_x) $(arg target_y)"
+        args="$(arg vel) $(arg alt) $(arg target_x) $(arg target_y) $(arg target_z)"
         output="screen"
         launch-prefix="$(arg lp)" />
     <node

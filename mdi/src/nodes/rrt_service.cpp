@@ -206,6 +206,9 @@ auto nbv_handler(mdi_msgs::NBV::Request& request, mdi_msgs::NBV::Response& respo
                 /* request.rrt_config.probability_of_testing_full_path_from_new_node_to_goal */ 0.0)
             .max_dist_goal_tolerance(/* request.rrt_config.goal_tolerance */ 0.0)
             .step_size(request.rrt_config.step_size)
+            .drone_width(request.drone_config.width)
+            .drone_height(request.drone_config.height)
+            .drone_depth(request.drone_config.depth)
             .build();
 
     ROS_INFO_STREAM("" << rrt);
@@ -243,17 +246,22 @@ auto nbv_handler(mdi_msgs::NBV::Request& request, mdi_msgs::NBV::Response& respo
     const vec3 target = geometry_msgs_point_to_vec3(request.rrt_config.goal);
 
 #ifdef VISUALIZE_MARKERS_IN_RVIZ
-    visualization_msgs::MarkerArray marker_array;
-    auto new_node_arrow_msg_gen = mdi::utils::rviz::arrow_msg_gen::builder()
-                                      .arrow_head_width(0.05f)
-                                      .arrow_length(0.1f)
-                                      .arrow_width(0.1f)
-                                      .color({0, 1, 0, 1})
-                                      .build();
+    // visualization_msgs::MarkerArray marker_array;
+    // auto new_node_arrow_msg_gen = mdi::utils::rviz::arrow_msg_gen::builder()
+    //                                   .arrow_head_width(0.05f)
+    //                                   .arrow_length(0.1f)
+    //                                   .arrow_width(0.1f)
+    //                                   .color({0, 1, 0, 1})
+    //                                   .build();
     // rrt.register_cb_for_event_on_new_node_created([&](const auto& from, const auto& to) {
     //     auto msg = new_node_arrow_msg_gen({from, to});
     //     marker_array.markers.push_back(msg);
     // });
+
+    // // TODO: comment
+    // rrt.register_cb_for_event_before_optimizing_waypoints(before_waypoint_optimization);
+    // rrt.register_cb_for_event_after_optimizing_waypoints(after_waypoint_optimization);
+    // rrt.register_cb_for_event_on_raycast(raycast);
 #endif  // VISUALIZE_MARKERS_IN_RVIZ
 
     rrt.register_cb_for_event_on_new_node_created([&](const auto&, const vec3& new_point) {
@@ -270,11 +278,6 @@ auto nbv_handler(mdi_msgs::NBV::Request& request, mdi_msgs::NBV::Response& respo
 
 #ifdef VISUALIZE_MARKERS_IN_RVIZ
 
-        // TODO: comment
-        rrt.register_cb_for_event_before_optimizing_waypoints(before_waypoint_optimization);
-        rrt.register_cb_for_event_after_optimizing_waypoints(after_waypoint_optimization);
-        rrt.register_cb_for_event_on_raycast(raycast);
-
         // mdi::visualization::visualize_fov(fov, *marker_pub);
         // mdi::visualization::visualize_bbx(mdi::compute_bbx(fov), *marker_pub);
         /* mdi::visualization::visualize_voxels_inside_fov(
@@ -282,16 +285,18 @@ auto nbv_handler(mdi_msgs::NBV::Request& request, mdi_msgs::NBV::Response& respo
             *marker_array_pub); */
 #endif  // VISUALIZE_MARKERS_IN_RVIZ
 
-        ROS_INFO("calculating gain of fov");
+        // ROS_INFO("calculating gain of fov");
         const double gain = mdi::gain_of_fov(
             fov, *octomap_environment_ptr, request.nbv_config.weight_free,
             request.nbv_config.weight_occupied, request.nbv_config.weight_unknown,
             request.nbv_config.weight_distance_to_object,
             mdi::utils::transform::geometry_mgs_point_to_vec(request.rrt_config.start),
-            [](double x) { return x /* x * x */; });
-        ROS_INFO_STREAM("" << request.rrt_config.max_iterations - rrt.remaining_iterations() << "/"
-                           << request.rrt_config.max_iterations << " gain is "
-                           << std::to_string(gain));
+            [](double x) { return x /* x * x */; },
+            [](const mdi::types::vec3&, const mdi::types::vec3&, float, const bool) {});
+        // ROS_INFO_STREAM("" << request.rrt_config.max_iterations - rrt.remaining_iterations() <<
+        // "/"
+        //                    << request.rrt_config.max_iterations << " gain is "
+        //                    << std::to_string(gain));
 
         if (gain > best_gain) {
             ROS_INFO_STREAM("gain (" << std::to_string(gain)
@@ -328,11 +333,12 @@ auto nbv_handler(mdi_msgs::NBV::Request& request, mdi_msgs::NBV::Response& respo
     }
 
 #ifdef VISUALIZE_MARKERS_IN_RVIZ
-    std::cout << "publishing RRT tree..." << std::endl;
-    marker_array_pub->publish(marker_array);
-    ros::spinOnce();
-    ros::Rate(mdi::utils::DEFAULT_LOOP_RATE).sleep();
-    marker_array.markers.clear();
+    // std::cout << "publishing RRT tree..." << std::endl;
+    // marker_array_pub->publish(marker_array);
+    // ros::spinOnce();
+    // ros::Rate(mdi::utils::DEFAULT_LOOP_RATE).sleep();
+    // marker_array.markers.clear();
+
 #endif  // VISUALIZE_MARKERS_IN_RVIZ
 
     if (! response.found_nbv_with_sufficent_gain) {
@@ -344,6 +350,41 @@ auto nbv_handler(mdi_msgs::NBV::Request& request, mdi_msgs::NBV::Response& respo
             response.waypoints = waypoints_to_geometry_msgs_points(path);
         }
     }
+    vec3 dir = target - mdi::utils::transform::geometry_mgs_point_to_vec(response.waypoints.back());
+
+    const auto yaw = std::atan2(dir.y(), dir.x());
+    // construct fov
+    Eigen::Quaternionf orientation =
+        Eigen::AngleAxisf(yaw, Eigen::Vector3f::UnitZ()) *
+        Eigen::AngleAxisf(deg2rad(-request.fov.pitch.angle), Eigen::Vector3f::UnitY());
+
+    const auto pose = Pose{
+        mdi::utils::transform::geometry_mgs_point_to_vec(response.waypoints.back()), orientation};
+    const auto fov = FoV{pose, horizontal, vertical, depth_range, target};
+
+    auto ray_marker_array = visualization_msgs::MarkerArray{};
+    auto raycast_arrow_msg_gen = mdi::utils::rviz::arrow_msg_gen::builder()
+                                     .arrow_head_width(0.15f)
+                                     .arrow_length(0.3f)
+                                     .arrow_width(0.05f)
+                                     .color({0, 1, 0, 1})
+                                     .build();
+
+    mdi::gain_of_fov(
+        fov, *octomap_environment_ptr, 0, 0, 0, 0, {0, 0, 0}, [](double x) { return x; },
+        [&](const mdi::types::vec3 origin, const mdi::types::vec3 direction, float length,
+            const bool visible) {
+            if (visible) {
+                auto msg = raycast_arrow_msg_gen({origin, origin + direction * length});
+                ray_marker_array.markers.push_back(msg);
+            }
+        });
+
+#ifdef VISUALIZE_MARKERS_IN_RVIZ
+    marker_array_pub->publish(ray_marker_array);
+    ros::spinOnce();
+    ros::Rate(10).sleep();
+#endif  // VISUALIZE_MARKERS_IN_RVIZ
 
     if (octomap_environment_ptr != nullptr) {
         ROS_INFO("deallocating octomap copy");
@@ -371,10 +412,10 @@ auto main(int argc, char* argv[]) -> int {
     }());
 
     auto before_waypoint_optimization_arrow_msg_gen = mdi::utils::rviz::arrow_msg_gen::builder()
-                                                          .arrow_head_width(0.2f)
-                                                          .arrow_length(0.15f)
-                                                          .arrow_width(0.15f)
-                                                          .color({0.7, 0.7, 0, 1})
+                                                          .arrow_head_width(0.05f)
+                                                          .arrow_length(0.01f)
+                                                          .arrow_width(0.05f)
+                                                          .color({0, 1, 0, 1})
                                                           .build();
 
     before_waypoint_optimization = [&](const vec3& from, const vec3& to) {
@@ -387,9 +428,9 @@ auto main(int argc, char* argv[]) -> int {
     ros::Duration(1).sleep();
 
     auto after_waypoint_optimization_arrow_msg_gen = mdi::utils::rviz::arrow_msg_gen::builder()
-                                                         .arrow_head_width(0.5f)
-                                                         .arrow_length(0.02f)
-                                                         .arrow_width(1.f)
+                                                         .arrow_head_width(0.1f)
+                                                         .arrow_length(0.01f)
+                                                         .arrow_width(0.1f)
                                                          .color({0, 0, 1, 1})
                                                          .build();
 
@@ -411,6 +452,7 @@ auto main(int argc, char* argv[]) -> int {
     raycast = [&](const vec3& origin, const vec3& direction, const float length, bool did_hit) {
         auto msg = raycast_arrow_msg_gen({origin, origin + direction.normalized() * length});
         if (did_hit) {
+            return;
             msg.color.r = 1;
             msg.color.g = 0;
         }

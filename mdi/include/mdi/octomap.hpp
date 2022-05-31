@@ -192,16 +192,20 @@ class Octomap final {
 
     auto raycast_(const point_type& origin, const point_type& direction, double max_range = -1,
                   bool ignore_unknown_voxels = false) const -> Voxel {
-        auto end = point_type{0, 0, 0};
+        auto end = point_type{std::numeric_limits<float>::max(), std::numeric_limits<float>::max(),
+                              std::numeric_limits<float>::max()};
         const auto intersected_occupied_voxel =
             octree_.castRay(origin, direction, end, ignore_unknown_voxels, max_range);
         if (intersected_occupied_voxel) {
             return Occupied{end};
         }
-
-        if (! ignore_unknown_voxels && octree_.search(end) == nullptr) {
+        if ((end - origin).norm() < max_range) {
             return Unknown{};
         }
+
+        // if (! ignore_unknown_voxels && octree_.search(end) == nullptr) {
+        //     return Unknown{};
+        // }
 
         return Free{};
     }
