@@ -182,18 +182,12 @@ auto nbv_handler(mdi_msgs::NBV::Request& request, mdi_msgs::NBV::Response& respo
     const auto geometry_msgs_point_to_vec3 = [](const auto& pt) -> mdi::rrt::vec3 {
         return {static_cast<float>(pt.x), static_cast<float>(pt.y), static_cast<float>(pt.z)};
     };
+
     // these parameters are static so we only compute them once
     const auto horizontal = FoVAngle::from_degrees(request.fov.horizontal.angle);
     const auto vertical = FoVAngle::from_degrees(request.fov.vertical.angle);
     const auto depth_range = DepthRange{request.fov.depth_range.min, request.fov.depth_range.max};
 
-    std::cout << request.fov.horizontal.angle << "\n" << request.fov.vertical.angle << std::endl;
-
-    std::cout << yaml(horizontal) << "\n"
-              << yaml(vertical) << "\n"
-              << yaml(depth_range) << std::endl;
-
-    // TODO: handle unessary goal in a better way
     auto rrt =
         mdi::rrt::RRT::from_builder()
             .start_and_goal_position(
@@ -218,32 +212,18 @@ auto nbv_handler(mdi_msgs::NBV::Request& request, mdi_msgs::NBV::Response& respo
     if (octomap_environment_ptr != nullptr) {
         ROS_INFO("there is a octomap available");
         rrt.assign_octomap(octomap_environment_ptr);
-
-        // auto pos = request.rrt_config.start;
-
-        // auto xmin = pos.x - request.rrt_config.step_size;
-        // auto xmax = pos.x + request.rrt_config.step_size;
-        // auto ymin = pos.y - request.rrt_config.step_size;
-        // auto ymax = pos.y + request.rrt_config.step_size;
-        // auto zmin = pos.z - request.rrt_config.step_size;
-        // auto zmax = pos.z + request.rrt_config.step_size;
-
-        // for (double x = xmin; x < xmax; x += octomap_environment_ptr->resolution()) {
-        //     for (double y = ymin; y < ymax; y += octomap_environment_ptr->resolution()) {
-        //         for (double z = zmin; z < zmax; z += octomap_environment_ptr->resolution()) {
-        //             octomap_environment_ptr->octree().updateNode(x, y, z, 0.f);
-        //         }
-        //     }
-        // }
+        ROS_INFO_STREAM(
+            "size of octomap (in bytes) is: " << octomap_environment_ptr->octree().memoryUsage());
     }
 
+    // TODO: how to initialize this maybe std::optional ?
+    auto best_fov_gain = mdi::FoVGainMetric{};
     double best_gain = std::numeric_limits<double>::lowest();
-    auto best_point =
-        vec3{request.rrt_config.start.x, request.rrt_config.start.y, request.rrt_config.start.z};
+    vec3 best_point = geometry_msgs_point_to_vec3(request.rrt_config.start);
+    const vec3 target = geometry_msgs_point_to_vec3(request.rrt_config.goal);
+    // vec3{request.rrt_config.start.x, request.rrt_config.start.y, request.rrt_config.start.z};
 
     bool found_suitable_nbv = false;
-
-    const vec3 target = geometry_msgs_point_to_vec3(request.rrt_config.goal);
 
 #ifdef VISUALIZE_MARKERS_IN_RVIZ
     // visualization_msgs::MarkerArray marker_array;
@@ -286,22 +266,21 @@ auto nbv_handler(mdi_msgs::NBV::Request& request, mdi_msgs::NBV::Response& respo
 #endif  // VISUALIZE_MARKERS_IN_RVIZ
 
         // ROS_INFO("calculating gain of fov");
-        const double gain = mdi::gain_of_fov(
+        const auto fov_gain_metric = mdi::gain_of_fov(
             fov, *octomap_environment_ptr, request.nbv_config.weight_free,
             request.nbv_config.weight_occupied, request.nbv_config.weight_unknown,
             request.nbv_config.weight_distance_to_object,
             mdi::utils::transform::geometry_mgs_point_to_vec(request.rrt_config.start),
             [](double x) { return x /* x * x */; },
             [](const mdi::types::vec3&, const mdi::types::vec3&, float, const bool) {});
-        // ROS_INFO_STREAM("" << request.rrt_config.max_iterations - rrt.remaining_iterations() <<
-        // "/"
-        //                    << request.rrt_config.max_iterations << " gain is "
-        //                    << std::to_string(gain));
+
+        const double gain = fov_gain_metric.gain_total;
 
         if (gain > best_gain) {
             ROS_INFO_STREAM("gain (" << std::to_string(gain)
                                      << ") is better that the current best gain ("
                                      << std::to_string(best_gain) << ")");
+            best_fov_gain = fov_gain_metric;
             best_gain = gain;
             best_point = fov.pose().position;
         }
@@ -312,8 +291,8 @@ auto nbv_handler(mdi_msgs::NBV::Request& request, mdi_msgs::NBV::Response& respo
         }
     });
 
+    // grow rrt incrementally
     for (std::size_t i = 0; i < request.rrt_config.max_iterations; ++i) {
-        // ROS_INFO("trying to grow rrt by 1");
         rrt.grow1();
 
         if (found_suitable_nbv) {
@@ -332,15 +311,6 @@ auto nbv_handler(mdi_msgs::NBV::Request& request, mdi_msgs::NBV::Response& respo
         }
     }
 
-#ifdef VISUALIZE_MARKERS_IN_RVIZ
-    // std::cout << "publishing RRT tree..." << std::endl;
-    // marker_array_pub->publish(marker_array);
-    // ros::spinOnce();
-    // ros::Rate(mdi::utils::DEFAULT_LOOP_RATE).sleep();
-    // marker_array.markers.clear();
-
-#endif  // VISUALIZE_MARKERS_IN_RVIZ
-
     if (! response.found_nbv_with_sufficent_gain) {
         // a suitable nbv has not been found, so we use best found instead
         ROS_INFO("no suitable nbv found, use best found instead");
@@ -350,6 +320,14 @@ auto nbv_handler(mdi_msgs::NBV::Request& request, mdi_msgs::NBV::Response& respo
             response.waypoints = waypoints_to_geometry_msgs_points(path);
         }
     }
+
+#ifdef VISUALIZE_MARKERS_IN_RVIZ
+    // std::cout << "publishing RRT tree..." << std::endl;
+    // marker_array_pub->publish(marker_array);
+    // ros::spinOnce();
+    // ros::Rate(mdi::utils::DEFAULT_LOOP_RATE).sleep();
+    // marker_array.markers.clear();
+
     vec3 dir = target - mdi::utils::transform::geometry_mgs_point_to_vec(response.waypoints.back());
 
     const auto yaw = std::atan2(dir.y(), dir.x());
@@ -380,7 +358,6 @@ auto nbv_handler(mdi_msgs::NBV::Request& request, mdi_msgs::NBV::Response& respo
             }
         });
 
-#ifdef VISUALIZE_MARKERS_IN_RVIZ
     marker_array_pub->publish(ray_marker_array);
     ros::spinOnce();
     ros::Rate(10).sleep();

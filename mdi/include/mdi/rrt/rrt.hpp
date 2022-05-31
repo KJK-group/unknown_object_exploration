@@ -236,7 +236,7 @@ class RRT {
     auto disable_cbs_for_event_on_clearing_nodes_in_tree() -> void {
         on_clearing_nodes_in_tree_status_ = false;
     }
-    auto disable_cbs_for_event_on_raycast() -> void { on_raycast_status_ = false; }
+    auto disable_cbs_for_event_on_raycast () -> void { on_raycast_status_ = false; }
 
     auto toggle_cbs_for_event_on_new_node_created() -> void {
         on_new_node_created_status_ = ! on_new_node_created_status_;
