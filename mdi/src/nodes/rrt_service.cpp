@@ -353,6 +353,8 @@ auto nbv_handler(mdi_msgs::NBV::Request& request, mdi_msgs::NBV::Response& respo
     ros::Rate(10).sleep();
 #endif  // VISUALIZE_MARKERS_IN_RVIZ
 
+    std::cout << yaml(best_fov_gain) << std::endl;
+
     if (octomap_environment_ptr != nullptr) {
         ROS_INFO("deallocating octomap copy");
         delete octomap_environment_ptr;

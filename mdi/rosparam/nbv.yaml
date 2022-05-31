@@ -3,6 +3,6 @@ mdi:
     free: -1
     occupied: -1
     unknown: 1
-    distance_to_object: 1
+    distance_to_object: 2
     not_visible: -1
     information_threshold: 50
