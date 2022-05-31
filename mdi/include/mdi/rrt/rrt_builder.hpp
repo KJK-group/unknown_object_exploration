@@ -17,7 +17,7 @@ class RRTBuilder final {
         rrt_.goal_position_ = goal;
         rrt_.direction_from_start_to_goal_ = goal - start;
         // the sampling volume should be large enough to contain the goal.
-        rrt_.sampling_radius_ = (start - goal).norm() * 2;
+        // rrt_.sampling_radius_ = (start - goal).norm() * 2;
         // insert root node
         // rrt_.nodes_.emplace_back(RRT::node{start, std::numeric_limits<std::size_t>::max()});
         rrt_.nodes_.emplace_back(start);
@@ -37,6 +37,11 @@ class RRTBuilder final {
         rrt_.max_iterations_ = max_iterations;
         rrt_.remaining_iterations_ = max_iterations;
         rrt_.nodes_.reserve(max_iterations);
+        return *this;
+    }
+
+    RRTBuilder& sampling_radius(double sampling_radius) {
+        rrt_.sampling_radius_ = sampling_radius;
         return *this;
     }
 

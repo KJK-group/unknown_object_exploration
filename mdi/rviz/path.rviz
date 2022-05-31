@@ -266,21 +266,21 @@ Visualization Manager:
       Show Trail: false
       Value: false
     - Class: rviz/MarkerArray
-      Enabled: false
+      Enabled: true
       Marker Topic: visualization_marker_array
       Name: MarkerArray
       Namespaces:
         {}
       Queue Size: 100
-      Value: false
+      Value: true
     - Class: rviz/Marker
-      Enabled: false
+      Enabled: true
       Marker Topic: visualization_marker
       Name: Marker
       Namespaces:
         {}
       Queue Size: 100
-      Value: false
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -317,17 +317,17 @@ Visualization Manager:
         Value: false
       Field of View: 0.7853981852531433
       Focal Point:
-        X: -0.7276881337165833
-        Y: -4.787928104400635
-        Z: 3.257709613535553e-05
+        X: -3.5319817066192627
+        Y: -2.080366611480713
+        Z: 3.639179340098053e-05
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.2997968792915344
+      Pitch: 0.7147966623306274
       Target Frame: world_view
-      Yaw: 2.475337505340576
+      Yaw: 2.430337429046631
     Saved: ~
 Window Geometry:
   Displays:
@@ -346,4 +346,4 @@ Window Geometry:
     collapsed: true
   Width: 1436
   X: 1920
-  Y: 1404
+  Y: 1368

@@ -218,7 +218,7 @@ auto main(int argc, char* argv[]) -> int {
             // double weight_unknown = 0;
             // double weight_occupied = 0;
             //
-            ocmap.iterate_over_bbx(bbx, [&](const auto& pt, VoxelStatus vs) {
+            ocmap.iterate_over_bbx(bbx, [&](const auto& pt, double, VoxelStatus vs) {
                 const vec3 v = vec3{pt.x(), pt.y(), pt.z()};
                 if (fov.inside_fov(v) && visible(v)) {
                     auto msg = cube_msg_gen(v);

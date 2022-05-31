@@ -41,7 +41,7 @@
         type="mission_manager"
         name="mission_manager"
         args="$(arg vel) $(arg alt) $(arg target_x) $(arg target_y) $(arg target_z)"
-        output="screen"
+        output="log"
         launch-prefix="$(arg lp)" />
     <node
         pkg="$(arg package)"

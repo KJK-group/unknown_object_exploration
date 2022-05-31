@@ -128,7 +128,7 @@ RRT::RRT(const vec3& start_position, const vec3& goal_position, float step_size,
 auto RRT::sample_random_point_() -> vec3 {
     auto random_pt =
         rng_.sample_random_point_inside_unit_sphere(direction_from_start_to_goal_, goal_bias_);
-    return sampling_radius_ * random_pt + start_position_;
+    return sampling_radius_ * random_pt + goal_position_;
 }
 
 auto RRT::find_nearest_neighbor_(const vec3& pt) -> RRT::node_t* {

@@ -44,9 +44,7 @@ auto yaml(const FoVGainMetric metric, int indentation = 0, int tabsize = 2) -> s
            line(tab2 + "total: " + std::to_string(metric.v_total)) +
            line(tab2 + "visible: " + std::to_string(metric.v_visible)) +
            line(tab2 + "not_visible: " + std::to_string(metric.v_not_visible)) +
-           line(tab2 + "inside: " + std::to_string(metric.v_inside_fov)) +
-           line(tab2 +
-                "included: " + std::to_string(std::min(metric.v_inside_fov, metric.v_visible)));
+           line(tab2 + "inside: " + std::to_string(metric.v_inside_fov));
 }
 
 auto to_ros_msg(const FoVGainMetric& m) -> mdi_msgs::FoVGainMetric {
@@ -55,6 +53,7 @@ auto to_ros_msg(const FoVGainMetric& m) -> mdi_msgs::FoVGainMetric {
     msg.gain.free = m.gain_free;
     msg.gain.unknown = m.gain_unknown;
     msg.gain.occupied = m.gain_occupied;
+    msg.gain.not_visible = m.gain_not_visible;
     msg.gain.distance = m.gain_distance;
     msg.gain.total = m.gain_total;
 
@@ -131,9 +130,11 @@ auto gain_of_fov(
                         m.v_occupied_voxels += voxel_volume;
                         break;
                     case VoxelStatus::Unknown:
-                        m.gain_unknown += weight_unknown * voxel_volume;
+                        m.gain_unknown += weight_unknown * voxel_volume *
+                                          weight_distance_to_target *
+                                          (1 - (std::pow(distance_to_target, 2) / distance_total));
                         m.gain_distance += weight_distance_to_target *
-                                           (distance_total / distance_to_target) * voxel_volume;
+                                           (1 - (std::pow(distance_to_target, 2) / distance_total));
                         m.v_unknown_voxels += voxel_volume;
                         break;
                 }
@@ -152,7 +153,7 @@ auto gain_of_fov(
     // m.gain_not_visible *= resolution_scale_factor;
 
     m.gain_total =
-        m.gain_free + m.gain_occupied + m.gain_unknown + m.gain_distance + m.gain_not_visible;
+        (m.gain_free + m.gain_occupied + m.gain_unknown + m.gain_not_visible) / m.v_inside_fov;
 
     return m;
 }

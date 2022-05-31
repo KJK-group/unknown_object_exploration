@@ -236,7 +236,7 @@ class RRT {
     auto disable_cbs_for_event_on_clearing_nodes_in_tree() -> void {
         on_clearing_nodes_in_tree_status_ = false;
     }
-    auto disable_cbs_for_event_on_raycast () -> void { on_raycast_status_ = false; }
+    auto disable_cbs_for_event_on_raycast() -> void { on_raycast_status_ = false; }
 
     auto toggle_cbs_for_event_on_new_node_created() -> void {
         on_new_node_created_status_ = ! on_new_node_created_status_;
@@ -362,7 +362,7 @@ class RRT {
     vec3 goal_position_{};
     vec3 direction_from_start_to_goal_{};
 
-    float sampling_radius_{};
+    double sampling_radius_{};
     /**
      * @brief the interface which is used to query the voxel grid about
      * occupancy status.

@@ -115,7 +115,7 @@ auto visualize_voxels_inside_fov(const FoV& fov, const mdi::Octomap& ocmap, floa
 
     auto msgs = visualization_msgs::MarkerArray{};
 
-    ocmap.iterate_over_bbx(bbx, [&](const auto& pt, VoxelStatus vs) {
+    ocmap.iterate_over_bbx(bbx, [&](const auto& pt, double, VoxelStatus vs) {
         const vec3 v = vec3{pt.x(), pt.y(), pt.z()};
         if (fov.inside_fov(v) && visible(v)) {
             auto msg = cube_msg_gen(v);
