@@ -17,13 +17,13 @@ namespace mdi {
 struct FoVGainMetric {
     double gain_free, gain_unknown, gain_occupied, gain_distance, gain_not_visible;
     double gain_total;
-    std::size_t n_inside_fov;
-    std::size_t n_visible;
-    std::size_t n_not_visible;
-    std::size_t n_free_voxels;
-    std::size_t n_occupied_voxels;
-    std::size_t n_unknown_voxels;
-    std::size_t n_total;
+    double v_inside_fov;
+    double v_visible;
+    double v_not_visible;
+    double v_free_voxels;
+    double v_occupied_voxels;
+    double v_unknown_voxels;
+    double v_total;
 };  // FoVGainMetric
 
 auto yaml(const FoVGainMetric metric, int indentation = 0, int tabsize = 2) -> std::string {
@@ -32,21 +32,21 @@ auto yaml(const FoVGainMetric metric, int indentation = 0, int tabsize = 2) -> s
     const auto whitespace = std::string(indentation, ' ');
     const auto line = [&](const std::string& s) { return whitespace + s + "\n"; };
     return line("FoVGainMetric:") + line(tab + "voxels: ") +
-           line(tab2 + "free: " + std::to_string(metric.n_free_voxels)) +
-           line(tab2 + "occupied: " + std::to_string(metric.n_occupied_voxels)) +
-           line(tab2 + "unknown: " + std::to_string(metric.n_unknown_voxels)) +
+           line(tab2 + "free: " + std::to_string(metric.v_free_voxels)) +
+           line(tab2 + "occupied: " + std::to_string(metric.v_occupied_voxels)) +
+           line(tab2 + "unknown: " + std::to_string(metric.v_unknown_voxels)) +
            line(tab + "gains:") + line(tab2 + "free: " + std::to_string(metric.gain_free)) +
            line(tab2 + "occupied: " + std::to_string(metric.gain_occupied)) +
            line(tab2 + "unknown: " + std::to_string(metric.gain_unknown)) +
            line(tab2 + "distance: " + std::to_string(metric.gain_distance)) +
            line(tab2 + "not_visible: " + std::to_string(metric.gain_not_visible)) +
            line(tab2 + "total: " + std::to_string(metric.gain_total)) + line(tab + "fov:") +
-           line(tab2 + "total: " + std::to_string(metric.n_total)) +
-           line(tab2 + "visible: " + std::to_string(metric.n_visible)) +
-           line(tab2 + "not_visible: " + std::to_string(metric.n_not_visible)) +
-           line(tab2 + "inside: " + std::to_string(metric.n_inside_fov)) +
+           line(tab2 + "total: " + std::to_string(metric.v_total)) +
+           line(tab2 + "visible: " + std::to_string(metric.v_visible)) +
+           line(tab2 + "not_visible: " + std::to_string(metric.v_not_visible)) +
+           line(tab2 + "inside: " + std::to_string(metric.v_inside_fov)) +
            line(tab2 +
-                "included: " + std::to_string(std::min(metric.n_inside_fov, metric.n_visible)));
+                "included: " + std::to_string(std::min(metric.v_inside_fov, metric.v_visible)));
 }
 
 auto to_ros_msg(const FoVGainMetric& m) -> mdi_msgs::FoVGainMetric {
@@ -58,13 +58,13 @@ auto to_ros_msg(const FoVGainMetric& m) -> mdi_msgs::FoVGainMetric {
     msg.gain.distance = m.gain_distance;
     msg.gain.total = m.gain_total;
 
-    msg.fov.n_inside = m.n_inside_fov;
-    msg.fov.n_visible = m.n_visible;
-    msg.fov.n_not_visible = m.n_not_visible;
-    msg.fov.n_total = m.n_total;
-    msg.voxels.n_free = m.n_free_voxels;
-    msg.voxels.n_occupied = m.n_occupied_voxels;
-    msg.voxels.n_unknown = m.n_unknown_voxels;
+    msg.fov.inside = m.v_inside_fov;
+    msg.fov.visible = m.v_visible;
+    msg.fov.not_visible = m.v_not_visible;
+    msg.fov.total = m.v_total;
+    msg.voxels.free = m.v_free_voxels;
+    msg.voxels.occupied = m.v_occupied_voxels;
+    msg.voxels.unknown = m.v_unknown_voxels;
 
     return msg;
 }
@@ -110,46 +110,46 @@ auto gain_of_fov(
 
     const double distance_total = distance_tf((fov.target() - root).norm());
 
-    octomap.iterate_over_bbx(bbx, [&](const auto& pt, VoxelStatus vs) {
+    octomap.iterate_over_bbx(bbx, [&](const auto& pt, const double size, VoxelStatus vs) {
         const vec3 v = vec3{pt.x(), pt.y(), pt.z()};
         const double distance_to_target = distance_tf((fov.target() - v).norm());
 
-        m.n_total += 1;
+        // m.v_total += volume_scale_factor;
 
         if (fov.inside_fov(v)) {
-            m.n_inside_fov += 1;
+            const double voxel_volume = std::pow(size, 3.0);
+            m.v_inside_fov += voxel_volume;
             if (visible(v)) {
-                m.n_visible += 1;
+                m.v_visible += voxel_volume;
                 switch (vs) {
                     case VoxelStatus::Free:
-                        m.gain_free += weight_free;
-                        m.n_free_voxels += 1;
+                        m.gain_free += weight_free * voxel_volume;
+                        m.v_free_voxels += voxel_volume;
                         break;
                     case VoxelStatus::Occupied:
-                        m.gain_occupied += weight_occupied;
-                        m.n_occupied_voxels += 1;
+                        m.gain_occupied += weight_occupied * voxel_volume;
+                        m.v_occupied_voxels += voxel_volume;
                         break;
                     case VoxelStatus::Unknown:
-                        m.gain_unknown += weight_unknown;
-                        m.gain_distance +=
-                            weight_distance_to_target * (distance_total / distance_to_target);
-                        m.n_unknown_voxels += 1;
+                        m.gain_unknown += weight_unknown * voxel_volume;
+                        m.gain_distance += weight_distance_to_target *
+                                           (distance_total / distance_to_target) * voxel_volume;
+                        m.v_unknown_voxels += voxel_volume;
                         break;
                 }
             } else {
-                m.n_not_visible += 1;
-                m.gain_not_visible += weight_not_visible;
+                m.v_not_visible += voxel_volume;
+                m.gain_not_visible += weight_not_visible * voxel_volume;
             }
         }
     });
 
     // scale with volume
-    const double resolution_scale_factor = std::pow(octomap.resolution(), 3.0);
-    m.gain_free *= resolution_scale_factor;
-    m.gain_occupied *= resolution_scale_factor;
-    m.gain_unknown *= resolution_scale_factor;
-    m.gain_distance *= resolution_scale_factor;
-    m.gain_not_visible *= resolution_scale_factor;
+    // m.gain_free *= resolution_scale_factor;
+    // m.gain_occupied *= resolution_scale_factor;
+    // m.gain_unknown *= resolution_scale_factor;
+    // m.gain_distance *= resolution_scale_factor;
+    // m.gain_not_visible *= resolution_scale_factor;
 
     m.gain_total =
         m.gain_free + m.gain_occupied + m.gain_unknown + m.gain_distance + m.gain_not_visible;

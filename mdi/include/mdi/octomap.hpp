@@ -144,7 +144,8 @@ class Octomap final {
         octree_.writeData(s);
     }
 
-    using bbx_iterator_cb = std::function<void(const point_type& pt, const VoxelStatus vs)>;
+    using bbx_iterator_cb =
+        std::function<void(const point_type& pt, const double size, const VoxelStatus vs)>;
 
     auto iterate_over_bbx(const mdi::types::BBX& bbx, bbx_iterator_cb cb) const -> void {
         const auto [min, max] = [&] {
@@ -158,16 +159,18 @@ class Octomap final {
         for (auto it = octree_.begin_leafs_bbx(min, max), end = octree_.end_leafs_bbx(); it != end;
              ++it) {
             const auto voxel_center = it.getCoordinate();
+            const auto size = it.getSize();
             const auto key = it.getKey();
 
-            cb(voxel_center, get_voxelstatus_at_node_using_key_(key));
+            cb(voxel_center, size, get_voxelstatus_at_node_using_key_(key));
         }
 
         octomap::point3d_list voxel_centers{};
 
         octree_.getUnknownLeafCenters(voxel_centers, min, max);
         for (auto voxel_center : voxel_centers) {
-            cb(voxel_center, VoxelStatus::Unknown);
+            // TODO: check if resolution() is correct here
+            cb(voxel_center, resolution(), VoxelStatus::Unknown);
         }
     }
 
