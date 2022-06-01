@@ -752,8 +752,7 @@ auto RRT::backtrack_and_set_waypoints_starting_at_(node_t* start_node) -> bool {
 
 // TODO: change parameters
 auto RRT::collision_free_(const vec3& from, const vec3& to, double depth, double width,
-                          double height
-                          /*, float padding, float end_of_raycast_padding */) const -> bool {
+                          double height) const -> bool {
     if (octomap_ == nullptr) {
         std::cerr << "[INFO] no octomap available, assuming path is collision free" << '\n';
         return true;
@@ -764,20 +763,61 @@ auto RRT::collision_free_(const vec3& from, const vec3& to, double depth, double
     using vec3 = Eigen::Vector3f;
 
     mat3x3 Rx90;
-    Rx90 << 1.0f, 0.0f, 0.0f, 0.0f, cos(M_PI_2), sin(M_PI_2), 0.0f, -sin(M_PI_2), cos(M_PI_2);
-
-    const vec3 direction = (to - from);
-    const vec3 i_basis = direction.normalized();
-    // ensure j_basis orthonormal to i_basis by rotating 90 degrees around
-    const vec3 j_basis = Rx90 * i_basis;
-    // use cross product to find third orthogonal basis vector.
-    const vec3 k_basis = i_basis.cross(j_basis).normalized();
-    // T forms a orthonormal basis where i_basis is the direction of from -> to, and j_basis and
-    // k_basis span the plane to which i_basis is a normal vector.
     mat3x3 T;
+
+    auto [i_basis, j_basis, k_basis] = [&] {
+        vec3 dir = (to - from).normalized();
+        // 3d plane ax + by + cz + d = 0
+        const double a = dir.x();
+        const double b = dir.y();
+        const double c = dir.z();
+        const double d = 0.0;
+
+        // constraint: roll = 0
+        // assume: pitch != +- 90 deg
+        // 1. find point in plane
+        const double k = 0;
+        auto [i, j] = [&] {
+            // 0 - 2pi
+            const double yaw = std::atan2(dir.y(), dir.x());
+            const double pi = M_PI;
+            if ((0 <= yaw && yaw <= pi / 4) || (3 * pi / 4 <= yaw && yaw <= 5 * pi / 4) ||
+                (7 * pi / 4 <= yaw && yaw <= 2 * pi)) {
+                const double j = 10;  // needs to be a good amount from 0
+                const double i = (-b * j - c * k - d) / a;
+                return std::make_pair(i, j);
+            } else {
+                const double i = 10;  // needs to be a good amount from 0
+                const double j = (-a * i - c * k - d) / b;
+                return std::make_pair(i, j);
+            }
+        }();
+        // 2. project to global xy plane and normalize
+        vec3 second =
+            vec3{static_cast<float>(i), static_cast<float>(j), static_cast<float>(k)}.normalized();
+        // 3. find 3rd basis pos.cross(point)
+        vec3 third = dir.cross(second);
+
+        return std::make_tuple(dir, second, third);
+    }();
+
     T.col(0) = i_basis;
     T.col(1) = j_basis;
     T.col(2) = k_basis;
+
+    const vec3 direction = (to - from);
+    // Rx90 << 1.0f, 0.0f, 0.0f, 0.0f, cos(M_PI_2), sin(M_PI_2), 0.0f, -sin(M_PI_2), cos(M_PI_2);
+
+    // const vec3 i_basis = direction.normalized();
+    // // ensure j_basis orthonormal to i_basis by rotating 90 degrees around
+    // const vec3 j_basis = Rx90 * i_basis;
+    // // use cross product to find third orthogonal basis vector.
+    // const vec3 k_basis = i_basis.cross(j_basis).normalized();
+    // // T forms a orthonormal basis where i_basis is the direction of from -> to, and j_basis and
+    // // k_basis span the plane to which i_basis is a normal vector.
+    // T.col(0) = i_basis;
+    // T.col(1) = j_basis;
+    // T.col(2) = k_basis;
 
     // TODO: use parameter to determine the offset after the "to" point to cast raycast at.
     const float raycast_length = direction.norm() + depth;
@@ -788,27 +828,13 @@ auto RRT::collision_free_(const vec3& from, const vec3& to, double depth, double
         };
 
         const vec3 origin = T * v + from;
-        // const vec3 target = origin + static_cast<vec3>((direction.normalized() *
-        // raycast_length));
         const auto voxel = octomap_->raycast_in_direction(
             convert_to_pt(origin), convert_to_pt(direction), raycast_length, false);
 
-        // std::cout << "origin: " << origin << " direction: " << direction << "voxel.has_value " <<
-        // voxel.has_value()
-        //   << std::endl;
-        // if voxel is the some variant, then it means that a occupied voxel was hit.
-        // const bool did_hit = voxel.has_value();
-        // auto match = Overload{
-        //     [](Free _) { return false; },
-        //     [](Unknown _) { return true; },
-        //     [](Occupied _) { return true; },
-        // };
-
-        // const bool did_hit = std::visit(match, voxel);
         const bool did_hit = std::visit(Overload{
-                                            [](Free _) { return false; },
-                                            [](Unknown _) { return true; },
-                                            [](Occupied _) { return true; },
+                                            [](Free) { return false; },
+                                            [](Unknown) { return true; },
+                                            [](Occupied) { return true; },
                                         },
                                         voxel);
 

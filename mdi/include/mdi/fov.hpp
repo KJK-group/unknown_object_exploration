@@ -209,13 +209,11 @@ class FoV {
         if (even(y_span(d_near_plane))) {
             offset.y() = delta_d / 2.0f;
         }
-        // const auto center = vec2{0, 0};
         // near plane
         const auto coordinate_gen = [&](int x, int y) -> std::array<vec2, 2> {
-            return {/*center + */ offset +
-                        vec2{-static_cast<float>(x) * delta_d, static_cast<float>(y) * delta_d},
-                    /*center -*/ offset -
-                        vec2{-static_cast<float>(x) * delta_d, static_cast<float>(y) * delta_d}};
+            return {
+                offset + vec2{-static_cast<float>(x) * delta_d, static_cast<float>(y) * delta_d},
+                offset - vec2{-static_cast<float>(x) * delta_d, static_cast<float>(y) * delta_d}};
         };
 
         for (float x = depth_range_.min; x <= depth_range_.max; x += delta_d) {
