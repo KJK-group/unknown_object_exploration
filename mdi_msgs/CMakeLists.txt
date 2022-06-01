@@ -18,8 +18,8 @@ add_message_files(
   NbvConfig.msg
   PointNorm.msg
   PointNormStamped.msg
-  FovCount.msg
-  VoxelCount.msg
+  FovVolume.msg
+  VoxelVolume.msg
   GainScore.msg
   RrtConfig.msg
   Waypoints.msg)

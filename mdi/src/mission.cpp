@@ -311,11 +311,11 @@ auto Mission::find_nbv_path_(Eigen::Vector3f start) -> std::vector<Eigen::Vector
 
     std::vector<Eigen::Vector3f> path;
     if (client_nbv_.call(nbv_msg)) {
-        std::cout << "Waypoint size: " << nbv_msg.response.waypoints.size() << std::endl;
+        // std::cout << "Waypoint size: " << nbv_msg.response.waypoints.size() << std::endl;
         auto& waypoints = nbv_msg.response.waypoints;
         // std::cout << "before for loop" << std::endl;
         for (auto& wp : waypoints) {
-            std::cout << wp << std::endl;
+            // std::cout << wp << std::endl;
             path.emplace_back(wp.x, wp.y, wp.z);
         }
     }

@@ -205,9 +205,10 @@ auto nbv_handler(mdi_msgs::NBV::Request& request, mdi_msgs::NBV::Response& respo
                    .drone_width(request.drone_config.width)
                    .drone_height(request.drone_config.height)
                    .drone_depth(request.drone_config.depth)
+                   .sampling_radius(10000)
                    .build();
 
-    ROS_INFO_STREAM("" << rrt);
+    // ROS_INFO_STREAM("" << rrt);
 
     auto octomap_environment_ptr = call_get_environment_octomap();
 
@@ -228,17 +229,17 @@ auto nbv_handler(mdi_msgs::NBV::Request& request, mdi_msgs::NBV::Response& respo
     bool found_suitable_nbv = false;
 
 #ifdef VISUALIZE_MARKERS_IN_RVIZ
-    // visualization_msgs::MarkerArray marker_array;
-    // auto new_node_arrow_msg_gen = mdi::utils::rviz::arrow_msg_gen::builder()
-    //                                   .arrow_head_width(0.05f)
-    //                                   .arrow_length(0.1f)
-    //                                   .arrow_width(0.1f)
-    //                                   .color({0, 1, 0, 1})
-    //                                   .build();
-    // rrt.register_cb_for_event_on_new_node_created([&](const auto& from, const auto& to) {
-    //     auto msg = new_node_arrow_msg_gen({from, to});
-    //     marker_array.markers.push_back(msg);
-    // });
+    visualization_msgs::MarkerArray marker_array;
+    auto new_node_arrow_msg_gen = mdi::utils::rviz::arrow_msg_gen::builder()
+                                      .arrow_head_width(0.05f)
+                                      .arrow_length(0.1f)
+                                      .arrow_width(0.1f)
+                                      .color({0, 1, 0, 1})
+                                      .build();
+    rrt.register_cb_for_event_on_new_node_created([&](const auto& from, const auto& to) {
+        auto msg = new_node_arrow_msg_gen({from, to});
+        marker_array.markers.push_back(msg);
+    });
 
     // // TODO: comment
     // rrt.register_cb_for_event_before_optimizing_waypoints(before_waypoint_optimization);
@@ -277,6 +278,7 @@ auto nbv_handler(mdi_msgs::NBV::Request& request, mdi_msgs::NBV::Response& respo
             [](const mdi::types::vec3&, const mdi::types::vec3&, float, const bool) {});
 
         const double gain = fov_gain_metric.gain_total;
+        ROS_INFO_STREAM("gain: " << std::to_string(gain) << '\n');
 
         if (gain > best_gain) {
             ROS_INFO_STREAM("gain (" << std::to_string(gain)
@@ -284,7 +286,7 @@ auto nbv_handler(mdi_msgs::NBV::Request& request, mdi_msgs::NBV::Response& respo
                                      << std::to_string(best_gain) << ")");
             best_fov_gain_metric = fov_gain_metric;
             best_gain = gain;
-            best_point = fov.pose().position;
+            best_point = new_point;
         }
 
         if (gain >= request.nbv_config.gain_of_interest_threshold) {
@@ -328,10 +330,25 @@ auto nbv_handler(mdi_msgs::NBV::Request& request, mdi_msgs::NBV::Response& respo
     ros::Rate(10).sleep();
 
 #ifdef VISUALIZE_MARKERS_IN_RVIZ
-    // std::cout << "publishing RRT tree..." << std::endl;
-    // marker_array_pub->publish(marker_array);
-    // ros::spinOnce();
-    // ros::Rate(mdi::utils::DEFAULT_LOOP_RATE).sleep();
+    std::cout << "publishing RRT tree..." << std::endl;
+
+    auto msg = visualization_msgs::Marker{};
+    msg.type = visualization_msgs::Marker::SPHERE;
+    msg.pose.position.x = best_point.x();
+    msg.pose.position.y = best_point.y();
+    msg.pose.position.z = best_point.z();
+    msg.scale.x = 0.2;
+    msg.scale.y = 0.2;
+    msg.scale.z = 0.2;
+    msg.color.r = 1;
+    msg.color.a = 1;
+    msg.header.frame_id = mdi::utils::FRAME_WORLD;
+    msg.header.stamp = ros::Time::now();
+    marker_array.markers.push_back(msg);
+
+    marker_array_pub->publish(marker_array);
+    ros::spinOnce();
+    ros::Rate(mdi::utils::DEFAULT_LOOP_RATE).sleep();
     // marker_array.markers.clear();
 
     vec3 dir = target - mdi::utils::transform::geometry_mgs_point_to_vec(response.waypoints.back());
