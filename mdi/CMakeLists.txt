@@ -143,8 +143,8 @@ target_link_libraries(control_manager control)
 add_ros_executable(mission_manager src/nodes/mission_manager.cpp)
 target_link_libraries(mission_manager compound_trajectory rrt mission)
 
-add_ros_executable(rrt_service src/nodes/rrt_service.cpp)
-target_link_libraries(rrt_service rrt kdtree-header-only ${OCTOMAP_LIBRARIES})
+# add_ros_executable(rrt_service src/nodes/rrt_service.cpp)
+# target_link_libraries(rrt_service rrt kdtree-header-only ${OCTOMAP_LIBRARIES})
 
 add_executable(object_map src/nodes/object_map.cpp)
 add_ros_dependencies(object_map)

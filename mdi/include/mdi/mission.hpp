@@ -48,7 +48,7 @@ class Mission {
 
    private:
     auto find_path_(Eigen::Vector3f start, Eigen::Vector3f end) -> std::vector<Eigen::Vector3f>;
-    auto find_nbv_path_(Eigen::Vector3f start) -> std::vector<Eigen::Vector3f>;
+    auto find_nbv_path_(Eigen::Vector3f start) -> std::optional<std::vector<Eigen::Vector3f>>;
     auto fit_trajectory_(std::vector<Eigen::Vector3f> path)
         -> std::optional<trajectory::CompoundTrajectory>;
     auto drone_set_mode_(std::string mode = "OFFBOARD") -> bool;

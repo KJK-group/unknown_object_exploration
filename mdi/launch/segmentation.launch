@@ -2,7 +2,7 @@
 <launch>
     <arg name="package" value="mdi"/>
     <arg name="package_path" value="$(find mdi)"/>
-    <arg name="model_path" default="$(arg package_path)/data/checkpoint_resnet50_CustomDataset2_98p.pth"/>
+    <arg name="model_path" default="$(arg package_path)/data/checkpoint_resnet50_99p.pth"/>
 
     <arg name="sim" default="true"/>
 

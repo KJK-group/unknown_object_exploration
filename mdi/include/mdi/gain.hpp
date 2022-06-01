@@ -73,8 +73,8 @@ auto gain_of_fov(
     const double weight_occupied, const double weight_unknown,
     const double weight_distance_to_target, const double weight_not_visible, types::vec3 root,
     std::function<double(double)> distance_tf,
-    std::function<void(const types::vec3&, const types::vec3&, float, const bool)> visit_cb)
-    -> FoVGainMetric {
+    std::function<void(const types::vec3&, const types::vec3&, float, const bool, mdi::VoxelStatus)>
+        visit_cb) -> FoVGainMetric {
     using namespace mdi::types;
     using mdi::VoxelStatus;
     using point = mdi::Octomap::point_type;
@@ -89,11 +89,22 @@ auto gain_of_fov(
     const auto visible = [&](const vec3& v) -> bool {
         auto voxel = octomap.raycast(origin, point{v.x(), v.y(), v.z()}, false);
 
+        VoxelStatus status;
         const auto match = [&](auto&& x) {
             auto visitor = Overload{
-                [](Free) { return true; },
-                [](Unknown) { return false; },
-                [](Occupied) { return false; },
+                [&](Free) {
+                    status = VoxelStatus::Free;
+                    return true;
+                },
+                [&](Unknown) {
+                    status = VoxelStatus::Unknown;
+                    return false;
+                },
+                [&](Occupied) {
+                    status = VoxelStatus::Occupied;
+
+                    return false;
+                },
             };
 
             return std::visit(visitor, x);
@@ -101,7 +112,7 @@ auto gain_of_fov(
 
         const bool is_visible = match(voxel);
         const auto dir = (v - fov.pose().position);
-        visit_cb(fov.pose().position, dir.normalized(), dir.norm(), is_visible);
+        visit_cb(v, dir.normalized(), dir.norm(), is_visible, status);
         return is_visible;
     };
 
@@ -118,6 +129,7 @@ auto gain_of_fov(
         if (fov.inside_fov(v)) {
             const double voxel_volume = std::pow(size, 3.0);
             m.v_inside_fov += voxel_volume;
+
             if (visible(v)) {
                 m.v_visible += voxel_volume;
                 switch (vs) {
@@ -130,9 +142,7 @@ auto gain_of_fov(
                         m.v_occupied_voxels += voxel_volume;
                         break;
                     case VoxelStatus::Unknown:
-                        m.gain_unknown += weight_unknown * voxel_volume *
-                                          weight_distance_to_target *
-                                          (1 - (std::pow(distance_to_target, 2) / distance_total));
+                        m.gain_unknown += weight_unknown * voxel_volume;
                         m.gain_distance += weight_distance_to_target *
                                            (1 - (std::pow(distance_to_target, 2) / distance_total));
                         m.v_unknown_voxels += voxel_volume;
@@ -152,8 +162,8 @@ auto gain_of_fov(
     // m.gain_distance *= resolution_scale_factor;
     // m.gain_not_visible *= resolution_scale_factor;
 
-    m.gain_total =
-        (m.gain_free + m.gain_occupied + m.gain_unknown + m.gain_not_visible) / m.v_inside_fov;
+    m.gain_total = m.gain_distance / m.gain_unknown;
+    // (m.gain_free + m.gain_occupied + m.gain_unknown + m.gain_not_visible) / m.v_inside_fov;
 
     return m;
 }

@@ -36,7 +36,7 @@ class RRTBuilder final {
     RRTBuilder& max_iterations(std::size_t max_iterations) {
         rrt_.max_iterations_ = max_iterations;
         rrt_.remaining_iterations_ = max_iterations;
-        rrt_.nodes_.reserve(max_iterations);
+        rrt_.nodes_.reserve(max_iterations * 2);
         return *this;
     }
 

@@ -9,8 +9,8 @@ mdi:
       - 17
       - 5
     params:
-      max_iterations: 5000
+      max_iterations: 400
       goal_bias: 0
-      goal_tolerance: 2
+      goal_tolerance: 0
       step_size: 2
       probability_of_testing_full_path_from_new_node_to_goal: 0

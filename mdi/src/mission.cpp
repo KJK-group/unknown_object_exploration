@@ -246,7 +246,7 @@ auto Mission::find_path_(Eigen::Vector3f start, Eigen::Vector3f end)
     return path;
 }
 
-auto Mission::find_nbv_path_(Eigen::Vector3f start) -> std::vector<Eigen::Vector3f> {
+auto Mission::find_nbv_path_(Eigen::Vector3f start) -> std::optional<std::vector<Eigen::Vector3f>> {
     ROS_INFO_STREAM("Requesting NBV path from "
                     << "[" << start.x() << "," << start.y() << "," << start.z() << "]");
 
@@ -309,8 +309,8 @@ auto Mission::find_nbv_path_(Eigen::Vector3f start) -> std::vector<Eigen::Vector
     fov.vertical.angle = camera_param["vertical_fov"];
     fov.pitch.angle = camera_param["pitch"];
 
-    std::vector<Eigen::Vector3f> path;
     if (client_nbv_.call(nbv_msg)) {
+        std::vector<Eigen::Vector3f> path;
         // std::cout << "Waypoint size: " << nbv_msg.response.waypoints.size() << std::endl;
         auto& waypoints = nbv_msg.response.waypoints;
         // std::cout << "before for loop" << std::endl;
@@ -318,10 +318,11 @@ auto Mission::find_nbv_path_(Eigen::Vector3f start) -> std::vector<Eigen::Vector
             // std::cout << wp << std::endl;
             path.emplace_back(wp.x, wp.y, wp.z);
         }
+        interest_points_.emplace_back(path.back());
+        return {path};
     }
-    interest_points_.emplace_back(path.back());
 
-    return path;
+    return {};
 }
 
 auto Mission::fit_trajectory_(std::vector<Eigen::Vector3f> path)
@@ -440,12 +441,14 @@ auto Mission::set_takeoff_trajectory_() -> void {
 }
 
 auto Mission::set_nbv_trajectory_() -> void {
-    if (auto trajectory_opt = fit_trajectory_(find_nbv_path_(interest_points_.back()))) {
-        trajectory_ = *trajectory_opt;
-        step_count_ = 0;
-        ROS_INFO_STREAM("Path viable");
-    } else {
-        ROS_INFO_STREAM("Path not viable");
+    if (auto path_opt = find_nbv_path_(interest_points_.back())) {
+        if (auto trajectory_opt = fit_trajectory_(path_opt.value())) {
+            trajectory_ = *trajectory_opt;
+            step_count_ = 0;
+            ROS_INFO_STREAM("Path viable");
+        } else {
+            ROS_INFO_STREAM("Path not viable");
+        }
     }
 }
 

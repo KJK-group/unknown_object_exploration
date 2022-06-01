@@ -268,6 +268,9 @@ class RRT {
     [[nodiscard]] auto sampling_radius() const -> float { return sampling_radius_; }
     [[nodiscard]] auto start_position() const -> vec3 { return start_position_; }
     [[nodiscard]] auto goal_position() const -> vec3 { return goal_position_; }
+    [[nodiscard]] auto can_grow() const -> bool {
+        return remaining_iterations_ - 10 > 0;
+    }  // crashes without -10
 
     auto assign_octomap(mdi::Octomap* map) -> void { octomap_ = map; };
 

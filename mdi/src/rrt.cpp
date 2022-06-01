@@ -96,8 +96,8 @@ RRT::RRT(const vec3& start_position, const vec3& goal_position, float step_size,
 
     max_iterations_ = max_iterations;
     remaining_iterations_ = max_iterations;
-    // DO NOT CHANGE THIS, IF A CONSTANT IS NOT ADDED THEN A DOUBLE FREE HAPPENS
-    nodes_.reserve(max_iterations + 10);
+    // // DO NOT CHANGE THIS, IF A CONSTANT IS NOT ADDED THEN A DOUBLE FREE HAPPENS
+    // nodes_.reserve(max_iterations + 10);
 
     if (max_dist_goal_tolerance < 0.f) {
         auto err_msg = "max_dist_goal_tolerance must be greater than 0.f";
@@ -439,7 +439,7 @@ auto RRT::insert_node_(const vec3& pos, node_t* parent) -> node_t& {
 }
 
 auto RRT::grow_() -> bool {
-    if (! (remaining_iterations_ > 0)) {
+    if (remaining_iterations_ <= 0) {
         return false;
     }
 
