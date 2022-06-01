@@ -160,6 +160,7 @@ class Octomap final {
              ++it) {
             const auto voxel_center = it.getCoordinate();
             const auto size = it.getSize();
+            // ROS_INFO_STREAM("getSize() -> " << size);
             const auto key = it.getKey();
 
             cb(voxel_center, size, get_voxelstatus_at_node_using_key_(key));
@@ -170,6 +171,8 @@ class Octomap final {
         octree_.getUnknownLeafCenters(voxel_centers, min, max);
         for (auto voxel_center : voxel_centers) {
             // TODO: check if resolution() is correct here
+            // ROS_INFO_STREAM("unknown so using DEFAULT resolution: " << resolution());
+
             cb(voxel_center, resolution(), VoxelStatus::Unknown);
         }
     }

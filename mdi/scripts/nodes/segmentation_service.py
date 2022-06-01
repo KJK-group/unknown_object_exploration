@@ -28,7 +28,7 @@ device = torch.device("cuda:0")
 print("Device chosen:", torch.cuda.get_device_name(device))
 
 # Parameters
-num_classes = 7  # Automatically calculated in the next cell
+num_classes = 4  # Automatically calculated in the next cell
 # Optimiser parameters
 learning_rate = 0.0001
 beta1 = 0.9

@@ -217,6 +217,9 @@ auto nbv_handler(mdi_msgs::NBV::Request& request, mdi_msgs::NBV::Response& respo
         rrt.assign_octomap(octomap_environment_ptr);
         ROS_INFO_STREAM(
             "size of octomap (in bytes) is: " << octomap_environment_ptr->octree().memoryUsage());
+    } else {
+        ROS_INFO_STREAM("octomap request failed");
+        return false;
     }
 
     // TODO: how to initialize this maybe std::optional ?
@@ -247,6 +250,8 @@ auto nbv_handler(mdi_msgs::NBV::Request& request, mdi_msgs::NBV::Response& respo
     // rrt.register_cb_for_event_on_raycast(raycast);
 #endif  // VISUALIZE_MARKERS_IN_RVIZ
 
+    auto text_msg_gen = mdi::utils::rviz::text_msg_gen();
+
     rrt.register_cb_for_event_on_new_node_created([&](const auto&, const vec3& new_point) {
         vec3 dir = target - new_point;
 
@@ -275,12 +280,26 @@ auto nbv_handler(mdi_msgs::NBV::Request& request, mdi_msgs::NBV::Response& respo
             request.nbv_config.weight_distance_to_object, request.nbv_config.weight_not_visible,
             mdi::utils::transform::geometry_mgs_point_to_vec(request.rrt_config.start),
             [](double x) { return x /* x * x */; },
-            [](const mdi::types::vec3&, const mdi::types::vec3&, float, const bool) {});
+            [&](const mdi::types::vec3&, const mdi::types::vec3&, float, const bool,
+                mdi::VoxelStatus) {});
 
         const double gain = fov_gain_metric.gain_total;
-        ROS_INFO_STREAM("gain: " << std::to_string(gain) << '\n');
+        ROS_INFO_STREAM(rrt.max_iterations() - rrt.remaining_iterations()
+                        << "/" << rrt.max_iterations() << " - gain: " << std::to_string(gain));
 
-        if (gain > best_gain) {
+        // {
+        //     std::string text = std::to_string(gain) + " | (" +
+        //                        std::to_string(fov_gain_metric.gain_unknown) + " | " +
+        //                        std::to_string(fov_gain_metric.v_unknown_voxels) + ") | " +
+        //                        std::to_string(fov_gain_metric.gain_distance);
+        //     auto msg = text_msg_gen(text, fov.pose().position);
+        //     msg.color.r = 1;
+        //     msg.color.g = 1;
+        //     msg.color.b = 1;
+        //     marker_array.markers.push_back(msg);
+        // }
+
+        if (gain > best_gain && fov_gain_metric.gain_unknown != 0) {
             ROS_INFO_STREAM("gain (" << std::to_string(gain)
                                      << ") is better that the current best gain ("
                                      << std::to_string(best_gain) << ")");
@@ -296,29 +315,33 @@ auto nbv_handler(mdi_msgs::NBV::Request& request, mdi_msgs::NBV::Response& respo
     });
 
     // grow rrt incrementally
-    for (std::size_t i = 0; i < request.rrt_config.max_iterations; ++i) {
+    response.found_nbv_with_sufficent_gain = false;
+    while (rrt.can_grow()) {
         rrt.grow1();
 
         if (found_suitable_nbv) {
             ROS_INFO("found suitable nbv");
             // backtrack and set waypoints
+            std::cout << mdi::utils::MAGENTA << "finding waypoints from suitable gain node"
+                      << mdi::utils::RESET << std::endl;
             if (const auto opt = rrt.waypoints_from_newest_node()) {
                 const auto path = opt.value();
                 response.waypoints = waypoints_to_geometry_msgs_points(path);
                 response.found_nbv_with_sufficent_gain = true;
-            } else {
-                // should not happen, but just in case
-                response.found_nbv_with_sufficent_gain = false;
             }
 
             break;
         }
     }
 
+    std::cout << rrt << std::endl;
+
     if (! response.found_nbv_with_sufficent_gain) {
         // a suitable nbv has not been found, so we use best found instead
         ROS_INFO("no suitable nbv found, use best found instead");
 
+        std::cout << mdi::utils::MAGENTA << "finding waypoints from best gain node"
+                  << mdi::utils::RESET << std::endl;
         if (const auto opt = rrt.get_waypoints_from_nearsest_node_to(best_point)) {
             const auto path = opt.value();
             response.waypoints = waypoints_to_geometry_msgs_points(path);
@@ -330,21 +353,71 @@ auto nbv_handler(mdi_msgs::NBV::Request& request, mdi_msgs::NBV::Response& respo
     ros::Rate(10).sleep();
 
 #ifdef VISUALIZE_MARKERS_IN_RVIZ
+    // {
+    //     auto cube_msg_gen =
+    //     mdi::utils::rviz::cube_msg_gen(octomap_environment_ptr->resolution());
+
+    //     vec3 dir = target - best_point;
+
+    //     const auto yaw = std::atan2(dir.y(), dir.x());
+    //     // construct fov
+    //     Eigen::Quaternionf orientation =
+    //         Eigen::AngleAxisf(yaw, Eigen::Vector3f::UnitZ()) *
+    //         Eigen::AngleAxisf(deg2rad(-request.fov.pitch.angle), Eigen::Vector3f::UnitY());
+
+    //     const auto pose = Pose{best_point, orientation};
+    //     const auto fov = FoV{pose, horizontal, vertical, depth_range, target};
+    //     const auto fov_gain_metric = mdi::gain_of_fov(
+    //         fov, *octomap_environment_ptr, request.nbv_config.weight_free,
+    //         request.nbv_config.weight_occupied, request.nbv_config.weight_unknown,
+    //         request.nbv_config.weight_distance_to_object, request.nbv_config.weight_not_visible,
+    //         mdi::utils::transform::geometry_mgs_point_to_vec(request.rrt_config.start),
+    //         [](double x) { return x /* x * x */; },
+    //         [&](const mdi::types::vec3& point, const mdi::types::vec3&, float, const bool,
+    //             mdi::VoxelStatus s) {
+    //             if (s != mdi::VoxelStatus::Unknown) {
+    //                 return;
+    //             }
+    //             auto msg = cube_msg_gen(point);
+    //             msg.color.r = 1;
+    //             msg.color.g = 1;
+    //             msg.color.a = 0.6;
+
+    //             msg.header.frame_id = mdi::utils::FRAME_WORLD;
+    //             // static long long i = 0;
+    //             // msg.header.seq = i++;
+    //             // msg.header.stamp = ros::Time::now();
+    //             marker_array.markers.push_back(msg);
+    //         });
+    // }
+
     std::cout << "publishing RRT tree..." << std::endl;
 
-    auto msg = visualization_msgs::Marker{};
-    msg.type = visualization_msgs::Marker::SPHERE;
-    msg.pose.position.x = best_point.x();
-    msg.pose.position.y = best_point.y();
-    msg.pose.position.z = best_point.z();
-    msg.scale.x = 0.2;
-    msg.scale.y = 0.2;
-    msg.scale.z = 0.2;
-    msg.color.r = 1;
-    msg.color.a = 1;
-    msg.header.frame_id = mdi::utils::FRAME_WORLD;
-    msg.header.stamp = ros::Time::now();
-    marker_array.markers.push_back(msg);
+    // auto msg = visualization_msgs::Marker{};
+    // msg.type = visualization_msgs::Marker::SPHERE;
+    // msg.pose.position.x = best_point.x();
+    // msg.pose.position.y = best_point.y();
+    // msg.pose.position.z = best_point.z();
+    // msg.scale.x = 0.5;
+    // msg.scale.y = 0.5;
+    // msg.scale.z = 0.5;
+    // msg.color.r = 1;
+    // msg.color.a = 1;
+    // msg.header.frame_id = mdi::utils::FRAME_WORLD;
+    // msg.header.stamp = ros::Time::now();
+    // marker_array.markers.push_back(msg);
+
+    {
+        std::string text = std::to_string(best_gain) + " | (" +
+                           std::to_string(best_fov_gain_metric.gain_unknown) + ") | " +
+                           std::to_string(best_fov_gain_metric.v_unknown_voxels) + " | " +
+                           std::to_string(best_fov_gain_metric.gain_distance);
+        auto msg = text_msg_gen(text, best_point);
+        msg.color.r = 1;
+        msg.color.g = 0;
+        msg.color.b = 0;
+        marker_array.markers.push_back(msg);
+    }
 
     marker_array_pub->publish(marker_array);
     ros::spinOnce();
@@ -387,6 +460,8 @@ auto nbv_handler(mdi_msgs::NBV::Request& request, mdi_msgs::NBV::Response& respo
 
     return true;
 }
+
+// -------------------------------------------------------------------------------------------------
 
 auto main(int argc, char* argv[]) -> int {
     const auto name_of_node = "rrt_service"s;
@@ -444,11 +519,10 @@ auto main(int argc, char* argv[]) -> int {
     raycast = [&](const vec3& origin, const vec3& direction, const float length, bool did_hit) {
         auto msg = raycast_arrow_msg_gen({origin, origin + direction.normalized() * length});
         if (did_hit) {
-            return;
             msg.color.r = 1;
             msg.color.g = 0;
         }
-        std::cout << "PUBLISHIN RAYCAST" << std::endl;
+        std::cout << "PUBLISHING RAYCAST" << std::endl;
         waypoints_path_pub->publish(msg);
         rate.sleep();
         ros::spinOnce();
