@@ -13,7 +13,7 @@
 
 std::unique_ptr<ros::ServiceClient> get_octomap_client;
 
-auto call_get_object_octomap() -> mdi::Octomap* {
+auto call_get_octomap() -> mdi::Octomap* {
     auto request = octomap_msgs::GetOctomap::Request{};  // empty request
     auto response = octomap_msgs::GetOctomap::Response{};
 
@@ -59,18 +59,11 @@ auto main(int argc, char* argv[]) -> int {
     };
 
     while (ros::ok()) {
-        if (auto octomap = call_get_object_octomap()) {
+        if (auto octomap = call_get_octomap()) {
             ROS_INFO_STREAM("calculating object map completeness...");
 
             // calculate the total volume of the received object map
-            auto volume_total = 0.0;
-            for (auto it = octomap->octree().begin_tree(), end = octomap->octree().end_tree();
-                 it != end; ++it) {
-                const auto size = it.getSize();
-                const auto volume = std::pow(size, 3);
-                volume_total += volume;
-            }
-
+            const auto volume_total = octomap->compute_total_volume_of_occupied_voxels();
             publish_object_map_completeness(volume_total);
 
             delete octomap;
