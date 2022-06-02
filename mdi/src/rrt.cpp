@@ -806,20 +806,7 @@ auto RRT::collision_free_(const vec3& from, const vec3& to, double depth, double
     T.col(2) = k_basis;
 
     const vec3 direction = (to - from);
-    // Rx90 << 1.0f, 0.0f, 0.0f, 0.0f, cos(M_PI_2), sin(M_PI_2), 0.0f, -sin(M_PI_2), cos(M_PI_2);
 
-    // const vec3 i_basis = direction.normalized();
-    // // ensure j_basis orthonormal to i_basis by rotating 90 degrees around
-    // const vec3 j_basis = Rx90 * i_basis;
-    // // use cross product to find third orthogonal basis vector.
-    // const vec3 k_basis = i_basis.cross(j_basis).normalized();
-    // // T forms a orthonormal basis where i_basis is the direction of from -> to, and j_basis and
-    // // k_basis span the plane to which i_basis is a normal vector.
-    // T.col(0) = i_basis;
-    // T.col(1) = j_basis;
-    // T.col(2) = k_basis;
-
-    // TODO: use parameter to determine the offset after the "to" point to cast raycast at.
     const float raycast_length = direction.norm() + depth;
 
     const auto occupied_or_unknown = [&](const vec3& v) {
