@@ -440,7 +440,7 @@ auto nbv_handler(mdi_msgs::NBV::Request& request, mdi_msgs::NBV::Response& respo
             auto msg = sphere_msg_gen(ep, ros::Time::now(), ros::Duration(10));
             msg.color.r = 1;
             msg.color.g = 0;
-            msg.color.a = 1;
+            msg.color.a = 0.5;
             marker_array.markers.push_back(msg);
         }
     }
