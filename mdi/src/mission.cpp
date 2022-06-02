@@ -452,11 +452,72 @@ auto Mission::set_nbv_trajectory_() -> void {
     }
 }
 
+auto Mission::set_test_trajectory_() -> void {
+    const Eigen::Vector3f x_offset = {1, 0, 0};
+    const Eigen::Vector3f y_offset = {0, 1, 0};
+    const Eigen::Vector3f z_offset = {0, 0, 1};
+
+    const auto pitch_angle_up =
+        Eigen::Quaternionf{Eigen::AngleAxisf{M_PI_4, Eigen::Vector3f::UnitX()}};
+    const auto pitch_angle_down =
+        Eigen::Quaternionf{Eigen::AngleAxisf{-M_PI_4, Eigen::Vector3f::UnitX()}};
+    const auto yaw_angle_left =
+        Eigen::Quaternionf{Eigen::AngleAxisf{M_PI_4, Eigen::Vector3f::UnitZ()}};
+    const auto yaw_angle_right =
+        Eigen::Quaternionf{Eigen::AngleAxisf{-M_PI_4, Eigen::Vector3f::UnitZ()}};
+
+    const std::vector<std::vector<Eigen::Quaternionf>> turns = {
+        // {Eigen::AngleAxisf{-M_PI_2, Eigen::Vector3f::UnitZ()}, pitch_angle_up},
+        {},
+        {yaw_angle_left},
+        {yaw_angle_left},
+        {yaw_angle_left, pitch_angle_down},
+        {yaw_angle_left, pitch_angle_down},
+        {yaw_angle_right},
+        {yaw_angle_right},
+        {yaw_angle_right, pitch_angle_up},
+        {yaw_angle_right, pitch_angle_up},
+        {yaw_angle_right},
+        {yaw_angle_right},
+        {yaw_angle_right, pitch_angle_down},
+        {yaw_angle_right, pitch_angle_down},
+        {yaw_angle_left},
+        {yaw_angle_left},
+        {yaw_angle_left, pitch_angle_up},
+        {yaw_angle_left, pitch_angle_up},
+        {yaw_angle_left},
+        {yaw_angle_left},
+        {}};
+
+    auto rolling_position = home_position_;
+    auto previous_dir = y_offset;
+
+    std::vector<Eigen::Vector3f> path;
+    for (auto& qs : turns) {
+        auto dir = previous_dir;
+        // auto unit_q = Eigen::Quaternionf{1,0,0,0};
+        for (auto& q : qs) {
+            dir = q * dir;
+        }
+
+        previous_dir = dir;
+        rolling_position += dir;
+        path.push_back(rolling_position);
+    }
+    if (auto trajectory_opt = fit_trajectory_(path)) {
+        trajectory_ = *trajectory_opt;
+        step_count_ = 0;
+        ROS_INFO_STREAM("Path viable");
+    } else {
+        ROS_INFO_STREAM("Path not viable");
+    }
+}
+
 auto Mission::run_step() -> void {
     timeout_delta_time_ = ros::Time::now() - timeout_start_time_;
     if (timeout_delta_time_ - time_since_last_iteration_ > ros::Duration(1)) {
         time_since_last_iteration_ = timeout_delta_time_;
-        ROS_INFO_STREAM("Timeout ending mission in: " << timeout_ - timeout_delta_time_);
+        ROS_INFO_STREAM("Mission cooldown" << timeout_ - timeout_delta_time_);
     }
     if (timeout_delta_time_ > timeout_) {
         std::cout << "Mission timed out" << std::endl;
@@ -478,10 +539,18 @@ auto Mission::run_step() -> void {
             } else {
                 if (! takeoff_initiated_) {
                     set_takeoff_trajectory_();
+#ifdef PID_TEST
+                    set_test_trajectory_();
+
+#endif
                     takeoff_initiated_ = true;
                 }
-                if (trajectory_step_(0.75f, false)) {
+                if (trajectory_step_(velocity_target_, false)) {
                     state_.state = EXPLORATION;
+#ifdef PID_TEST
+                    end();
+
+#endif
                 }
             }
             break;

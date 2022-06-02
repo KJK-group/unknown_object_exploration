@@ -266,21 +266,21 @@ Visualization Manager:
       Show Trail: false
       Value: false
     - Class: rviz/MarkerArray
-      Enabled: true
+      Enabled: false
       Marker Topic: visualization_marker_array
       Name: MarkerArray
       Namespaces:
         {}
       Queue Size: 100
-      Value: true
+      Value: false
     - Class: rviz/Marker
-      Enabled: true
+      Enabled: false
       Marker Topic: visualization_marker
       Name: Marker
       Namespaces:
         {}
       Queue Size: 100
-      Value: true
+      Value: false
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -309,7 +309,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/XYOrbit
-      Distance: 64.21993255615234
+      Distance: 65.75153350830078
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -317,17 +317,17 @@ Visualization Manager:
         Value: false
       Field of View: 0.7853981852531433
       Focal Point:
-        X: -3.3784964084625244
-        Y: 8.80656623840332
-        Z: 2.954416413558647e-05
+        X: -11.805150985717773
+        Y: -39.51188278198242
+        Z: 1.2561498579088948e-06
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.6097970604896545
+      Pitch: 0.609797477722168
       Target Frame: world_view
-      Yaw: 1.8303402662277222
+      Yaw: 2.3217124938964844
     Saved: ~
 Window Geometry:
   Displays:

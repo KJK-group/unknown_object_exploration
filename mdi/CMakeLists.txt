@@ -192,6 +192,11 @@ target_compile_definitions(rrt_service_vis_only
 target_link_libraries(rrt_service_vis_only rrt kdtree-header-only
                       ${OCTOMAP_LIBRARIES})
 
+# pid test
+
+add_ros_executable(mission_manager_pid_test src/nodes/mission_manager.cpp)
+target_link_libraries(mission_manager_pid_test compound_trajectory rrt mission)
+target_compile_definitions(mission_manager_pid_test PUBLIC PID_TEST)
 # trajectory testing add_executable(trajectory_test test/trajectory.test.cpp)
 # add_ros_dependencies(trajectory_test) target_link_libraries(trajectory_test
 # ${catkin_LIBRARIES} compound_trajectory)
