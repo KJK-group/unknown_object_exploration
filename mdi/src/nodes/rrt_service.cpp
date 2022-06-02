@@ -15,6 +15,7 @@
 #include <limits>
 #include <memory>
 #include <string>
+#include <vector>
 
 // #include "Eigen/src/Geometry/AngleAxis.h"
 #include "mdi/bbx.hpp"
@@ -71,7 +72,7 @@ waypoint_cb after_waypoint_optimization;
 new_node_cb new_node_created;
 raycast_cb raycast;
 
-auto call_get_environment_octomap() -> mdi::Octomap* {
+auto call_get_object_octomap() -> mdi::Octomap* {
     auto request = octomap_msgs::GetOctomap::Request{};  // empty request
     auto response = octomap_msgs::GetOctomap::Response{};
 
@@ -153,7 +154,7 @@ auto rrt_find_path_handler(mdi_msgs::RrtFindPath::Request& request,
 
     // rrt.register_cb_for_event_on_new_node_created(new_node);
 
-    auto octomap_ptr = call_get_environment_octomap();
+    auto octomap_ptr = call_get_object_octomap();
 
     if (octomap_ptr != nullptr) {
         ROS_INFO("there is a octomap available");
@@ -191,6 +192,10 @@ auto nbv_handler(mdi_msgs::NBV::Request& request, mdi_msgs::NBV::Response& respo
     const auto horizontal = FoVAngle::from_degrees(request.fov.horizontal.angle);
     const auto vertical = FoVAngle::from_degrees(request.fov.vertical.angle);
     const auto depth_range = DepthRange{request.fov.depth_range.min, request.fov.depth_range.max};
+    auto excluded_points = std::vector<vec3>();
+    std::transform(std::begin(request.nbv_config.excluded_points),
+                   std::end(request.nbv_config.excluded_points),
+                   std::back_inserter(excluded_points), geometry_msgs_point_to_vec3);
 
     auto rrt = mdi::rrt::RRT::from_builder()
                    .start_and_goal_position(
@@ -210,13 +215,13 @@ auto nbv_handler(mdi_msgs::NBV::Request& request, mdi_msgs::NBV::Response& respo
 
     // ROS_INFO_STREAM("" << rrt);
 
-    auto octomap_environment_ptr = call_get_environment_octomap();
+    auto octomap_environment_ptr = call_get_object_octomap();
 
     if (octomap_environment_ptr != nullptr) {
         ROS_INFO("there is a octomap available");
         rrt.assign_octomap(octomap_environment_ptr);
-        ROS_INFO_STREAM(
-            "size of octomap (in bytes) is: " << octomap_environment_ptr->octree().memoryUsage());
+        ROS_INFO_STREAM("size of octomap (in kb) is: "
+                        << octomap_environment_ptr->octree().memoryUsage() / 1024);
     } else {
         ROS_INFO_STREAM("octomap request failed");
         return false;
@@ -251,6 +256,14 @@ auto nbv_handler(mdi_msgs::NBV::Request& request, mdi_msgs::NBV::Response& respo
 #endif  // VISUALIZE_MARKERS_IN_RVIZ
 
     auto text_msg_gen = mdi::utils::rviz::text_msg_gen();
+
+    const auto too_close_to_excluded_points = [&](const vec3& v) {
+        const auto too_close = [&](const vec3& p) {
+            return (p - v).norm() <= request.nbv_config.sexcluded_points_distance_tolerance;
+        };
+
+        return std::any_of(std::begin(excluded_points), std::end(excluded_points), too_close);
+    };
 
     rrt.register_cb_for_event_on_new_node_created([&](const auto&, const vec3& new_point) {
         vec3 dir = target - new_point;
@@ -299,7 +312,8 @@ auto nbv_handler(mdi_msgs::NBV::Request& request, mdi_msgs::NBV::Response& respo
         //     marker_array.markers.push_back(msg);
         // }
 
-        if (gain > best_gain && fov_gain_metric.gain_unknown != 0) {
+        if (gain > best_gain && fov_gain_metric.gain_unknown != 0 &&
+            ! too_close_to_excluded_points(new_point)) {
             ROS_INFO_STREAM("gain (" << std::to_string(gain)
                                      << ") is better that the current best gain ("
                                      << std::to_string(best_gain) << ")");

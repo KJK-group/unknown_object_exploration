@@ -250,74 +250,88 @@ auto Mission::find_nbv_path_(Eigen::Vector3f start) -> std::optional<std::vector
     ROS_INFO_STREAM("Requesting NBV path from "
                     << "[" << start.x() << "," << start.y() << "," << start.z() << "]");
 
-    auto nbv_msg = mdi_msgs::NBV{};
-
-    auto drone_param = std::map<std::string, double>();
-    ros::param::get("/mdi/drone", drone_param);
-    if (drone_param.empty()) {
-        std::cerr << "drone_param is empty" << std::endl;
-        std::exit(EXIT_FAILURE);
-    }
-    auto& drone = nbv_msg.request.drone_config;
-    drone.width = drone_param["width"];
-    drone.height = drone_param["height"];
-    drone.depth = drone_param["depth"];
-
-    auto rrt_param = std::map<std::string, float>();
-    ros::param::get("/mdi/rrt/params", rrt_param);
-    if (rrt_param.empty()) {
-        std::cerr << "rrt_param is empty" << std::endl;
-        std::exit(EXIT_FAILURE);
+    auto nbv_srv = mdi_msgs::NBV{};
+    {
+        auto drone_param = std::map<std::string, double>();
+        ros::param::get("/mdi/drone", drone_param);
+        if (drone_param.empty()) {
+            std::cerr << "drone_param is empty" << std::endl;
+            std::exit(EXIT_FAILURE);
+        }
+        auto& drone = nbv_srv.request.drone_config;
+        drone.width = drone_param["width"];
+        drone.height = drone_param["height"];
+        drone.depth = drone_param["depth"];
     }
 
-    auto& rrt = nbv_msg.request.rrt_config;
-    rrt.probability_of_testing_full_path_from_new_node_to_goal =
-        rrt_param["probability_of_testing_full_path_from_new_node_to_goal"];
-    rrt.goal_bias = rrt_param["goal_bias"];
-    rrt.goal_tolerance = rrt_param["goal_tolerance"];
-    rrt.start.x = start.x();
-    rrt.start.y = start.y();
-    rrt.start.z = start.z();
-    rrt.goal.x = object_center_.x();
-    rrt.goal.y = object_center_.y();
-    rrt.goal.z = object_center_.z();
-    rrt.max_iterations = static_cast<uint>(rrt_param["max_iterations"]);
-    rrt.step_size = rrt_param["step_size"];
+    {
+        auto rrt_param = std::map<std::string, float>();
+        ros::param::get("/mdi/rrt/params", rrt_param);
+        if (rrt_param.empty()) {
+            std::cerr << "rrt_param is empty" << std::endl;
+            std::exit(EXIT_FAILURE);
+        }
 
-    auto nbv_param = std::map<std::string, double>();
-    ros::param::get("/mdi/nbv", nbv_param);
-    if (nbv_param.empty()) {
-        std::cerr << "nbv_param is empty" << std::endl;
-        std::exit(EXIT_FAILURE);
+        auto& rrt = nbv_srv.request.rrt_config;
+        rrt.probability_of_testing_full_path_from_new_node_to_goal =
+            rrt_param["probability_of_testing_full_path_from_new_node_to_goal"];
+        rrt.goal_bias = rrt_param["goal_bias"];
+        rrt.goal_tolerance = rrt_param["goal_tolerance"];
+        rrt.start.x = start.x();
+        rrt.start.y = start.y();
+        rrt.start.z = start.z();
+        rrt.goal.x = object_center_.x();
+        rrt.goal.y = object_center_.y();
+        rrt.goal.z = object_center_.z();
+        rrt.max_iterations = static_cast<uint>(rrt_param["max_iterations"]);
+        rrt.step_size = rrt_param["step_size"];
     }
 
-    auto& nbv = nbv_msg.request.nbv_config;
-    nbv.gain_of_interest_threshold = nbv_param["information_threshold"];
-    nbv.weight_free = nbv_param["free"];
-    nbv.weight_occupied = nbv_param["occupied"];
-    nbv.weight_unknown = nbv_param["unknown"];
-    nbv.weight_not_visible = nbv_param["not_visible"];
-    nbv.weight_distance_to_object = nbv_param["distance_to_object"];
+    {
+        auto nbv_param = std::map<std::string, double>();
+        ros::param::get("/mdi/nbv", nbv_param);
+        if (nbv_param.empty()) {
+            std::cerr << "nbv_param is empty" << std::endl;
+            std::exit(EXIT_FAILURE);
+        }
 
-    auto camera_param = std::map<std::string, float>();
-    ros::param::get("/mdi/camera", camera_param);
+        auto& nbv = nbv_srv.request.nbv_config;
+        nbv.gain_of_interest_threshold = nbv_param["information_threshold"];
+        nbv.weight_free = nbv_param["free"];
+        nbv.weight_occupied = nbv_param["occupied"];
+        nbv.weight_unknown = nbv_param["unknown"];
+        nbv.weight_not_visible = nbv_param["not_visible"];
+        nbv.weight_distance_to_object = nbv_param["distance_to_object"];
+        nbv.excluded_points_distance_tolerance = nbv_param["excluded_points_distance_tolerance"];
+        for (const auto& ip : interest_points_) {
+            nbv_srv.nbv_config.excluded_points.emplace_back(ip.x(), ip.y(), ip.z());
+        }
+    }
 
-    auto& fov = nbv_msg.request.fov;
-    fov.depth_range.max = camera_param["depth_max"];
-    fov.depth_range.min = camera_param["depth_min"];
-    fov.horizontal.angle = camera_param["horisontal_fov"];
-    fov.vertical.angle = camera_param["vertical_fov"];
-    fov.pitch.angle = camera_param["pitch"];
+    {
+        auto camera_param = std::map<std::string, float>();
+        ros::param::get("/mdi/camera", camera_param);
+        if (camera_param.empty()) {
+            std::cerr << "camera_param is empty" << std::endl;
+            std::exit(EXIT_FAILURE);
+        }
 
-    if (client_nbv_.call(nbv_msg)) {
-        std::vector<Eigen::Vector3f> path;
-        // std::cout << "Waypoint size: " << nbv_msg.response.waypoints.size() << std::endl;
-        auto& waypoints = nbv_msg.response.waypoints;
-        // std::cout << "before for loop" << std::endl;
+        auto& fov = nbv_srv.request.fov;
+        fov.depth_range.max = camera_param["depth_max"];
+        fov.depth_range.min = camera_param["depth_min"];
+        fov.horizontal.angle = camera_param["horisontal_fov"];
+        fov.vertical.angle = camera_param["vertical_fov"];
+        fov.pitch.angle = camera_param["pitch"];
+    }
+
+    if (client_nbv_.call(nbv_srv)) {
+        auto path = std::vector<Eigen::Vector3f>();
+        auto& waypoints = nbv_srv.response.waypoints;
+        // TODO: should check if list of waypoints is NOT empty
         for (auto& wp : waypoints) {
-            // std::cout << wp << std::endl;
             path.emplace_back(wp.x, wp.y, wp.z);
         }
+
         interest_points_.emplace_back(path.back());
         return {path};
     }

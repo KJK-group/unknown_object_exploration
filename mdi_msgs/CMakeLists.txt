@@ -20,6 +20,7 @@ add_message_files(
   PointNormStamped.msg
   FovVolume.msg
   VoxelVolume.msg
+  ObjectMapCompleteness.msg
   GainScore.msg
   RrtConfig.msg
   Waypoints.msg)

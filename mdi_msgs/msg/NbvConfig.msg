@@ -5,3 +5,5 @@ float64 weight_distance_to_object
 float64 weight_not_visible
 float64 gain_of_interest_threshold
 float64 voxel_resolution
+float64 excluded_points_distance_tolerance
+geometry_msgs/Point excluded_points
