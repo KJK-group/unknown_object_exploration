@@ -259,7 +259,7 @@ auto nbv_handler(mdi_msgs::NBV::Request& request, mdi_msgs::NBV::Response& respo
 
     const auto too_close_to_excluded_points = [&](const vec3& v) {
         const auto too_close = [&](const vec3& p) {
-            return (p - v).norm() <= request.nbv_config.sexcluded_points_distance_tolerance;
+            return (p - v).norm() <= request.nbv_config.excluded_points_distance_tolerance;
         };
 
         return std::any_of(std::begin(excluded_points), std::end(excluded_points), too_close);

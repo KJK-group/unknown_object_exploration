@@ -2,6 +2,7 @@
 
 #include <unordered_map>
 
+#include "mdi/utils/transform.hpp"
 #include "mdi_msgs/NBV.h"
 
 namespace mdi {
@@ -304,7 +305,7 @@ auto Mission::find_nbv_path_(Eigen::Vector3f start) -> std::optional<std::vector
         nbv.weight_distance_to_object = nbv_param["distance_to_object"];
         nbv.excluded_points_distance_tolerance = nbv_param["excluded_points_distance_tolerance"];
         for (const auto& ip : interest_points_) {
-            nbv_srv.nbv_config.excluded_points.emplace_back(ip.x(), ip.y(), ip.z());
+            nbv.excluded_points.emplace_back(mdi::utils::transform::vec_to_geometry_msg_point(ip));
         }
     }
 
