@@ -38,12 +38,9 @@ find_package(Eigen3 REQUIRED)
 include_directories(${Eigen3_INCLUDE_DIRS})
 
 # find_package(PCL 1.0 REQUIRED COMPONENTS io)
-# include_directories(${PCL_INCLUDE_DIRS})
-# link_directories(${PCL_LIBRARY_DIRS})
-# add_definitions(${PCL_DEFINITIONS})
-# find_package(PCL REQUIRED)
-# include_directories(${PCL_INCLUDE_DIRS})
-# link_directories(${PCL_LIBRARY_DIRS})
+# include_directories(${PCL_INCLUDE_DIRS}) link_directories(${PCL_LIBRARY_DIRS})
+# add_definitions(${PCL_DEFINITIONS}) find_package(PCL REQUIRED)
+# include_directories(${PCL_INCLUDE_DIRS}) link_directories(${PCL_LIBRARY_DIRS})
 # add_definitions(${PCL_DEFINITIONS})
 
 find_package(PCL 1.12 REQUIRED)
@@ -51,9 +48,8 @@ include_directories(${PCL_INCLUDE_DIRS})
 link_directories(${PCL_LIBRARY_DIRS})
 add_definitions(${PCL_DEFINITIONS})
 
-
-# file(GLOB PCL_LIBRARIES /usr/local/lib/libpcl_*)
-# set(PCL_INCLUDE_DIRS /usr/local/include/pcl-1.12)
+# file(GLOB PCL_LIBRARIES /usr/local/lib/libpcl_*) set(PCL_INCLUDE_DIRS
+# /usr/local/include/pcl-1.12)
 
 # include_directories(${PROJECT_NAME} ${PCL_INCLUDE_DIRS})
 # target_link_libraries(${PROJECT_NAME} ${PCL_LIBRARIES})
@@ -148,13 +144,16 @@ target_link_libraries(mission_manager compound_trajectory rrt mission)
 
 add_executable(object_map src/nodes/object_map.cpp)
 add_ros_dependencies(object_map)
-target_link_libraries(object_map ${catkin_LIBRARIES}
-                      ${OCTOMAP_LIBRARIES} ${PCL_LIBRARIES})
-target_compile_options(object_map PUBLIC -O0 -g)
-# target_link_libraries(object_map ${catkin_LIBRARIES}
-#                       ${OCTOMAP_LIBRARIES})
-# target_link_directories(object_map ${PCL_INCLUDE_DIRS})
+target_link_libraries(object_map ${catkin_LIBRARIES} ${OCTOMAP_LIBRARIES}
+                      ${PCL_LIBRARIES})
 
+add_ros_executable(get_octomap_from_server_and_write_to_bt_file
+                   src/get_octomap_from_server_and_write_to_bt_file.cpp)
+target_link_libraries(get_octomap_from_server_and_write_to_bt_file
+                      ${OCTOMAP_LIBRARIES})
+
+# target_link_libraries(object_map ${catkin_LIBRARIES} ${OCTOMAP_LIBRARIES})
+# target_link_directories(object_map ${PCL_INCLUDE_DIRS})
 
 # ##############################################################################
 # TESTING
@@ -207,8 +206,7 @@ target_compile_definitions(mission_manager_pid_test PUBLIC PID_TEST)
 # ##############################################################################
 
 catkin_install_python(PROGRAMS scripts/nodes/segmentation_service.py
-  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-)
+                      DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
 
 # scripts
 function(install_script script)

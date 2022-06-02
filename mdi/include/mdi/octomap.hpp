@@ -111,6 +111,26 @@ class Octomap final {
         return VoxelStatus::Unknown;
     }
 
+    auto compute_total_volume_voxels_with_status(VoxelStatus status) -> double {
+        // calculate the total volume of the received object map
+        auto volume_total = 0.0;
+        for (auto it = octree().begin_tree(), end = octree().end_tree(); it != end; ++it) {
+            const auto key = it.getKey();
+            const auto vs = get_voxelstatus_at_node_using_key_(key);
+            if (vs == status) {
+                const auto size = it.getSize();
+                const auto volume = std::pow(size, 3);
+                volume_total += volume;
+            }
+        }
+
+        return volume_total;
+    }
+
+    auto compute_total_volume_of_occupied_voxels() -> double {
+        return compute_total_volume_voxels_with_status(VoxelStatus::Occupied);
+    }
+
     /*    auto get_closest_intersection_point(const point_type& origin, const point_type& direction,
                                            double delta = 0.0) const -> std::optional<point_type> {
            if (const auto opt = raycast_(origin, direction)) {

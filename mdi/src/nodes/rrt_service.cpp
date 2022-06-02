@@ -38,6 +38,7 @@
 #include "ros/rate.h"
 #include "ros/service_client.h"
 #include "ros/service_server.h"
+#include "ros/time.h"
 
 #ifdef VISUALIZE_MARKERS_IN_RVIZ
 #include "mdi/visualization/bbx.hpp"
@@ -431,6 +432,17 @@ auto nbv_handler(mdi_msgs::NBV::Request& request, mdi_msgs::NBV::Response& respo
         msg.color.g = 0;
         msg.color.b = 0;
         marker_array.markers.push_back(msg);
+    }
+
+    {
+        auto sphere_msg_gen = mdi::utils::rviz::sphere_msg_gen();
+        for (const auto& ep : excluded_points) {
+            auto msg = sphere_msg_gen(ep, ros::Time::now(), ros::Duration(10));
+            msg.color.r = 1;
+            msg.color.g = 0;
+            msg.color.a = 0.5;
+            marker_array.markers.push_back(msg);
+        }
     }
 
     marker_array_pub->publish(marker_array);
