@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 import sys
 import airsim
 import os
@@ -6,6 +6,7 @@ import os
 
 def usage():
     print("./airsim_generate_voxelgrid_octomap_of_environment.py <map file>")
+    print("ref: https://microsoft.github.io/AirSim/voxel_grid/")
 
 
 if len(sys.argv) == 1:
