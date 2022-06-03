@@ -61,6 +61,7 @@ class Mission {
     auto set_home_trajectory_() -> void;
     auto set_takeoff_trajectory_() -> void;
     auto set_nbv_trajectory_() -> void;
+    auto set_test_trajectory_() -> void;
 
     auto trajectory_step_(float vel, bool look_forwards = true) -> bool;
     auto publish_() -> void;

@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<launch>
+    <arg name="package" value="mdi"/>
+    <arg name="package_path" value="$(find mdi)"/>
+
+    <include file="$(arg package_path)/launch/airsim_vis.launch" />
+    <include file="$(arg package_path)/launch/rrt_service.launch" />
+    <include file="$(arg package_path)/launch/segmentation.launch" />
+</launch>

@@ -3,6 +3,7 @@
     <arg name="package" value="mdi"/>
     <arg name="package_path" value="$(find mdi)"/>
 
+    <include file="$(arg package_path)/launch/airsim_convert_depth_image_to_pointcloud2.launch"/>
     <include file="$(find airsim_ros_pkgs)/launch/airsim_node.launch"/>
     <include file="$(arg package_path)/launch/rviz.launch"/>
     <!-- <include file="$(arg package_path)/launch/octomap_server.launch"/> -->

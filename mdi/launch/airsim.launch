@@ -15,6 +15,4 @@
     <include file="$(find mavros)/launch/px4.launch">
         <arg name="fcu_url" default="udp://:14550@127.0.0.1:14557"/>
     </include>
-
-    <include file="$(arg package_path)/launch/airsim_convert_depth_image_to_pointcloud2.launch"/>
 </launch>
