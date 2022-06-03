@@ -58,18 +58,23 @@ auto main(int argc, char* argv[]) -> int {
 
     if (auto octomap_ptr = call_get_octomap()) {
         const auto path = std::filesystem::path(output_bt_filepath);
-        if (path.is_directory()) {
-            std::cerr << output_bt_filepath << " is a directory. Cannot write octomap to it."
-                      << '\n';
-            std::exit(EXIT_FAILURE);
-        }
+        // if (path.is_directory()) {
+        //     std::cerr << output_bt_filepath << " is a directory. Cannot write octomap to it."
+        //               << '\n';
+        //     std::exit(EXIT_FAILURE);
+        // }
+
+#ifdef WRITE_BT_FILE
         std::cerr << "writing octomap to file: " << path << '\n';
         octomap_ptr->write(path);
+#endif  // WRITE_BT_FILE
 
+#ifdef COMPUTE_VOLUME_AND_WRITE_TO_STDERR
         // calculate the total volume of the received object map
         const auto volume_total = octomap_ptr->compute_total_volume_of_occupied_voxels();
         std::cerr << "total volume of occupied voxels in octomap: " << volume_total << " m3"
                   << '\n';
+#endif  // COMPUTE_VOLUME_AND_WRITE_TO_STDERR
 
         delete octomap_ptr;
 
