@@ -148,7 +148,7 @@ target_link_libraries(object_map ${catkin_LIBRARIES} ${OCTOMAP_LIBRARIES}
                       ${PCL_LIBRARIES})
 
 add_ros_executable(get_octomap_from_server_and_write_to_bt_file
-                   src/get_octomap_from_server_and_write_to_bt_file.cpp)
+                   src/nodes/get_octomap_from_server_and_write_to_bt_file.cpp)
 target_link_libraries(get_octomap_from_server_and_write_to_bt_file
                       ${OCTOMAP_LIBRARIES})
 
@@ -191,11 +191,17 @@ target_compile_definitions(rrt_service_vis_only
 target_link_libraries(rrt_service_vis_only rrt kdtree-header-only
                       ${OCTOMAP_LIBRARIES})
 
+add_ros_executable(time_since_start src/nodes/time_since_start_publisher.cpp)
 # pid test
 
+# mission library
+add_library(mission_pid_test SHARED src/mission.cpp)
+target_link_libraries(mission_pid_test compound_trajectory rrt)
+target_compile_definitions(mission_pid_test PUBLIC PID_TEST)
+enable_optimization(mission_pid_test)
+
 add_ros_executable(mission_manager_pid_test src/nodes/mission_manager.cpp)
-target_link_libraries(mission_manager_pid_test compound_trajectory rrt mission)
-target_compile_definitions(mission_manager_pid_test PUBLIC PID_TEST)
+target_link_libraries(mission_manager_pid_test compound_trajectory rrt mission_pid_test)
 # trajectory testing add_executable(trajectory_test test/trajectory.test.cpp)
 # add_ros_dependencies(trajectory_test) target_link_libraries(trajectory_test
 # ${catkin_LIBRARIES} compound_trajectory)

@@ -20,7 +20,12 @@ Mission::Mission(ros::NodeHandle& nh, ros::Rate& rate, types::vec3 target, float
       rate_(rate),
       nh_(nh),
       home_position_(std::move(home)),
+#ifdef PID_TEST
+      expected_position_(home_position_),
+#endif
+#ifndef PID_TEST
       expected_position_(0, 0, 0),
+#endif
       marker_scale_(0.1),
       should_visualise_(visualise),
       trajectory_(nh, rate, {{0, 0, 0}, home_position_}, visualise),
@@ -34,8 +39,8 @@ Mission::Mission(ros::NodeHandle& nh, ros::Rate& rate, types::vec3 target, float
     // publishers
     pub_mission_state_ = nh.advertise<mdi_msgs::MissionStateStamped>("/mdi/mission/state",
                                                                      utils::DEFAULT_QUEUE_SIZE);
-    pub_visualise_ = nh.advertise<visualization_msgs::Marker>("/mdi/mission/visualisation",
-                                                              utils::DEFAULT_QUEUE_SIZE);
+    pub_visualise_ = nh.advertise<visualization_msgs::MarkerArray>("/mdi/mission/visualisation",
+                                                                   utils::DEFAULT_QUEUE_SIZE);
     pub_setpoint_ = nh.advertise<geometry_msgs::PoseStamped>("/mavros/setpoint_local/local",
                                                              utils::DEFAULT_QUEUE_SIZE);
 
@@ -162,6 +167,10 @@ auto Mission::publish_() -> void {
     state_.target.orientation.z = expected_attitude_.getZ();
     state_.target.orientation.w = expected_attitude_.getW();
 
+    state_.closest_point.x = closest_position_.x();
+    state_.closest_point.y = closest_position_.y();
+    state_.closest_point.z = closest_position_.z();
+
     pub_mission_state_.publish(state_);
 
     if (should_visualise_) {
@@ -170,6 +179,7 @@ auto Mission::publish_() -> void {
 }
 
 auto Mission::visualise_() -> void {
+    visualization_msgs::MarkerArray ma;
     visualization_msgs::Marker m;
     m.header.frame_id = utils::FRAME_WORLD;
     m.header.seq = seq_vis_++;
@@ -190,7 +200,18 @@ auto Mission::visualise_() -> void {
     m.color.g = 1;
     m.color.b = 1;
 
-    pub_visualise_.publish(m);
+    ma.markers.push_back(m);
+
+    m.pose.position = mdi::utils::transform::vec_to_geometry_msg_point(closest_position_);
+
+    m.color.a = 1;
+    m.color.r = 1;
+    m.color.g = 0;
+    m.color.b = 0;
+
+    ma.markers.push_back(m);
+
+    pub_visualise_.publish(ma);
 }
 
 auto Mission::find_path_(Eigen::Vector3f start, Eigen::Vector3f end)
@@ -407,6 +428,9 @@ auto Mission::trajectory_step_(float vel, bool look_forwards) -> bool {
     // publish_();
     step_count_++;
 
+    closest_position_ = trajectory_.get_closest_point(
+        mdi::utils::transform::geometry_mgs_point_to_vec(drone_odom_.pose.pose.position));
+
     return end_reached;
 }
 
@@ -468,57 +492,133 @@ auto Mission::set_nbv_trajectory_() -> void {
 }
 
 auto Mission::set_test_trajectory_() -> void {
-    const Eigen::Vector3f x_offset = {1, 0, 0};
-    const Eigen::Vector3f y_offset = {0, 1, 0};
-    const Eigen::Vector3f z_offset = {0, 0, 1};
+    ROS_INFO_STREAM(mdi::utils::GREEN << "Setting PID testing trajectory");
+    // const Eigen::Vector3f x_offset = {1, 0, 0};
+    // const Eigen::Vector3f y_offset = {0, 1, 0};
+    // const Eigen::Vector3f z_offset = {0, 0, 1};
 
-    const auto pitch_angle_up =
-        Eigen::Quaternionf{Eigen::AngleAxisf{M_PI_4, Eigen::Vector3f::UnitX()}};
-    const auto pitch_angle_down =
-        Eigen::Quaternionf{Eigen::AngleAxisf{-M_PI_4, Eigen::Vector3f::UnitX()}};
-    const auto yaw_angle_left =
-        Eigen::Quaternionf{Eigen::AngleAxisf{M_PI_4, Eigen::Vector3f::UnitZ()}};
-    const auto yaw_angle_right =
-        Eigen::Quaternionf{Eigen::AngleAxisf{-M_PI_4, Eigen::Vector3f::UnitZ()}};
+    // const auto pitch_angle_up =
+    //     Eigen::Quaternionf{Eigen::AngleAxisf{M_PI_4, Eigen::Vector3f::UnitX()}};
+    // const auto pitch_angle_down =
+    //     Eigen::Quaternionf{Eigen::AngleAxisf{-M_PI_4, Eigen::Vector3f::UnitX()}};
+    // const auto yaw_angle_left =
+    //     Eigen::Quaternionf{Eigen::AngleAxisf{M_PI_4, Eigen::Vector3f::UnitZ()}};
+    // const auto yaw_angle_right =
+    //     Eigen::Quaternionf{Eigen::AngleAxisf{-M_PI_4, Eigen::Vector3f::UnitZ()}};
 
-    const std::vector<std::vector<Eigen::Quaternionf>> turns = {
-        // {Eigen::AngleAxisf{-M_PI_2, Eigen::Vector3f::UnitZ()}, pitch_angle_up},
-        {},
-        {yaw_angle_left},
-        {yaw_angle_left},
-        {yaw_angle_left, pitch_angle_down},
-        {yaw_angle_left, pitch_angle_down},
-        {yaw_angle_right},
-        {yaw_angle_right},
-        {yaw_angle_right, pitch_angle_up},
-        {yaw_angle_right, pitch_angle_up},
-        {yaw_angle_right},
-        {yaw_angle_right},
-        {yaw_angle_right, pitch_angle_down},
-        {yaw_angle_right, pitch_angle_down},
-        {yaw_angle_left},
-        {yaw_angle_left},
-        {yaw_angle_left, pitch_angle_up},
-        {yaw_angle_left, pitch_angle_up},
-        {yaw_angle_left},
-        {yaw_angle_left},
-        {}};
+    // const std::vector<std::vector<Eigen::Quaternionf>> turns = {
+    //     // {Eigen::AngleAxisf{-M_PI_2, Eigen::Vector3f::UnitZ()}, pitch_angle_up},
+    //     {},
+    //     {},
+    //     {},
+    //     {},
+    //     {},
+    //     {yaw_angle_left},
+    //     {},
+    //     {},
+    //     {yaw_angle_right},
+    //     {},
+    //     {},
+    //     {yaw_angle_left},
+    //     {yaw_angle_right},
+    //     {},
+    //     {},
+    //     {yaw_angle_left, yaw_angle_left},
+    //     {},
+    //     {},
+    //     {yaw_angle_right, yaw_angle_right},
+    //     {},
+    //     {},
+    //     {yaw_angle_left, yaw_angle_left},
+    //     {yaw_angle_right, yaw_angle_right},
+    //     {},
+    //     {},
+    //     {yaw_angle_left, yaw_angle_left, yaw_angle_left},
+    //     {},
+    //     {},
+    //     {yaw_angle_left, yaw_angle_left, yaw_angle_right},
+    //     {},
+    //     {},
+    //     {yaw_angle_right, yaw_angle_right, yaw_angle_right},
+    //     {yaw_angle_left, yaw_angle_left, yaw_angle_left},
+    //     {},
+    //     {},
+    //     {yaw_angle_right, yaw_angle_right, yaw_angle_right},
+    //     {yaw_angle_right, yaw_angle_right, yaw_angle_right},
+    //     {},
+    //     {},
+    //     {yaw_angle_left, yaw_angle_left, yaw_angle_left},
+    //     {yaw_angle_left, yaw_angle_left, yaw_angle_left},
+    //     {},
+    //     {},
+    //     {yaw_angle_left, yaw_angle_left},
+    //     {yaw_angle_left, yaw_angle_left},
+    //     {yaw_angle_left, yaw_angle_left},
+    //     {yaw_angle_right, yaw_angle_right},
+    //     {yaw_angle_right, yaw_angle_right},
+    //     {yaw_angle_right, yaw_angle_right},
+    //     {},
+    //     {},
+    //     {}};
 
-    auto rolling_position = home_position_;
-    auto previous_dir = y_offset;
+    // auto rolling_position = home_position_;
+    // auto previous_dir = x_offset;
 
     std::vector<Eigen::Vector3f> path;
-    for (auto& qs : turns) {
-        auto dir = previous_dir;
-        // auto unit_q = Eigen::Quaternionf{1,0,0,0};
-        for (auto& q : qs) {
-            dir = q * dir;
-        }
+    // // path.emplace_back(0, 0, 0);
+    // // path.emplace_back(rolling_position.x(), rolling_position.y(), rolling_position.z() - 1);
+    // path.push_back(rolling_position);
+    // for (auto& qs : turns) {
+    //     auto dir = previous_dir;
+    //     // auto unit_q = Eigen::Quaternionf{1,0,0,0};
+    //     for (auto& q : qs) {
+    //         dir = q * dir;
+    //     }
 
-        previous_dir = dir;
-        rolling_position += dir;
+    //     previous_dir = dir;
+    //     rolling_position += dir;
+    //     path.push_back(rolling_position);
+    //     rolling_position += dir;
+    //     path.push_back(rolling_position);
+    //     // path.push_back(rolling_position);
+    // }
+    // path.push_back(home_position_);
+    // if (auto trajectory_opt = fit_trajectory_(path)) {
+    //     trajectory_ = *trajectory_opt;
+    //     step_count_ = 0;
+    //     ROS_INFO_STREAM("Path viable");
+    // } else {
+    //     ROS_INFO_STREAM("Path not viable");
+    // }
+
+    auto up = Eigen::Vector3f{0, 0, 2};
+    auto down = Eigen::Vector3f{0, 0, -2};
+    auto left = Eigen::Vector3f{0, -1, 0};
+    auto right = Eigen::Vector3f{0, 1, 0};
+    auto backwards = Eigen::Vector3f{-1, 0, 0};
+    auto forwards = Eigen::Vector3f{1, 0, 0};
+
+    const auto sections = std::vector<std::vector<Eigen::Vector3f>>{
+        {up, forwards},         {down, right},       {up, up, backwards}, {down, down, down, left},
+        {up, up, up, forwards}, {down, down, right}, {up, backwards},     {down, left}};
+
+    path.clear();
+    auto rolling_position = home_position_;
+    path.push_back(rolling_position);
+    for (auto& s : sections) {
+        for (auto& d : s) {
+            rolling_position += d;
+            // std::cout << d << std::endl;
+        }
+        path.push_back(rolling_position);
+        for (auto& d : s) {
+            rolling_position += d;
+            // std::cout << d << std::endl;
+        }
         path.push_back(rolling_position);
     }
+    path.push_back(home_position_);
+
     if (auto trajectory_opt = fit_trajectory_(path)) {
         trajectory_ = *trajectory_opt;
         step_count_ = 0;
@@ -526,13 +626,18 @@ auto Mission::set_test_trajectory_() -> void {
     } else {
         ROS_INFO_STREAM("Path not viable");
     }
+
+    for (auto& p : path) {
+        std::cout << "\n" << p << std::endl;
+    }
+    interest_points_.push_back(rolling_position);
 }
 
 auto Mission::run_step() -> void {
     timeout_delta_time_ = ros::Time::now() - timeout_start_time_;
     if (timeout_delta_time_ - time_since_last_iteration_ > ros::Duration(1)) {
         time_since_last_iteration_ = timeout_delta_time_;
-        ROS_INFO_STREAM("Mission cooldown" << timeout_ - timeout_delta_time_);
+        ROS_INFO_STREAM("Mission cooldown: " << std::setw(6) << timeout_ - timeout_delta_time_);
     }
     if (timeout_delta_time_ > timeout_) {
         std::cout << "Mission timed out" << std::endl;
@@ -553,20 +658,33 @@ auto Mission::run_step() -> void {
                 }
             } else {
                 if (! takeoff_initiated_) {
+#ifndef PID_TEST
                     set_takeoff_trajectory_();
+#endif
 #ifdef PID_TEST
                     set_test_trajectory_();
-
+                    // std::cout << mdi::utils::MAGENTA << "PID_TEST1" << mdi::utils::RESET
+                    //           << std::endl;
+                    // std::cout << mdi::utils::MAGENTA << state_to_string((state)state_.state)
+                    //           << mdi::utils::RESET << std::endl;
 #endif
                     takeoff_initiated_ = true;
                 }
+#ifndef PID_TEST
                 if (trajectory_step_(velocity_target_, false)) {
                     state_.state = EXPLORATION;
-#ifdef PID_TEST
-                    end();
-
-#endif
                 }
+#endif
+#ifdef PID_TEST
+                if (trajectory_step_(velocity_target_, true)) {
+                    // state_.state = LAND;
+                    // inspection_complete_ = true;
+                    // std::cout << mdi::utils::MAGENTA << "PID_TEST" << mdi::utils::RESET
+                    //           << std::endl;
+                    // std::cout << mdi::utils::MAGENTA << state_to_string((state)state_.state)
+                    //           << mdi::utils::RESET << std::endl;
+                }
+#endif
             }
             break;
         case EXPLORATION:
@@ -583,7 +701,11 @@ auto Mission::run_step() -> void {
             break;
         case LAND:
             // std::cout << "LANDING?" << std::endl;
-            drone_land();
+            if (drone_state_.mode != "AUTO.LAND") {
+                drone_land();
+            } else {
+                ros::Duration(5).sleep();
+            }
             break;
         default:
             ROS_WARN_STREAM("Unknown state");
@@ -601,10 +723,11 @@ auto Mission::run() -> void {
 }
 
 auto Mission::end() -> void {
-    std::cout << utils::BOLD << utils::ITALIC << utils::MAGENTA << "END" << utils::RESET
+    std::cout << utils::BOLD << utils::ITALIC << utils::MAGENTA << "Ending mission" << utils::RESET
               << std::endl;
     inspection_complete_ = true;
     if (state_.state == LAND) {
+        ros::shutdown();
         return;
     }
     state_.state = HOME;

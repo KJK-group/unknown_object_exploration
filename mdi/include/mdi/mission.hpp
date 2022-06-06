@@ -106,6 +106,7 @@ class Mission {
     // points
     Eigen::Vector3f home_position_;
     Eigen::Vector3f expected_position_;
+    Eigen::Vector3f closest_position_;
     Eigen::Vector3f target_;
     Eigen::Vector3f object_center_;
     tf2::Quaternion expected_attitude_;

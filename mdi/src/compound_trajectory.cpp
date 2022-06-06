@@ -124,6 +124,14 @@ CompoundTrajectory::CompoundTrajectory(ros::NodeHandle& nh, ros::Rate& rate,
         distance_lut.push_back(a);
     }
 
+    for (auto t : trajectories) {
+        auto t_length = std::visit([](auto& t) { return t.get_length(); }, t);
+        for (float d = 0; t_length - d > 0; d += 0.05) {
+            auto point = std::visit([&](auto& t) { return t.get_point_at_distance(d); }, t);
+            points.push_back(point);
+        }
+    }
+
     // visualise in rviz if specified
     // std::cout << "visualise bool = " << visualise << std::endl;
     if (visualise) {
@@ -231,5 +239,20 @@ auto CompoundTrajectory::get_point_at_distance(float distance) -> Eigen::Vector3
     auto t_length = std::visit([](auto& t) { return t.get_length(); }, t);
     auto distance_in_spline = t_length - (distance - distance_lut[trajectory_idx - 1]);
     return std::visit([&](auto& t) { return t.get_point_at_distance(distance_in_spline); }, t);
+}
+
+auto CompoundTrajectory::get_closest_point(Eigen::Vector3f point) -> Eigen::Vector3f {
+    auto closest_point = Eigen::Vector3f{0, 0, 0};
+    auto smallest_distance = std::numeric_limits<double>::max();
+    for (auto& p : points) {
+        // auto t_closest_point = std::visit([&](auto& t) { return t.get_closest_point(point); },
+        // t);
+        auto dist = (p - point).norm();
+        if (dist < smallest_distance) {
+            smallest_distance = dist;
+            closest_point = p;
+        }
+    }
+    return closest_point;
 }
 }  // namespace mdi::trajectory

@@ -63,6 +63,7 @@ class BezierSpline {
     auto get_point_at_distance(float distance) -> Vector3f;
     auto get_spline_points() -> vector<Vector3f>;
     auto get_length() -> float;
+    auto get_closest_point(Vector3f point) -> Vector3f;
     auto f(float t) -> Vector3f;  // spline polynomial function
 
    private:

@@ -6,7 +6,7 @@ auto main(int argc, char** argv) -> int {
     // ros
     ros::init(argc, argv, "mdi_pid_controller");
     auto nh = ros::NodeHandle();
-    ros::Rate rate(mdi::utils::DEFAULT_LOOP_RATE * 2);
+    ros::Rate rate(mdi::utils::DEFAULT_LOOP_RATE * 6);
 
     mdi::control::PID gains_xy{};
     mdi::control::PID gains_yaw{};
@@ -27,9 +27,10 @@ auto main(int argc, char** argv) -> int {
     }
 
     // std::cout << "Inside node" << std::endl;
-    // std::cout << "gains_xy: \n" << gains_xy.p << " " << gains_xy.i << " " << gains_xy.d << std::endl;
-    // std::cout << "gains_z: \n" << gains_z.p << " " << gains_z.i << " " << gains_z.d << std::endl;
-    // std::cout << "gains_yaw: \n" << gains_yaw.p << " " << gains_yaw.i << " " << gains_yaw.d << std::endl;
+    // std::cout << "gains_xy: \n" << gains_xy.p << " " << gains_xy.i << " " << gains_xy.d <<
+    // std::endl; std::cout << "gains_z: \n" << gains_z.p << " " << gains_z.i << " " << gains_z.d <<
+    // std::endl; std::cout << "gains_yaw: \n" << gains_yaw.p << " " << gains_yaw.i << " " <<
+    // gains_yaw.d << std::endl;
 
     // pid controller
     auto controller = mdi::control::PIDController(nh, rate, gains_xy, gains_z, gains_yaw, true);

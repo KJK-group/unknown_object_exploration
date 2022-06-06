@@ -64,7 +64,8 @@ auto PIDController::compute_linear_velocities() -> void {
         error_position_integral += error_position;
     }
     // change in error since previous time step
-    auto error_derivative = error_position - error_position_previous;
+    auto error_derivative =
+        (error_position - error_position_previous) / rate.expectedCycleTime().toSec();
 
     // linear velocity controller output
     // apply seperate gains for xy and z
@@ -105,7 +106,10 @@ auto PIDController::compute_yaw_velocity() -> void {
         error_yaw_integral += error_yaw;
     }
     // change in error since previous time step
-    auto error_yaw_derivative = error_yaw - error_yaw_previous;
+    std::cout << mdi::utils::GREEN << static_cast<float>(rate.expectedCycleTime().toSec())
+              << mdi::utils::RESET << std::endl;
+    auto error_yaw_derivative =
+        (error_yaw - error_yaw_previous) / static_cast<float>(rate.expectedCycleTime().toSec());
     // pid output
     auto tmp_command_yaw = gains_yaw.p * error_yaw + gains_yaw.i * error_yaw_integral +
                            gains_yaw.d * error_yaw_derivative;
@@ -147,6 +151,11 @@ auto PIDController::publish() -> void {
     state_msg.error.position.z = error_position.z();
     state_msg.error.position.norm = error_position.norm();
     state_msg.error.yaw = error_yaw;
+
+    state_msg.error.perpendicular =
+        (mdi::utils::transform::geometry_mgs_point_to_vec(mission_state.closest_point) -
+         mdi::utils::transform::geometry_mgs_point_to_vec(odom.pose.pose.position))
+            .norm();
 
     pub_state.publish(state_msg);
 }

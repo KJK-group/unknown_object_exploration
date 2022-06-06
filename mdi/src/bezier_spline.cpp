@@ -245,4 +245,17 @@ auto BezierSpline::get_length() -> float {
         return 0;
     }
 }
+
+auto BezierSpline::get_closest_point(Vector3f point) -> Vector3f {
+    auto closest_point = Eigen::Vector3f{0, 0, 0};
+    auto smallest_distance = std::numeric_limits<double>::max();
+    for (auto& p : get_spline_points()) {
+        auto dist = (p - point).norm();
+        if (dist < smallest_distance) {
+            smallest_distance = dist;
+            closest_point = p;
+        }
+    }
+    return closest_point;
+}
 }  // namespace mdi::trajectory

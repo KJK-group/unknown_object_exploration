@@ -58,11 +58,11 @@ auto main(int argc, char* argv[]) -> int {
 
     if (auto octomap_ptr = call_get_octomap()) {
         const auto path = std::filesystem::path(output_bt_filepath);
-        if (path.is_directory()) {
-            std::cerr << output_bt_filepath << " is a directory. Cannot write octomap to it."
-                      << '\n';
-            std::exit(EXIT_FAILURE);
-        }
+        // if (path.is_directory()) {
+        //     std::cerr << output_bt_filepath << " is a directory. Cannot write octomap to it."
+        //               << '\n';
+        //     std::exit(EXIT_FAILURE);
+        // }
         std::cerr << "writing octomap to file: " << path << '\n';
         octomap_ptr->write(path);
 

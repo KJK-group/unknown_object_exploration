@@ -20,4 +20,11 @@ auto LinearTrajectory::get_point_at_distance(float distance) -> Eigen::Vector3f 
     auto diff_vec = end - start;
     return start + f * diff_vec;
 }
+auto LinearTrajectory::get_closest_point(Eigen::Vector3f point) -> Eigen::Vector3f {
+    auto dir = (end - start).normalized();
+    auto vec_to_project = point - start;
+    auto scalar_product = vec_to_project.dot(dir);
+    auto projected_vec = scalar_product * dir;
+    return start + projected_vec;
+}
 }  // namespace mdi::trajectory
