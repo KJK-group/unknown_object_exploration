@@ -73,6 +73,8 @@ waypoint_cb after_waypoint_optimization;
 new_node_cb new_node_created;
 raycast_cb raycast;
 
+visualization_msgs::MarkerArray unknown_voxel_hit_during_waypoint_optimization_marker_array;
+
 auto call_get_object_octomap() -> mdi::Octomap* {
     auto request = octomap_msgs::GetOctomap::Request{};  // empty request
     auto response = octomap_msgs::GetOctomap::Response{};
@@ -255,6 +257,7 @@ auto nbv_handler(mdi_msgs::NBV::Request& request, mdi_msgs::NBV::Response& respo
     // rrt.register_cb_for_event_before_optimizing_waypoints(before_waypoint_optimization);
     // rrt.register_cb_for_event_after_optimizing_waypoints(after_waypoint_optimization);
     // rrt.register_cb_for_event_on_raycast(raycast);
+    rrt.register_cb_for_event_on_raycast(raycast);
 #endif  // VISUALIZE_MARKERS_IN_RVIZ
 
     auto text_msg_gen = mdi::utils::rviz::text_msg_gen();
@@ -286,6 +289,9 @@ auto nbv_handler(mdi_msgs::NBV::Request& request, mdi_msgs::NBV::Response& respo
         /* mdi::visualization::visualize_voxels_inside_fov(
             fov, *octomap_environment_ptr, octomap_environment_ptr->resolution(),
             *marker_array_pub); */
+        marker_array_pub->publish(unknown_voxel_hit_during_waypoint_optimization_marker_array);
+        ros::spinOnce();
+        unknown_voxel_hit_during_waypoint_optimization_marker_array.markers.clear();
 #endif  // VISUALIZE_MARKERS_IN_RVIZ
 
         // ROS_INFO("calculating gain of fov");
@@ -543,16 +549,28 @@ auto main(int argc, char* argv[]) -> int {
                                      .color({0, 1, 0, 1})
                                      .build();
 
+    auto unknown_voxel_cube_msg_gen = mdi::utils::rviz::cube_msg_gen{voxel_resolution};
+
     raycast = [&](const vec3& origin, const vec3& direction, const float length, bool did_hit) {
-        auto msg = raycast_arrow_msg_gen({origin, origin + direction.normalized() * length});
-        if (did_hit) {
-            msg.color.r = 1;
-            msg.color.g = 0;
+        if (! did_hit) {
+            return;
         }
-        std::cout << "PUBLISHING RAYCAST" << std::endl;
-        waypoints_path_pub->publish(msg);
-        rate.sleep();
-        ros::spinOnce();
+        // auto msg = raycast_arrow_msg_gen({origin, origin + direction.normalized() * length});
+        auto msg = unknown_voxel_cube_msg_gen(origin + direction.normalized() * length,
+                                              ros::Time::now(), ros::Duration(15));
+        msg.color.b = 1.0f;
+        msg.color.a = 0.5f;
+
+        unknown_voxel_hit_during_waypoint_optimization_marker_array.markers.push_back(msg);
+
+        // if (did_hit) {
+        //     msg.color.r = 1;
+        //     msg.color.g = 0;
+        // }
+
+        // waypoints_path_pub->publish(msg);
+        // rate.sleep();
+        // ros::spinOnce();
     };
 
     auto new_node_arrow_msg_gen = mdi::utils::rviz::arrow_msg_gen::builder()
