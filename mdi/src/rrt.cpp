@@ -821,15 +821,22 @@ auto RRT::collision_free_(const vec3& from, const vec3& to, double depth, double
         const vec3 origin = T * v + from;
         const auto voxel = octomap_->raycast_in_direction(
             convert_to_pt(origin), convert_to_pt(direction), raycast_length, false);
+        vec3 voxel_center = vec3{0, 0, 0};
 
         const bool did_hit = std::visit(Overload{
                                             [](Free) { return false; },
-                                            [](Unknown) { return true; },
-                                            [](Occupied) { return true; },
+                                            [&](Unknown c) {
+												voxel_center = vec3{c.center.x(), c.center.y(), c.center.z()};
+                                                return true;
+                                            },
+                                            [&](Occupied c) {
+                                                voxel_center = vec3{c.center.x(), c.center.y(), c.center.z()};
+                                                return true;
+                                            },
                                         },
                                         voxel);
 
-        call_cbs_for_event_on_raycast_(origin, direction, raycast_length, did_hit);
+        call_cbs_for_event_on_raycast_(origin, direction, raycast_length, did_hit, voxel_center);
         return did_hit;
     };
 
@@ -910,10 +917,12 @@ auto RRT::call_cbs_for_event_on_clearing_nodes_in_tree_() const -> void {
 }
 
 auto RRT::call_cbs_for_event_on_raycast_(const vec3& origin, const vec3& direction,
-                                         const float length, bool did_hit) const -> void {
+                                         const float length, bool did_hit,
+                                         const vec3& center_of_hit_voxel) const -> void {
     if (on_raycast_status_) {
-        std::for_each(on_raycast_cb_list.begin(), on_raycast_cb_list.end(),
-                      [&](const auto& cb) { cb(origin, direction, length, did_hit); });
+        std::for_each(on_raycast_cb_list.begin(), on_raycast_cb_list.end(), [&](const auto& cb) {
+            cb(origin, direction, length, did_hit, center_of_hit_voxel);
+        });
     }
 }
 

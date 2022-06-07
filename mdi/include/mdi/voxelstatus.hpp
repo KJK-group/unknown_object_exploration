@@ -26,6 +26,8 @@ struct Free {};
 struct Occupied {
     octomap::point3d center;
 };
-struct Unknown {};
+struct Unknown {
+    octomap::point3d center;
+};
 
 using Voxel = std::variant<Unknown, Occupied, Free>;

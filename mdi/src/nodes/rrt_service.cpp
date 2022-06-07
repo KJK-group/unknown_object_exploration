@@ -69,7 +69,8 @@ std::unique_ptr<ros::Publisher> nbv_metric_pub;
 std::unique_ptr<ros::Publisher> waypoints_path_pub;
 using waypoint_cb = std::function<void(const vec3&, const vec3&)>;
 using new_node_cb = std::function<void(const vec3&, const vec3&)>;
-using raycast_cb = std::function<void(const vec3&, const vec3&, const float, bool)>;
+// using raycast_cb = std::function<void(const vec3&, const vec3&, const float, bool)>;
+using raycast_cb = mdi::rrt::RRT::on_raycast_cb;
 waypoint_cb before_waypoint_optimization;
 waypoint_cb after_waypoint_optimization;
 new_node_cb new_node_created;
@@ -568,13 +569,18 @@ auto main(int argc, char* argv[]) -> int {
     auto unknown_voxel_cube_msg_gen =
         mdi::utils::rviz::cube_msg_gen{static_cast<float>(voxel_resolution)};
 
-    raycast = [&](const vec3& origin, const vec3& direction, const float length, bool did_hit) {
+    raycast = [&](const vec3& origin, const vec3& direction, const float length, bool did_hit,
+                  const vec3& center_of_hit_voxel) {
         std::cerr << "raycast cb" << std::endl;
         if (did_hit) {
             std::cerr << "it did hit so drawing voxel" << std::endl;
             // auto msg = raycast_arrow_msg_gen({origin, origin + direction.normalized() * length});
-            auto msg = unknown_voxel_cube_msg_gen(origin + direction.normalized() * length,
-                                                  ros::Time::now(), ros::Duration(0));
+            // auto msg = unknown_voxel_cube_msg_gen(origin + direction.normalized() * length,
+            //                                       ros::Time::now(), ros::Duration(0));
+
+            auto msg =
+                unknown_voxel_cube_msg_gen(center_of_hit_voxel, ros::Time::now(), ros::Duration(0));
+
             msg.color.r = 0.0f;
             msg.color.g = 1.0f;
             msg.color.b = 1.0f;

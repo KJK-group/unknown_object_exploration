@@ -39,7 +39,7 @@ class RRT {
     using on_clearing_nodes_in_tree_cb = std::function<void()>;
     using before_optimizing_waypoints_cb = std::function<void(const vec3&, const vec3&)>;
     using after_optimizing_waypoints_cb = std::function<void(const vec3&, const vec3&)>;
-    using on_raycast_cb = std::function<void(const vec3&, const vec3&, const float, bool)>;
+    using on_raycast_cb = std::function<void(const vec3&, const vec3&, const float, bool, const vec3&)>;
 
     /**
      * @brief grow the tree until a path is found, or max number of iterations is exceeded.
@@ -458,7 +458,9 @@ class RRT {
     auto call_cbs_for_event_on_clearing_nodes_in_tree_() const -> void;
     auto call_cbs_for_event_after_optimizing_waypoints_(const vec3&, const vec3&) const -> void;
     auto call_cbs_for_event_before_optimizing_waypoints_(const vec3&, const vec3&) const -> void;
-    auto call_cbs_for_event_on_raycast_(const vec3&, const vec3&, const float, bool) const -> void;
+    auto call_cbs_for_event_on_raycast_(const vec3& origin, const vec3& direction,
+                                        const float length, bool did_hit,
+                                        const vec3& center_of_hit_voxel) const -> void;
 
     std::vector<on_new_node_created_cb> on_new_node_created_cb_list{};
     std::vector<on_goal_reached_cb> on_goal_reached_cb_list{};

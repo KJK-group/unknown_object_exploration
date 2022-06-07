@@ -226,12 +226,8 @@ class Octomap final {
             return Occupied{end};
         }
         if ((end - origin).norm() < max_range) {
-            return Unknown{};
+            return Unknown{end};
         }
-
-        // if (! ignore_unknown_voxels && octree_.search(end) == nullptr) {
-        //     return Unknown{};
-        // }
 
         return Free{};
     }
