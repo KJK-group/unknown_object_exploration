@@ -9,7 +9,7 @@ mdi:
       - 17
       - 5
     params:
-      max_iterations: 400
+      max_iterations: 1000
       goal_bias: 0
       goal_tolerance: 0
       step_size: 2

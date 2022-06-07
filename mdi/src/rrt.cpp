@@ -526,6 +526,7 @@ auto RRT::optimize_waypoints_() -> void {
     if (waypoints_.size() <= 2) {
         return;
     }
+    std::cerr << "enabling cbs for event on raycast " << __LINE__ << std::endl;
 
     enable_cbs_for_event_on_raycast();
 
@@ -656,7 +657,9 @@ auto RRT::optimize_waypoints_() -> void {
     }
 
     if (s.empty()) {
-        std::cout << "nothing to do  ¯\\_(ツ)_/¯" << '\n';
+        std::cerr << "nothing to do  ¯\\_(ツ)_/¯" << '\n';
+        std::cerr << "disabling cbs for event on raycast " << __LINE__ << std::endl;
+
         disable_cbs_for_event_on_raycast();
 
         return;  // nothing to do  ¯\_(ツ)_/¯
@@ -723,6 +726,7 @@ auto RRT::optimize_waypoints_() -> void {
 
     waypoints_.clear();
     waypoints_ = solution_waypoints;
+    std::cerr << "disabling cbs for event on raycast" << std::endl;
     disable_cbs_for_event_on_raycast();
 }
 

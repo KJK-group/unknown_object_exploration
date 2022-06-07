@@ -46,12 +46,14 @@
 
 std::unique_ptr<ros::Publisher> marker_pub;
 std::unique_ptr<ros::Publisher> marker_array_pub;
+std::unique_ptr<ros::Publisher> rrt_marker_array_pub;
+std::unique_ptr<ros::Publisher> exclusion_marker_array_pub;
 
 // marker_array.markers
 // visualization_msgs::MarkerArray marker_array;
 
 #endif  // VISUALIZE_MARKERS_IN_RVIZ
-
+double voxel_resolution = 0.5;
 using namespace std::string_literals;
 using vec3 = Eigen::Vector3f;
 
@@ -73,7 +75,9 @@ waypoint_cb after_waypoint_optimization;
 new_node_cb new_node_created;
 raycast_cb raycast;
 
+visualization_msgs::MarkerArray exclusion_marker_array;
 visualization_msgs::MarkerArray unknown_voxel_hit_during_waypoint_optimization_marker_array;
+visualization_msgs::MarkerArray rrt_marker_array;
 
 auto call_get_object_octomap() -> mdi::Octomap* {
     auto request = octomap_msgs::GetOctomap::Request{};  // empty request
@@ -224,6 +228,7 @@ auto nbv_handler(mdi_msgs::NBV::Request& request, mdi_msgs::NBV::Response& respo
     if (octomap_environment_ptr != nullptr) {
         ROS_INFO("there is a octomap available");
         rrt.assign_octomap(octomap_environment_ptr);
+        voxel_resolution = octomap_environment_ptr->resolution();
         ROS_INFO_STREAM("size of octomap (in kb) is: "
                         << octomap_environment_ptr->octree().memoryUsage() / 1024);
     } else {
@@ -241,20 +246,20 @@ auto nbv_handler(mdi_msgs::NBV::Request& request, mdi_msgs::NBV::Response& respo
     bool found_suitable_nbv = false;
 
 #ifdef VISUALIZE_MARKERS_IN_RVIZ
-    visualization_msgs::MarkerArray marker_array;
+    // visualization_msgs::MarkerArray rrt_marker_array;
     auto new_node_arrow_msg_gen = mdi::utils::rviz::arrow_msg_gen::builder()
                                       .arrow_head_width(0.05f)
-                                      .arrow_length(0.1f)
-                                      .arrow_width(0.1f)
-                                      .color({0, 1, 0, 1})
+                                      .arrow_length(0.05f)
+                                      .arrow_width(0.05f)
+                                      .color({1, 0.8, 0, 1})
                                       .build();
     rrt.register_cb_for_event_on_new_node_created([&](const auto& from, const auto& to) {
         auto msg = new_node_arrow_msg_gen({from, to});
-        marker_array.markers.push_back(msg);
+        rrt_marker_array.markers.push_back(msg);
     });
 
     // // TODO: comment
-    // rrt.register_cb_for_event_before_optimizing_waypoints(before_waypoint_optimization);
+    rrt.register_cb_for_event_before_optimizing_waypoints(before_waypoint_optimization);
     // rrt.register_cb_for_event_after_optimizing_waypoints(after_waypoint_optimization);
     // rrt.register_cb_for_event_on_raycast(raycast);
     rrt.register_cb_for_event_on_raycast(raycast);
@@ -289,9 +294,6 @@ auto nbv_handler(mdi_msgs::NBV::Request& request, mdi_msgs::NBV::Response& respo
         /* mdi::visualization::visualize_voxels_inside_fov(
             fov, *octomap_environment_ptr, octomap_environment_ptr->resolution(),
             *marker_array_pub); */
-        marker_array_pub->publish(unknown_voxel_hit_during_waypoint_optimization_marker_array);
-        ros::spinOnce();
-        unknown_voxel_hit_during_waypoint_optimization_marker_array.markers.clear();
 #endif  // VISUALIZE_MARKERS_IN_RVIZ
 
         // ROS_INFO("calculating gain of fov");
@@ -370,50 +372,71 @@ auto nbv_handler(mdi_msgs::NBV::Request& request, mdi_msgs::NBV::Response& respo
         }
     }
 
-    nbv_metric_pub->publish(mdi::to_ros_msg(best_fov_gain_metric));
-    ros::spinOnce();
-    ros::Rate(10).sleep();
-
 #ifdef VISUALIZE_MARKERS_IN_RVIZ
+    nbv_metric_pub->publish(mdi::to_ros_msg(best_fov_gain_metric));
+    marker_array_pub->publish(unknown_voxel_hit_during_waypoint_optimization_marker_array);
+    unknown_voxel_hit_during_waypoint_optimization_marker_array.markers.clear();
+    rrt_marker_array_pub->publish(rrt_marker_array);
+    rrt_marker_array.markers.clear();
     {
-        auto cube_msg_gen = mdi::utils::rviz::cube_msg_gen(octomap_environment_ptr->resolution());
-
-        vec3 dir = target - best_point;
-
-        const auto yaw = std::atan2(dir.y(), dir.x());
-        // construct fov
-        Eigen::Quaternionf orientation =
-            Eigen::AngleAxisf(yaw, Eigen::Vector3f::UnitZ()) *
-            Eigen::AngleAxisf(deg2rad(-request.fov.pitch.angle), Eigen::Vector3f::UnitY());
-
-        const auto pose = Pose{best_point, orientation};
-        const auto fov = FoV{pose, horizontal, vertical, depth_range, target};
-        const auto fov_gain_metric = mdi::gain_of_fov(
-            fov, *octomap_environment_ptr, request.nbv_config.weight_free,
-            request.nbv_config.weight_occupied, request.nbv_config.weight_unknown,
-            request.nbv_config.weight_distance_to_object, request.nbv_config.weight_not_visible,
-            mdi::utils::transform::geometry_mgs_point_to_vec(request.rrt_config.start),
-            [](double x) { return x /* x * x */; },
-            [&](const mdi::types::vec3& point, const mdi::types::vec3&, float, const bool,
-                mdi::VoxelStatus s) {
-                if (s != mdi::VoxelStatus::Unknown) {
-                    return;
-                }
-                auto msg = cube_msg_gen(point);
-                msg.color.r = 1;
-                msg.color.g = 1;
-                msg.color.a = 0.6;
-                msg.lifetime.sec = 10;
-
-                msg.header.frame_id = mdi::utils::FRAME_WORLD;
-                // static long long i = 0;
-                // msg.header.seq = i++;
-                // msg.header.stamp = ros::Time::now();
-                marker_array.markers.push_back(msg);
-            });
+        auto sphere_msg_gen = mdi::utils::rviz::sphere_msg_gen();
+        for (const auto& ep : excluded_points) {
+            auto msg = sphere_msg_gen(ep);
+            msg.scale.x = request.nbv_config.excluded_points_distance_tolerance;
+            msg.scale.y = request.nbv_config.excluded_points_distance_tolerance;
+            msg.scale.z = request.nbv_config.excluded_points_distance_tolerance;
+            msg.color.r = 1;
+            msg.color.g = 0;
+            msg.color.b = 0;
+            msg.color.a = 0.2;
+            exclusion_marker_array.markers.push_back(msg);
+        }
     }
+    exclusion_marker_array_pub->publish(exclusion_marker_array);
+    exclusion_marker_array.markers.clear();
+    ros::spinOnce();
+    ros::Rate(mdi::utils::DEFAULT_LOOP_RATE).sleep();
 
-    std::cout << "publishing RRT tree..." << std::endl;
+    // {
+    // auto cube_msg_gen =
+    // mdi::utils::rviz::cube_msg_gen(octomap_environment_ptr->resolution());
+
+    // vec3 dir = target - best_point;
+
+    // const auto yaw = std::atan2(dir.y(), dir.x());
+    // // construct fov
+    // Eigen::Quaternionf orientation =
+    //     Eigen::AngleAxisf(yaw, Eigen::Vector3f::UnitZ()) *
+    //     Eigen::AngleAxisf(deg2rad(-request.fov.pitch.angle), Eigen::Vector3f::UnitY());
+
+    // const auto pose = Pose{best_point, orientation};
+    // const auto fov = FoV{pose, horizontal, vertical, depth_range, target};
+    // const auto fov_gain_metric = mdi::gain_of_fov(
+    //     fov, *octomap_environment_ptr, request.nbv_config.weight_free,
+    //     request.nbv_config.weight_occupied, request.nbv_config.weight_unknown,
+    //     request.nbv_config.weight_distance_to_object, request.nbv_config.weight_not_visible,
+    //     mdi::utils::transform::geometry_mgs_point_to_vec(request.rrt_config.start),
+    //     [](double x) { return x /* x * x */; },
+    //     [&](const mdi::types::vec3& point, const mdi::types::vec3&, float, const bool,
+    //         mdi::VoxelStatus s) {
+    //         if (s != mdi::VoxelStatus::Unknown) {
+    //             return;
+    //         }
+    //         auto msg = cube_msg_gen(point);
+    //         msg.color.r = 1;
+    //         msg.color.g = 1;
+    //         msg.color.a = 0.6;
+    //         msg.lifetime.sec = 10;
+
+    //         msg.header.frame_id = mdi::utils::FRAME_WORLD;
+    //         // static long long i = 0;
+    //         // msg.header.seq = i++;
+    //         // msg.header.stamp = ros::Time::now();
+    //         marker_array.markers.push_back(msg);
+    //     });
+    // }
+
+    // std::cout << "publishing RRT tree..." << std::endl;
 
     // auto msg = visualization_msgs::Marker{};
     // msg.type = visualization_msgs::Marker::SPHERE;
@@ -429,57 +452,48 @@ auto nbv_handler(mdi_msgs::NBV::Request& request, mdi_msgs::NBV::Response& respo
     // msg.header.stamp = ros::Time::now();
     // marker_array.markers.push_back(msg);
 
-    {
-        std::string text = std::to_string(best_gain) + " | (" +
-                           std::to_string(best_fov_gain_metric.gain_unknown) + ") | " +
-                           std::to_string(best_fov_gain_metric.v_unknown_voxels) + " | " +
-                           std::to_string(best_fov_gain_metric.gain_distance);
-        auto msg = text_msg_gen(text, best_point);
-        msg.color.r = 1;
-        msg.color.g = 0;
-        msg.color.b = 0;
-        marker_array.markers.push_back(msg);
-    }
+    // {
+    //     std::string text = std::to_string(best_gain) + " | (" +
+    //                        std::to_string(best_fov_gain_metric.gain_unknown) + ") | " +
+    //                        std::to_string(best_fov_gain_metric.v_unknown_voxels) + " | " +
+    //                        std::to_string(best_fov_gain_metric.gain_distance);
+    //     auto msg = text_msg_gen(text, best_point);
+    //     msg.color.r = 1;
+    //     msg.color.g = 0;
+    //     msg.color.b = 0;
+    //     marker_array.markers.push_back(msg);
+    // }
 
-    {
-        auto sphere_msg_gen = mdi::utils::rviz::sphere_msg_gen();
-        for (const auto& ep : excluded_points) {
-            auto msg = sphere_msg_gen(ep, ros::Time::now(), ros::Duration(10));
-            msg.color.r = 1;
-            msg.color.g = 0;
-            msg.color.a = 0.5;
-            marker_array.markers.push_back(msg);
-        }
-    }
-
-    marker_array_pub->publish(marker_array);
-    ros::spinOnce();
-    ros::Rate(mdi::utils::DEFAULT_LOOP_RATE).sleep();
+    // rrt_marker_array_pub->publish(rrt_marker_array);
+    // ros::spinOnce();
+    // ros::Rate(mdi::utils::DEFAULT_LOOP_RATE).sleep();
     // marker_array.markers.clear();
 
-    vec3 dir = target - mdi::utils::transform::geometry_mgs_point_to_vec(response.waypoints.back());
+    // vec3 dir = target -
+    // mdi::utils::transform::geometry_mgs_point_to_vec(response.waypoints.back());
 
-    const auto yaw = std::atan2(dir.y(), dir.x());
-    // construct fov
-    Eigen::Quaternionf orientation =
-        Eigen::AngleAxisf(yaw, Eigen::Vector3f::UnitZ()) *
-        Eigen::AngleAxisf(deg2rad(-request.fov.pitch.angle), Eigen::Vector3f::UnitY());
+    // const auto yaw = std::atan2(dir.y(), dir.x());
+    // // construct fov
+    // Eigen::Quaternionf orientation =
+    //     Eigen::AngleAxisf(yaw, Eigen::Vector3f::UnitZ()) *
+    //     Eigen::AngleAxisf(deg2rad(-request.fov.pitch.angle), Eigen::Vector3f::UnitY());
 
-    const auto pose = Pose{
-        mdi::utils::transform::geometry_mgs_point_to_vec(response.waypoints.back()), orientation};
-    const auto fov = FoV{pose, horizontal, vertical, depth_range, target};
+    // const auto pose = Pose{
+    //     mdi::utils::transform::geometry_mgs_point_to_vec(response.waypoints.back()),
+    //     orientation};
+    // const auto fov = FoV{pose, horizontal, vertical, depth_range, target};
 
-    auto ray_marker_array = visualization_msgs::MarkerArray{};
-    auto raycast_arrow_msg_gen = mdi::utils::rviz::arrow_msg_gen::builder()
-                                     .arrow_head_width(0.15f)
-                                     .arrow_length(0.3f)
-                                     .arrow_width(0.05f)
-                                     .color({0, 1, 0, 1})
-                                     .build();
+    // auto ray_marker_array = visualization_msgs::MarkerArray{};
+    // auto raycast_arrow_msg_gen = mdi::utils::rviz::arrow_msg_gen::builder()
+    //                                  .arrow_head_width(0.15f)
+    //                                  .arrow_length(0.3f)
+    //                                  .arrow_width(0.05f)
+    //                                  .color({0, 1, 0, 1})
+    //                                  .build();
 
-    marker_array_pub->publish(ray_marker_array);
-    ros::spinOnce();
-    ros::Rate(10).sleep();
+    // marker_array_pub->publish(ray_marker_array);
+    // ros::spinOnce();
+    // ros::Rate(10).sleep();
 #endif  // VISUALIZE_MARKERS_IN_RVIZ
 
     std::cout << yaml(best_fov_gain_metric) << std::endl;
@@ -512,17 +526,19 @@ auto main(int argc, char* argv[]) -> int {
     }());
 
     auto before_waypoint_optimization_arrow_msg_gen = mdi::utils::rviz::arrow_msg_gen::builder()
-                                                          .arrow_head_width(0.05f)
+                                                          .arrow_head_width(0.1f)
                                                           .arrow_length(0.01f)
-                                                          .arrow_width(0.05f)
+                                                          .arrow_width(0.1f)
                                                           .color({0, 1, 0, 1})
                                                           .build();
 
     before_waypoint_optimization = [&](const vec3& from, const vec3& to) {
         auto msg = before_waypoint_optimization_arrow_msg_gen({from, to});
-        waypoints_path_pub->publish(msg);
-        rate.sleep();
-        ros::spinOnce();
+        // waypoints_path_pub->publish(msg);
+        rrt_marker_array.markers.push_back(msg);
+
+        // rate.sleep();
+        // ros::spinOnce();
     };
 
     ros::Duration(1).sleep();
@@ -549,19 +565,23 @@ auto main(int argc, char* argv[]) -> int {
                                      .color({0, 1, 0, 1})
                                      .build();
 
-    auto unknown_voxel_cube_msg_gen = mdi::utils::rviz::cube_msg_gen{voxel_resolution};
+    auto unknown_voxel_cube_msg_gen =
+        mdi::utils::rviz::cube_msg_gen{static_cast<float>(voxel_resolution)};
 
     raycast = [&](const vec3& origin, const vec3& direction, const float length, bool did_hit) {
-        if (! did_hit) {
-            return;
-        }
-        // auto msg = raycast_arrow_msg_gen({origin, origin + direction.normalized() * length});
-        auto msg = unknown_voxel_cube_msg_gen(origin + direction.normalized() * length,
-                                              ros::Time::now(), ros::Duration(15));
-        msg.color.b = 1.0f;
-        msg.color.a = 0.5f;
+        std::cerr << "raycast cb" << std::endl;
+        if (did_hit) {
+            std::cerr << "it did hit so drawing voxel" << std::endl;
+            // auto msg = raycast_arrow_msg_gen({origin, origin + direction.normalized() * length});
+            auto msg = unknown_voxel_cube_msg_gen(origin + direction.normalized() * length,
+                                                  ros::Time::now(), ros::Duration(0));
+            msg.color.r = 0.0f;
+            msg.color.g = 1.0f;
+            msg.color.b = 1.0f;
+            msg.color.a = 0.5f;
 
-        unknown_voxel_hit_during_waypoint_optimization_marker_array.markers.push_back(msg);
+            unknown_voxel_hit_during_waypoint_optimization_marker_array.markers.push_back(msg);
+        }
 
         // if (did_hit) {
         //     msg.color.r = 1;
@@ -596,6 +616,18 @@ auto main(int argc, char* argv[]) -> int {
 
     marker_array_pub = std::make_unique<ros::Publisher>([&] {
         const auto topic_name = "/visualization_marker_array";
+        const auto queue_size = 10;
+        return nh.advertise<visualization_msgs::MarkerArray>(topic_name, queue_size);
+    }());
+
+    rrt_marker_array_pub = std::make_unique<ros::Publisher>([&] {
+        const auto topic_name = "/visualization_marker_array/rrt";
+        const auto queue_size = 10;
+        return nh.advertise<visualization_msgs::MarkerArray>(topic_name, queue_size);
+    }());
+
+    exclusion_marker_array_pub = std::make_unique<ros::Publisher>([&] {
+        const auto topic_name = "/visualization_marker_array/exclusion";
         const auto queue_size = 10;
         return nh.advertise<visualization_msgs::MarkerArray>(topic_name, queue_size);
     }());

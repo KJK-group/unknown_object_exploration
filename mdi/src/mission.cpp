@@ -195,6 +195,7 @@ auto Mission::publish_() -> void {
 auto Mission::visualise_() -> void {
     visualization_msgs::MarkerArray ma;
     visualization_msgs::Marker m;
+    m.id = -1;
     m.header.frame_id = utils::FRAME_WORLD;
     m.header.seq = seq_vis_++;
     m.header.stamp = ros::Time::now();
@@ -216,6 +217,7 @@ auto Mission::visualise_() -> void {
 
     ma.markers.push_back(m);
 
+    m.id = -2;
     m.pose.position = mdi::utils::transform::vec_to_geometry_msg_point(closest_position_);
 
     m.color.a = 1;
@@ -627,9 +629,19 @@ auto Mission::set_test_trajectory_() -> void {
     auto backwards = Eigen::Vector3f{-1, 0, 0};
     auto forwards = Eigen::Vector3f{1, 0, 0};
 
-    const auto sections = std::vector<std::vector<Eigen::Vector3f>>{
-        {up, forwards},         {down, right},       {up, up, backwards}, {down, down, down, left},
-        {up, up, up, forwards}, {down, down, right}, {up, backwards},     {down, left}};
+    const auto sections = std::vector<std::vector<Eigen::Vector3f>>{{up, forwards},
+                                                                    {down, forwards},
+                                                                    {up, forwards},
+                                                                    {forwards},
+                                                                    {up, forwards},
+                                                                    {down, down, down, forwards},
+                                                                    {up, up, up, forwards},
+                                                                    {down, down, forwards},
+                                                                    {up, forwards},
+                                                                    {down, forwards},
+                                                                    {forwards},
+                                                                    {up, forwards},
+                                                                    {down, down, forwards}};
 
     path.clear();
     auto rolling_position = home_position_;
@@ -674,11 +686,12 @@ auto Mission::run_step() -> void {
 
     // write output time to file when finished
     auto percentage_threshold = experiment_param_["object_map_percentage_threshold"];
-    std::cout << mdi::utils::GREEN << "completion: " << object_map_.percentage << "/"
-              << percentage_threshold << mdi::utils::RESET << std::endl;
-    std::cout << mdi::utils::MAGENTA
-              << "STATE: " << state_to_string(static_cast<state>(state_.state)) << mdi::utils::RESET
-              << std::endl;
+    // std::cout << mdi::utils::GREEN << "completion: " << object_map_.percentage << "/"
+    //           << percentage_threshold << mdi::utils::RESET << std::endl;
+    // std::cout << mdi::utils::MAGENTA
+    //           << "STATE: " << state_to_string(static_cast<state>(state_.state)) <<
+    //           mdi::utils::RESET
+    //           << std::endl;
     if (timeout_delta_time_ > timeout_) {
         std::cout << "Mission timed out" << std::endl;
         should_end = true;

@@ -7,4 +7,4 @@ mdi:
     not_visible: 0
     information_threshold: 500
     excluded_points_distance_tolerance: 10
-    max_iterations: 400
+    max_iterations: 200
