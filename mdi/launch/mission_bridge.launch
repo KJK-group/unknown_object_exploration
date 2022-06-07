@@ -3,17 +3,19 @@
     <include file="$(find mdi)/launch/mission.launch">
         <arg name="xy_p" default="1"/>
         <arg name="xy_i" default="0"/>
-        <arg name="xy_d" default="8"/>
-        <arg name="yaw_p" default="1"/>
+        <arg name="xy_d" default="0.5"/>
+        <arg name="yaw_p" default="2"/>
         <arg name="yaw_i" default="0"/>
-        <arg name="yaw_d" default="15"/>
+        <arg name="yaw_d" default="1"/>
         <arg name="z_p" default="1"/>
         <arg name="z_i" default="0"/>
-        <arg name="z_d" default="8"/>
+        <arg name="z_d" default="0"/>
         <arg name="vel" default="1"/>
         <arg name="alt" default="10"/>
         <arg name="target_x" default="-2.2"/>
         <arg name="target_y" default="-47.9"/>
         <arg name="target_z" default="18"/>
     </include>
+
+    <include file="$(find mdi)/launch/map_data.launch" />
 </launch>

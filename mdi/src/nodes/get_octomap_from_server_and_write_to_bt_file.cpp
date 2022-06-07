@@ -39,15 +39,16 @@ auto main(int argc, char* argv[]) -> int {
             exit(0);
         }
     }
-
+#ifdef WRITE_BT_FILE
     if (argc < 3) {
         usage();
         std::exit(EXIT_FAILURE);
     }
 
-    const auto octomap_server_topic = std::string(argv[1]);
     const auto output_bt_filepath = std::string(argv[2]);
+#endif
 
+    const auto octomap_server_topic = std::string(argv[1]);
     const auto object_map_client_topic_name = octomap_server_topic + "/octomap_binary"s;
     if (! ros::service::exists(object_map_client_topic_name, true)) {
         std::exit(EXIT_FAILURE);
@@ -57,6 +58,7 @@ auto main(int argc, char* argv[]) -> int {
         nh.serviceClient<octomap_msgs::GetOctomap>(object_map_client_topic_name));
 
     if (auto octomap_ptr = call_get_octomap()) {
+#ifdef WRITE_BT_FILE
         const auto path = std::filesystem::path(output_bt_filepath);
         // if (path.is_directory()) {
         //     std::cerr << output_bt_filepath << " is a directory. Cannot write octomap to it."
@@ -64,7 +66,6 @@ auto main(int argc, char* argv[]) -> int {
         //     std::exit(EXIT_FAILURE);
         // }
 
-#ifdef WRITE_BT_FILE
         std::cerr << "writing octomap to file: " << path << '\n';
         octomap_ptr->write(path);
 #endif  // WRITE_BT_FILE
@@ -77,12 +78,13 @@ auto main(int argc, char* argv[]) -> int {
 #endif  // COMPUTE_VOLUME_AND_WRITE_TO_STDERR
 
         delete octomap_ptr;
-
-    } else {
+    }
+#ifdef WRITE_BT_FILE
+    else {
         std::cerr << "octomap received from " << object_map_client_topic_name
                   << " was EMPTY not writing to " << output_bt_filepath << '\n';
         exit(EXIT_FAILURE);
     }
-
+#endif
     return 0;
 }

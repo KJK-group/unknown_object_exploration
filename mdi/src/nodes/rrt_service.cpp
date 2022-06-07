@@ -139,6 +139,7 @@ auto rrt_find_path_handler(mdi_msgs::RrtFindPath::Request& request,
 
     auto rrt = mdi::rrt::RRT::from_builder()
                    .start_and_goal_position(start, goal)
+                   .sampling_radius((start - goal).norm() * 2)
                    .max_iterations(request.rrt_config.max_iterations)
                    .goal_bias(request.rrt_config.goal_bias)
                    .probability_of_testing_full_path_from_new_node_to_goal(
@@ -150,10 +151,10 @@ auto rrt_find_path_handler(mdi_msgs::RrtFindPath::Request& request,
                    .drone_depth(request.drone_config.depth)
                    .build();
 
-    // rrt.register_cb_for_event_on_new_node_created(
-    //     [](const auto& p1, const auto& p2) { std::cout << "New node created" << '\n'; });
+    rrt.register_cb_for_event_on_new_node_created(
+        [](const auto& p1, const auto& p2) { std::cout << "New node created" << '\n'; });
 
-    // rrt.register_cb_for_event_on_new_node_created(new_node);
+    rrt.register_cb_for_event_on_new_node_created(new_node_created);
 
     auto octomap_ptr = call_get_object_octomap();
 
@@ -368,43 +369,43 @@ auto nbv_handler(mdi_msgs::NBV::Request& request, mdi_msgs::NBV::Response& respo
     ros::Rate(10).sleep();
 
 #ifdef VISUALIZE_MARKERS_IN_RVIZ
-    // {
-    //     auto cube_msg_gen =
-    //     mdi::utils::rviz::cube_msg_gen(octomap_environment_ptr->resolution());
+    {
+        auto cube_msg_gen = mdi::utils::rviz::cube_msg_gen(octomap_environment_ptr->resolution());
 
-    //     vec3 dir = target - best_point;
+        vec3 dir = target - best_point;
 
-    //     const auto yaw = std::atan2(dir.y(), dir.x());
-    //     // construct fov
-    //     Eigen::Quaternionf orientation =
-    //         Eigen::AngleAxisf(yaw, Eigen::Vector3f::UnitZ()) *
-    //         Eigen::AngleAxisf(deg2rad(-request.fov.pitch.angle), Eigen::Vector3f::UnitY());
+        const auto yaw = std::atan2(dir.y(), dir.x());
+        // construct fov
+        Eigen::Quaternionf orientation =
+            Eigen::AngleAxisf(yaw, Eigen::Vector3f::UnitZ()) *
+            Eigen::AngleAxisf(deg2rad(-request.fov.pitch.angle), Eigen::Vector3f::UnitY());
 
-    //     const auto pose = Pose{best_point, orientation};
-    //     const auto fov = FoV{pose, horizontal, vertical, depth_range, target};
-    //     const auto fov_gain_metric = mdi::gain_of_fov(
-    //         fov, *octomap_environment_ptr, request.nbv_config.weight_free,
-    //         request.nbv_config.weight_occupied, request.nbv_config.weight_unknown,
-    //         request.nbv_config.weight_distance_to_object, request.nbv_config.weight_not_visible,
-    //         mdi::utils::transform::geometry_mgs_point_to_vec(request.rrt_config.start),
-    //         [](double x) { return x /* x * x */; },
-    //         [&](const mdi::types::vec3& point, const mdi::types::vec3&, float, const bool,
-    //             mdi::VoxelStatus s) {
-    //             if (s != mdi::VoxelStatus::Unknown) {
-    //                 return;
-    //             }
-    //             auto msg = cube_msg_gen(point);
-    //             msg.color.r = 1;
-    //             msg.color.g = 1;
-    //             msg.color.a = 0.6;
+        const auto pose = Pose{best_point, orientation};
+        const auto fov = FoV{pose, horizontal, vertical, depth_range, target};
+        const auto fov_gain_metric = mdi::gain_of_fov(
+            fov, *octomap_environment_ptr, request.nbv_config.weight_free,
+            request.nbv_config.weight_occupied, request.nbv_config.weight_unknown,
+            request.nbv_config.weight_distance_to_object, request.nbv_config.weight_not_visible,
+            mdi::utils::transform::geometry_mgs_point_to_vec(request.rrt_config.start),
+            [](double x) { return x /* x * x */; },
+            [&](const mdi::types::vec3& point, const mdi::types::vec3&, float, const bool,
+                mdi::VoxelStatus s) {
+                if (s != mdi::VoxelStatus::Unknown) {
+                    return;
+                }
+                auto msg = cube_msg_gen(point);
+                msg.color.r = 1;
+                msg.color.g = 1;
+                msg.color.a = 0.6;
+                msg.lifetime.sec = 10;
 
-    //             msg.header.frame_id = mdi::utils::FRAME_WORLD;
-    //             // static long long i = 0;
-    //             // msg.header.seq = i++;
-    //             // msg.header.stamp = ros::Time::now();
-    //             marker_array.markers.push_back(msg);
-    //         });
-    // }
+                msg.header.frame_id = mdi::utils::FRAME_WORLD;
+                // static long long i = 0;
+                // msg.header.seq = i++;
+                // msg.header.stamp = ros::Time::now();
+                marker_array.markers.push_back(msg);
+            });
+    }
 
     std::cout << "publishing RRT tree..." << std::endl;
 

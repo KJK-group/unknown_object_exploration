@@ -155,7 +155,7 @@ target_compile_definitions(get_octomap_from_server_and_write_to_bt_file
                            PUBLIC WRITE_BT_FILE)
 add_ros_executable(
   compute_volume_of_occupied_voxels_in_octomap_and_write_to_stdout
-  src/get_octomap_from_server_and_write_to_bt_file)
+  src/nodes/get_octomap_from_server_and_write_to_bt_file.cpp)
 target_link_libraries(
   compute_volume_of_occupied_voxels_in_octomap_and_write_to_stdout
   ${OCTOMAP_LIBRARIES})
@@ -163,6 +163,9 @@ target_compile_definitions(
   compute_volume_of_occupied_voxels_in_octomap_and_write_to_stdout
   PUBLIC COMPUTE_VOLUME_AND_WRITE_TO_STDERR)
 
+
+add_ros_executable(voxel_map_data src/nodes/object_map_percentage_completion.cpp)
+target_link_libraries(voxel_map_data ${OCTOMAP_LIBRARIES})
 # target_link_libraries(object_map ${catkin_LIBRARIES} ${OCTOMAP_LIBRARIES})
 # target_link_directories(object_map ${PCL_INCLUDE_DIRS})
 

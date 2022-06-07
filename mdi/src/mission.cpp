@@ -1,16 +1,12 @@
 #include "mdi/mission.hpp"
 
-#include <unordered_map>
-
-#include "mdi/utils/transform.hpp"
-#include "mdi_msgs/NBV.h"
-
 namespace mdi {
 Mission::Mission(ros::NodeHandle& nh, ros::Rate& rate, types::vec3 target, float timeout,
                  float velocity_target, Eigen::Vector3f home, bool visualise)
     : inspection_complete_(false),
       exploration_complete_(false),
       takeoff_initiated_(false),
+      home_trajectory_found_(false),
       step_count_(0),
       seq_point_(0),
       seq_state_(0),
@@ -32,10 +28,12 @@ Mission::Mission(ros::NodeHandle& nh, ros::Rate& rate, types::vec3 target, float
       target_(target),
       object_center_(target),
       timeout_(timeout),
-      start_time_(ros::Time::now()),
+      trajectory_start_time_(ros::Time::now()),
       timeout_start_time_(ros::Time::now()),
-      delta_time_(ros::Duration(0)),
-      timeout_delta_time_(ros::Duration(0)) {
+      trajectory_delta_time_(ros::Duration(0)),
+      timeout_delta_time_(ros::Duration(0)),
+      start_time_(ros::Time::now()),
+      duration_(0) {
     // publishers
     pub_mission_state_ = nh.advertise<mdi_msgs::MissionStateStamped>("/mdi/mission/state",
                                                                      utils::DEFAULT_QUEUE_SIZE);
@@ -51,6 +49,9 @@ Mission::Mission(ros::NodeHandle& nh, ros::Rate& rate, types::vec3 target, float
         "/mdi/controller/state", utils::DEFAULT_QUEUE_SIZE, &Mission::controller_state_cb_, this);
     sub_odom_ = nh.subscribe<nav_msgs::Odometry>(
         "/mavros/local_position/odom", utils::DEFAULT_QUEUE_SIZE, &Mission::odom_cb_, this);
+    sub_object_completion_ = nh.subscribe<mdi_msgs::ObjectMapCompleteness>(
+        "/mdi/object_map_percentage_completion/object_voxel_map/octomap_binary",
+        utils::DEFAULT_QUEUE_SIZE, &Mission::object_map_completion_cb_, this);
 
     // services
     client_arm_ = nh.serviceClient<mavros_msgs::CommandBool>("/mavros/cmd/arming");
@@ -66,6 +67,14 @@ Mission::Mission(ros::NodeHandle& nh, ros::Rate& rate, types::vec3 target, float
 
     // path
     interest_points_.push_back(home_position_);
+
+    auto experiment_param = std::map<std::string, double>();
+    ros::param::get("/mdi/experiment", experiment_param);
+    if (experiment_param.empty()) {
+        std::cerr << "experiment_param is empty" << std::endl;
+        std::exit(EXIT_FAILURE);
+    }
+    experiment_param_ = experiment_param;
 }
 
 auto Mission::mavros_state_cb_(const mavros_msgs::State::ConstPtr& state) -> void {
@@ -76,6 +85,11 @@ auto Mission::controller_state_cb_(const mdi_msgs::ControllerStateStamped::Const
     controller_state_ = *error;
 }
 auto Mission::odom_cb_(const nav_msgs::Odometry::ConstPtr& odom) -> void { drone_odom_ = *odom; }
+
+auto Mission::object_map_completion_cb_(const mdi_msgs::ObjectMapCompleteness::ConstPtr& object)
+    -> void {
+    object_map_ = *object;
+}
 
 auto Mission::compute_attitude_() -> void {
     auto pos = drone_odom_.pose.pose.position;
@@ -215,7 +229,7 @@ auto Mission::visualise_() -> void {
 }
 
 auto Mission::find_path_(Eigen::Vector3f start, Eigen::Vector3f end)
-    -> std::vector<Eigen::Vector3f> {
+    -> std::optional<std::vector<Eigen::Vector3f>> {
     ROS_INFO_STREAM("Requesting RRT path from "
                     << "[" << start.x() << "," << start.y() << "," << start.z() << "] to "
                     << "[" << end.x() << "," << end.y() << "," << end.z() << "]");
@@ -248,24 +262,29 @@ auto Mission::find_path_(Eigen::Vector3f start, Eigen::Vector3f end)
     rrt.start.x = start.x();
     rrt.start.y = start.y();
     rrt.start.z = start.z();
-    rrt.goal.x = object_center_.x();
-    rrt.goal.y = object_center_.y();
-    rrt.goal.z = object_center_.z();
+    rrt.goal.x = end.x();
+    rrt.goal.y = end.y();
+    rrt.goal.z = end.z();
     rrt.max_iterations = static_cast<uint>(rrt_param["max_iterations"]);
     rrt.step_size = rrt_param["step_size"];
 
-    std::vector<Eigen::Vector3f> path;
-    if (client_nbv_.call(rrt_msg)) {
+    if (client_rrt_.call(rrt_msg)) {
         auto& waypoints = rrt_msg.response.waypoints;
-        path = std::vector<Eigen::Vector3f>();
+        auto path = std::vector<Eigen::Vector3f>();
         // std::cout << "before for loop" << std::endl;
         for (auto& wp : waypoints) {
             // std::cout << wp << std::endl;
             path.emplace_back(wp.x, wp.y, wp.z);
         }
+
+        if (interest_points_.back() != path.back()) {
+            interest_points_.push_back(path.back());
+        }
+        std::reverse(path.begin(), path.end());
+        return {path};
     }
-    interest_points_.emplace_back(end);
-    return path;
+
+    return {};
 }
 
 auto Mission::find_nbv_path_(Eigen::Vector3f start) -> std::optional<std::vector<Eigen::Vector3f>> {
@@ -287,29 +306,6 @@ auto Mission::find_nbv_path_(Eigen::Vector3f start) -> std::optional<std::vector
     }
 
     {
-        auto rrt_param = std::map<std::string, float>();
-        ros::param::get("/mdi/rrt/params", rrt_param);
-        if (rrt_param.empty()) {
-            std::cerr << "rrt_param is empty" << std::endl;
-            std::exit(EXIT_FAILURE);
-        }
-
-        auto& rrt = nbv_srv.request.rrt_config;
-        rrt.probability_of_testing_full_path_from_new_node_to_goal =
-            rrt_param["probability_of_testing_full_path_from_new_node_to_goal"];
-        rrt.goal_bias = rrt_param["goal_bias"];
-        rrt.goal_tolerance = rrt_param["goal_tolerance"];
-        rrt.start.x = start.x();
-        rrt.start.y = start.y();
-        rrt.start.z = start.z();
-        rrt.goal.x = object_center_.x();
-        rrt.goal.y = object_center_.y();
-        rrt.goal.z = object_center_.z();
-        rrt.max_iterations = static_cast<uint>(rrt_param["max_iterations"]);
-        rrt.step_size = rrt_param["step_size"];
-    }
-
-    {
         auto nbv_param = std::map<std::string, double>();
         ros::param::get("/mdi/nbv", nbv_param);
         if (nbv_param.empty()) {
@@ -328,6 +324,27 @@ auto Mission::find_nbv_path_(Eigen::Vector3f start) -> std::optional<std::vector
         for (const auto& ip : interest_points_) {
             nbv.excluded_points.emplace_back(mdi::utils::transform::vec_to_geometry_msg_point(ip));
         }
+
+        auto rrt_param = std::map<std::string, float>();
+        ros::param::get("/mdi/rrt/params", rrt_param);
+        if (rrt_param.empty()) {
+            std::cerr << "rrt_param is empty" << std::endl;
+            std::exit(EXIT_FAILURE);
+        }
+
+        auto& rrt = nbv_srv.request.rrt_config;
+        rrt.probability_of_testing_full_path_from_new_node_to_goal =
+            rrt_param["probability_of_testing_full_path_from_new_node_to_goal"];
+        rrt.goal_bias = rrt_param["goal_bias"];
+        rrt.goal_tolerance = rrt_param["goal_tolerance"];
+        rrt.start.x = start.x();
+        rrt.start.y = start.y();
+        rrt.start.z = start.z();
+        rrt.goal.x = object_center_.x();
+        rrt.goal.y = object_center_.y();
+        rrt.goal.z = object_center_.z();
+        rrt.max_iterations = static_cast<uint>(nbv_param["max_iterations"]);
+        rrt.step_size = rrt_param["step_size"];
     }
 
     {
@@ -354,7 +371,9 @@ auto Mission::find_nbv_path_(Eigen::Vector3f start) -> std::optional<std::vector
             path.emplace_back(wp.x, wp.y, wp.z);
         }
 
-        interest_points_.emplace_back(path.back());
+        if (interest_points_.back() != path.back()) {
+            interest_points_.push_back(path.back());
+        }
         return {path};
     }
 
@@ -394,12 +413,12 @@ auto Mission::trajectory_step_(float vel, bool look_forwards) -> bool {
 
     // start trajectory from the beginning in case we're starting a new trajectory
     if (step_count_ == 0) {
-        start_time_ = ros::Time::now();
+        trajectory_start_time_ = ros::Time::now();
     }
 
     // the trajectory progress
-    delta_time_ = ros::Time::now() - start_time_;
-    const auto distance = delta_time_.toSec() * vel;
+    trajectory_delta_time_ = ros::Time::now() - trajectory_start_time_;
+    const auto distance = trajectory_delta_time_.toSec() * vel;
     const auto remaining_distance = trajectory_.get_length() - distance;
     // std::cout << mdi::utils::GREEN << "distance: " << distance << mdi::utils::RESET << std::endl;
     // std::cout << mdi::utils::GREEN << "remaining_distance: " << remaining_distance
@@ -409,7 +428,7 @@ auto Mission::trajectory_step_(float vel, bool look_forwards) -> bool {
 
     // end of trajectory has been reached if the remaining distance and position error is small
     if (remaining_distance < utils::SMALL_DISTANCE_TOLERANCE &&
-        controller_state_.error.position.norm < utils::SMALL_DISTANCE_TOLERANCE * 10) {
+        controller_state_.error.position.norm < utils::SMALL_DISTANCE_TOLERANCE * 2) {
         std::cout << "end reached!" << std::endl;
         // in this case the heading should be towards the center of the object
         target_ = object_center_;
@@ -428,24 +447,34 @@ auto Mission::trajectory_step_(float vel, bool look_forwards) -> bool {
     // publish_();
     step_count_++;
 
-    closest_position_ = trajectory_.get_closest_point(
-        mdi::utils::transform::geometry_mgs_point_to_vec(drone_odom_.pose.pose.position));
-
     return end_reached;
 }
 
-auto Mission::set_home_trajectory_() -> void {
+auto Mission::set_home_trajectory_() -> bool {
     // std::cout << "Going to home position" << std::endl;
     const auto start = interest_points_.back();
-    const auto path = find_path_(start, home_position_);
-
-    if (const auto trajectory_opt = fit_trajectory_(path)) {
-        trajectory_ = *trajectory_opt;
-        step_count_ = 0;
-        ROS_INFO_STREAM("Path viable");
-    } else {
-        ROS_INFO_STREAM("Path not viable");
+    std::cout << "last interest point\n" << start << std::endl;
+    for (auto& ip : interest_points_) {
+        std::cout << "\n" << ip << std::endl;
     }
+    if (auto path_opt = find_path_(start, home_position_)) {
+        auto path = path_opt.value();
+
+        std::cout << "RRT PATH:\n" << std::endl;
+        for (auto& ip : path) {
+            std::cout << ip << std::endl;
+        }
+
+        if (const auto trajectory_opt = fit_trajectory_(path)) {
+            trajectory_ = *trajectory_opt;
+            step_count_ = 0;
+            ROS_INFO_STREAM("Path viable");
+            return true;
+        } else {
+            ROS_INFO_STREAM("Path not viable");
+        }
+    }
+    return false;
 }
 
 auto Mission::set_takeoff_trajectory_() -> void {
@@ -634,14 +663,33 @@ auto Mission::set_test_trajectory_() -> void {
 }
 
 auto Mission::run_step() -> void {
+    auto should_end = false;
+    duration_ = start_time_ - ros::Time::now();
     timeout_delta_time_ = ros::Time::now() - timeout_start_time_;
+
     if (timeout_delta_time_ - time_since_last_iteration_ > ros::Duration(1)) {
         time_since_last_iteration_ = timeout_delta_time_;
         ROS_INFO_STREAM("Mission cooldown: " << std::setw(6) << timeout_ - timeout_delta_time_);
     }
+
+    // write output time to file when finished
+    auto percentage_threshold = experiment_param_["object_map_percentage_threshold"];
+    std::cout << mdi::utils::GREEN << "completion: " << object_map_.percentage << "/"
+              << percentage_threshold << mdi::utils::RESET << std::endl;
+    std::cout << mdi::utils::MAGENTA
+              << "STATE: " << state_to_string(static_cast<state>(state_.state)) << mdi::utils::RESET
+              << std::endl;
     if (timeout_delta_time_ > timeout_) {
         std::cout << "Mission timed out" << std::endl;
-        end();
+        should_end = true;
+    } else if (object_map_.percentage > percentage_threshold) {
+        std::cout << "Exploration percentage threshold reached: " << object_map_.percentage << "/"
+                  << percentage_threshold << std::endl;
+
+        auto f = std::ofstream("~/Desktop/experiment_stats.txt", std::ios_base::app);
+        f << experiment_param_["id"] << ":\t" << duration_.toSec() << "\n";
+        f.close();
+        should_end = true;
     }
 
     switch (state_.state) {
@@ -652,8 +700,15 @@ auto Mission::run_step() -> void {
             break;
         case HOME:
             if (inspection_complete_) {
-                set_home_trajectory_();
-                if (trajectory_step_(velocity_target_)) {
+                if (! home_trajectory_found_) {
+                    home_trajectory_found_ = set_home_trajectory_();
+                }
+
+                if (trajectory_step_(velocity_target_) && home_trajectory_found_) {
+                    // if (should_end) {
+                    //     end();
+                    //     break;
+                    // }
                     state_.state = LAND;
                 }
             } else {
@@ -672,6 +727,10 @@ auto Mission::run_step() -> void {
                 }
 #ifndef PID_TEST
                 if (trajectory_step_(velocity_target_, false)) {
+                    if (should_end) {
+                        end();
+                        break;
+                    }
                     state_.state = EXPLORATION;
                 }
 #endif
@@ -689,6 +748,10 @@ auto Mission::run_step() -> void {
             break;
         case EXPLORATION:
             if (trajectory_step_(velocity_target_)) {
+                if (should_end) {
+                    end();
+                    break;
+                }
                 ROS_INFO_STREAM((timeout_ - timeout_delta_time_).toSec()
                                 << " Finding new NBV interest point...");
                 publish_();
@@ -711,6 +774,8 @@ auto Mission::run_step() -> void {
             ROS_WARN_STREAM("Unknown state");
             break;
     }
+    closest_position_ = trajectory_.get_closest_point(
+        mdi::utils::transform::geometry_mgs_point_to_vec(drone_odom_.pose.pose.position));
     publish_();
 }
 
@@ -726,11 +791,13 @@ auto Mission::end() -> void {
     std::cout << utils::BOLD << utils::ITALIC << utils::MAGENTA << "Ending mission" << utils::RESET
               << std::endl;
     inspection_complete_ = true;
-    if (state_.state == LAND) {
+    if (state_.state == LAND &&
+        drone_odom_.pose.pose.position.z < mdi::utils::SMALL_DISTANCE_TOLERANCE) {
         ros::shutdown();
         return;
+    } else {
+        state_.state = HOME;
     }
-    state_.state = HOME;
 }
 
 auto Mission::state_to_string(enum state s) -> std::string {

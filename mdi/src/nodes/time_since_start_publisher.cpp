@@ -6,7 +6,7 @@
 auto main(int argc, char* argv[]) -> int {
     ros::init(argc, argv, "time_since_start_publisher");
     auto nh = ros::NodeHandle();
-    auto spin_rate = ros::Rate(10);
+    auto spin_rate = ros::Rate(mdi::utils::DEFAULT_LOOP_RATE * 6);
 
     const auto start = ros::Time::now();
     auto pub =

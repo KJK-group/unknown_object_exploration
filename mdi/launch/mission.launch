@@ -26,22 +26,24 @@
     <rosparam file="$(arg package_path)/rosparam/rrt.yaml" command="load" />
     <rosparam file="$(arg package_path)/rosparam/nbv.yaml" command="load" />
     <rosparam file="$(arg package_path)/rosparam/camera.yaml" command="load" />
+    <rosparam file="$(arg package_path)/rosparam/experiment.yaml" command="load" />
 
     <include file="$(arg package_path)/launch/rrt_service.launch" />
     <include file="$(arg package_path)/launch/segmentation.launch" />
 
-    	<node
+    <node pkg="$(arg package)" type="time_since_start" name="time_since_start" />
+
+    <node
 		pkg="rqt_multiplot"
 		type="rqt_multiplot"
 		name="rqt_multiplot"
 		args="--multiplot-config $(arg package_path)/rqt/error.xml --multiplot-run-all" />
-
     <node
         pkg="$(arg package)"
         type="mission_manager"
         name="mission_manager"
         args="$(arg vel) $(arg alt) $(arg target_x) $(arg target_y) $(arg target_z)"
-        output="log"
+        output="screen"
         launch-prefix="$(arg lp)" />
     <node
         pkg="$(arg package)"

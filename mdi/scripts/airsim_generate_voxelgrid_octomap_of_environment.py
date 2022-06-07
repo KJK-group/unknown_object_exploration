@@ -21,9 +21,9 @@ center = airsim.Vector3r(0, 0, 0)
 
 output_path = os.path.join(os.getcwd(), f"{file}.binvox")
 
-x = 100
-y = 100
-z = 100
+x = 125
+y = 125
+z = 125
 resolution = 0.5
 
 client.simCreateVoxelGrid(center, x, y, z, resolution, output_path)

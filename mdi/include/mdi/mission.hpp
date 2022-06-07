@@ -13,6 +13,7 @@
 #include <eigen3/Eigen/Dense>
 #include <limits>
 #include <optional>
+#include <unordered_map>
 #include <utility>
 
 #include "common_types.hpp"
@@ -20,9 +21,12 @@
 #include "mdi/rrt/rrt.hpp"
 #include "mdi/rrt/rrt_builder.hpp"
 #include "mdi/utils/rviz.hpp"
+#include "mdi/utils/transform.hpp"
 #include "mdi/utils/utils.hpp"
 #include "mdi_msgs/ControllerStateStamped.h"
 #include "mdi_msgs/MissionStateStamped.h"
+#include "mdi_msgs/NBV.h"
+#include "mdi_msgs/ObjectMapCompleteness.h"
 #include "mdi_msgs/PointNormStamped.h"
 #include "mdi_msgs/RrtFindPath.h"
 #include "nav_msgs/Odometry.h"
@@ -47,7 +51,8 @@ class Mission {
     auto get_state() -> state;
 
    private:
-    auto find_path_(Eigen::Vector3f start, Eigen::Vector3f end) -> std::vector<Eigen::Vector3f>;
+    auto find_path_(Eigen::Vector3f start, Eigen::Vector3f end)
+        -> std::optional<std::vector<Eigen::Vector3f>>;
     auto find_nbv_path_(Eigen::Vector3f start) -> std::optional<std::vector<Eigen::Vector3f>>;
     auto fit_trajectory_(std::vector<Eigen::Vector3f> path)
         -> std::optional<trajectory::CompoundTrajectory>;
@@ -58,7 +63,7 @@ class Mission {
     auto drone_land() -> bool;
     auto drone_arm() -> bool;
 
-    auto set_home_trajectory_() -> void;
+    auto set_home_trajectory_() -> bool;
     auto set_takeoff_trajectory_() -> void;
     auto set_nbv_trajectory_() -> void;
     auto set_test_trajectory_() -> void;
@@ -69,6 +74,7 @@ class Mission {
     auto mavros_state_cb_(const mavros_msgs::State::ConstPtr& state) -> void;
     auto controller_state_cb_(const mdi_msgs::ControllerStateStamped::ConstPtr& state) -> void;
     auto odom_cb_(const nav_msgs::Odometry::ConstPtr& odom) -> void;
+    auto object_map_completion_cb_(const mdi_msgs::ObjectMapCompleteness::ConstPtr& object) -> void;
 
     auto compute_attitude_() -> void;
     auto visualise_() -> void;
@@ -89,6 +95,7 @@ class Mission {
     ros::Subscriber sub_drone_state_;
     ros::Subscriber sub_controller_state_;
     ros::Subscriber sub_odom_;
+    ros::Subscriber sub_object_completion_;
 
     // services
     ros::ServiceClient client_arm_;
@@ -102,6 +109,7 @@ class Mission {
     mavros_msgs::State drone_state_;
     nav_msgs::Odometry drone_odom_;
     mdi_msgs::ControllerStateStamped controller_state_;
+    mdi_msgs::ObjectMapCompleteness object_map_;
 
     // points
     Eigen::Vector3f home_position_;
@@ -113,8 +121,10 @@ class Mission {
 
     // time
     ros::Time start_time_;
+    ros::Time trajectory_start_time_;
     ros::Time timeout_start_time_;
-    ros::Duration delta_time_;
+    ros::Duration duration_;
+    ros::Duration trajectory_delta_time_;
     ros::Duration timeout_delta_time_;
     ros::Duration time_since_last_iteration_;
     ros::Duration timeout_;
@@ -124,8 +134,10 @@ class Mission {
     int waypoint_idx_;
 
     float velocity_target_;
+    // double percentage_threshold_;
 
     // state
+    std::map<std::string, double> experiment_param_;
     int seq_state_;
     int seq_point_;
     int seq_vis_;
@@ -133,6 +145,7 @@ class Mission {
     bool inspection_complete_;
     bool exploration_complete_;
     bool takeoff_initiated_;
+    bool home_trajectory_found_;
 
     // visualisation
     float marker_scale_;
