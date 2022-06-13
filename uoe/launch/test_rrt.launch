@@ -1,0 +1,19 @@
+<?xml version="1.0"?>
+<launch>
+	<arg name="node" value="test_rrt"/>
+	<arg name="package" value="uoe"/>
+	<!-- <arg name="launch-prefix" default="valgrind \-\-leak-check=full"/> -->
+	<!-- <arg name="launch-prefix" defaurlt="kitty lldb"/> -->
+	<!-- <arg name="launch-prefix" default="perf stat -e cache-misses -e branch-misses"/> -->
+	<!-- <arg name="launch-prefix" default="perf stat"/> -->
+	<arg name="launch-prefix" value=""/>
+
+
+	<node pkg="rviz" type="rviz" name="rviz" args="-d $(dirname)/../rviz/$(arg node).rviz"/>
+	<rosparam command="load" file="$(dirname)/../rosparam/rrt.yaml"/>
+
+	<!-- <arg name="measurements_output_dir" value="~/.cache/"/> -->
+	<arg name="measurements_output_dir" value="$(dirname)/../measurements"/>
+
+	<node pkg="$(arg package)" type="$(arg node)" name="$(arg node)" output="screen" args="$(arg measurements_output_dir)" launch-prefix="$(arg launch-prefix)"/>
+</launch>

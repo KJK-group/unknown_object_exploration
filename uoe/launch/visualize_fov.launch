@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<launch>
+	<arg name="node" value="visualize_fov"/>
+	<arg name="package" value="uoe"/>
+	<arg name="package_path" value="$(find uoe)"/>
+
+	<node pkg="rviz" type="rviz" name="rviz" args="-d $(arg package_path)/rviz/$(arg node).rviz"/>
+	<node pkg="$(arg package)" type="$(arg node)" name="$(arg node)"/>
+</launch>

@@ -1,0 +1,10 @@
+uoe:
+  nbv:
+    free: 0
+    occupied: 0
+    unknown: 1
+    distance_to_object: 1
+    not_visible: 0
+    information_threshold: 500
+    excluded_points_distance_tolerance: 13
+    max_iterations: 200

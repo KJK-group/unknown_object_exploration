@@ -1,9 +1,0 @@
-<?xml version="1.0"?>
-<launch>
-    <arg name="package" value="mdi" />
-    <arg name="package_path" value="$(find mdi)" />
-    <arg name="id" default="0" />
-
-    <node pkg="$(arg package)" type="write_map_post_experiment" name="write_object_map_post_experiment" args="/object_voxel_map $(arg package_path)/data/object_voxel_map_$(arg id).bt" />
-    <node pkg="$(arg package)" type="write_map_post_experiment" name="write_environment_map_post_experiment" args="/environment_voxel_map $(arg package_path)/data/environment_voxel_map_$(arg id).bt" />
-</launch>

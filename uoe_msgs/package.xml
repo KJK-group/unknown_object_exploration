@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>uoe_msgs</name>
+  <version>0.0.0</version>
+  <description>Message definitions for unknown_object_exploration</description>
+
+  <author email="201907928@post.au.dk">Jens Jensen</author>
+  <author email="201908140@post.au.dk">Kevork Dounato</author>
+  <author email="201907831@post.au.dk">Kristoffer Sørensen</author>
+
+  <maintainer email="201907928@post.au.dk">Jens Jensen</maintainer>
+  <maintainer email="201908140@post.au.dk">Kevork Dounato</maintainer>
+  <maintainer email="201907831@post.au.dk">Kristoffer Sørensen</maintainer>
+
+  <license>BSD</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+  <buildtool_depend>catkin_simple</buildtool_depend>
+
+  <depend>message_generation</depend>
+  <depend>message_runtime</depend>
+  <depend>std_msgs</depend>
+  <depend>geometry_msgs</depend>
+  <depend>sensor_msgs</depend>
+</package>

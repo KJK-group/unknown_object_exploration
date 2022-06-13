@@ -1,0 +1,3 @@
+uoe_msgs/PointNorm position
+float64 yaw
+float64 perpendicular

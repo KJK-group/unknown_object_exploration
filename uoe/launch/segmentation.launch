@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<launch>
+    <arg name="package" value="uoe"/>
+    <arg name="package_path" value="$(find uoe)"/>
+    <arg name="model_path" default="$(arg package_path)/data/checkpoint_resnet50_99p.pth"/>
+
+    <arg name="sim" default="true"/>
+
+    <include file="$(arg package_path)/launch/octomap_server.launch">
+        <arg name="name" default="object_voxel_map"/>
+        <arg name="pointcloud_topic" default="/uoe/point_cloud/object"/>
+    </include>
+    <node pkg="$(arg package)" type="object_map" name="object_map" />
+    <node pkg="$(arg package)" type="segmentation_service.py" name="segmentation_service" args="$(arg model_path)" />
+</launch>

@@ -1,0 +1,9 @@
+uoe_msgs/RrtConfig rrt_config
+uoe_msgs/FoV fov
+uoe_msgs/NbvConfig nbv_config
+uoe_msgs/DroneConfig drone_config
+---
+# response
+std_msgs/Header header
+bool found_nbv_with_sufficent_gain
+geometry_msgs/Point[] waypoints

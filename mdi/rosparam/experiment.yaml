@@ -1,7 +1,0 @@
-mdi:
-  experiment:
-    id: 1
-    object_map_percentage_threshold: 75
-    prescanned_object_map_total_volume: 1934 # bridge no legs
-    # prescanned_object_map_total_volume: 12804 # bridge with legs
-    # prescanned_object_map_total_volume: 10 # car

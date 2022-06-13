@@ -1,9 +1,0 @@
-mdi_msgs/RrtConfig rrt_config
-mdi_msgs/FoV fov
-mdi_msgs/NbvConfig nbv_config
-mdi_msgs/DroneConfig drone_config
----
-# response
-std_msgs/Header header
-bool found_nbv_with_sufficent_gain
-geometry_msgs/Point[] waypoints

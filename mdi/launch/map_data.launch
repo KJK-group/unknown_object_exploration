@@ -1,8 +1,0 @@
-<?xml version="1.0"?>
-<launch>
-    <arg name="package" value="mdi"/>
-    <arg name="package_path" value="$(find mdi)"/>
-
-    <node pkg="$(arg package)" type="voxel_map_data" name="object_map_data" args="/object_voxel_map/octomap_binary" output="log" />
-    <node pkg="$(arg package)" type="voxel_map_data" name="environment_map_data" args="/environment_voxel_map/octomap_binary" output="log" />
-</launch>

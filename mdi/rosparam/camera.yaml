@@ -1,7 +1,0 @@
-mdi:
-  camera:
-    depth_max: 15
-    depth_min: 0.1
-    horisontal_fov: 90
-    vertical_fov: 60
-    pitch: 0

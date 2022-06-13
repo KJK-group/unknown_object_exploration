@@ -1,0 +1,31 @@
+<?xml version="1.0"?>
+<launch>
+    <arg name="package" value="uoe" />
+    <arg name="package_path" value="$(find uoe)" />
+    <!-- Controller Arguments -->
+    <arg name="xy_p" default="1" />
+    <arg name="xy_i" default="0" />
+    <arg name="xy_d" default="0.5" />
+    <arg name="yaw_p" default="2" />
+    <arg name="yaw_i" default="0" />
+    <arg name="yaw_d" default="1" />
+    <arg name="z_p" default="1" />
+    <arg name="z_i" default="0" />
+    <arg name="z_d" default="0" />
+    <arg name="vel" default="1" />
+    <arg name="alt" default="5" />
+    <arg name="target_x" default="5" />
+    <arg name="target_y" default="5" />
+    <arg name="target_z" default="5" />
+
+    <!-- <arg name="lp" default="valgrind"/> -->
+    <arg name="lp" default="" />
+    <rosparam file="$(arg package_path)/rosparam/experiment.yaml" command="load" />
+    <!-- <include file="$(arg package_path)/launch/airsim.launch" />
+    <include file="$(arg package_path)/launch/airsim_vis.launch" /> -->
+    <node pkg="$(arg package)" type="time_since_start" name="time_since_start" />
+    <node pkg="rqt_multiplot" type="rqt_multiplot" name="rqt_multiplot" args="--multiplot-config $(arg package_path)/rqt/error.xml --multiplot-run-all" />
+    <node pkg="$(arg package)" type="mission_manager_pid_test" name="mission_manager_pid_test" args="$(arg vel) $(arg alt) $(arg target_x) $(arg target_y) $(arg target_z)" output="screen" launch-prefix="$(arg lp)" />
+    <node pkg="$(arg package)" type="control_manager" name="control_manager" args="$(arg xy_p) $(arg xy_i) $(arg xy_d) $(arg yaw_p) $(arg yaw_i) $(arg yaw_d) $(arg z_p) $(arg z_i) $(arg z_d)" output="log" />
+    <node pkg="$(arg package)" type="publish_traversed_path" name="publish_traversed_path" />
+</launch>
