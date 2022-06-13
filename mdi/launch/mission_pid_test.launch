@@ -10,8 +10,8 @@
     <arg name="yaw_i" default="0" />
     <arg name="yaw_d" default="1" />
     <arg name="z_p" default="1" />
-    <arg name="z_i" default="0.01" />
-    <arg name="z_d" default="2" />
+    <arg name="z_i" default="0" />
+    <arg name="z_d" default="0" />
     <arg name="vel" default="1" />
     <arg name="alt" default="5" />
     <arg name="target_x" default="5" />

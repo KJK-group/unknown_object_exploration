@@ -36,8 +36,8 @@ namespace mdi::rrt {
 auto RRT::run() -> std::optional<Waypoints> {
     if (collision_free_(start_position_, goal_position_)) {
         // we might get lucky here, and a direct path between start and goal exists :-)
-        waypoints_.push_back(goal_position_);
         waypoints_.push_back(start_position_);
+        waypoints_.push_back(goal_position_);
         return {waypoints_};
     }
 
@@ -823,18 +823,19 @@ auto RRT::collision_free_(const vec3& from, const vec3& to, double depth, double
             convert_to_pt(origin), convert_to_pt(direction), raycast_length, false);
         vec3 voxel_center = vec3{0, 0, 0};
 
-        const bool did_hit = std::visit(Overload{
-                                            [](Free) { return false; },
-                                            [&](Unknown c) {
-												voxel_center = vec3{c.center.x(), c.center.y(), c.center.z()};
-                                                return true;
-                                            },
-                                            [&](Occupied c) {
-                                                voxel_center = vec3{c.center.x(), c.center.y(), c.center.z()};
-                                                return true;
-                                            },
-                                        },
-                                        voxel);
+        const bool did_hit =
+            std::visit(Overload{
+                           [](Free) { return false; },
+                           [&](Unknown c) {
+                               voxel_center = vec3{c.center.x(), c.center.y(), c.center.z()};
+                               return true;
+                           },
+                           [&](Occupied c) {
+                               voxel_center = vec3{c.center.x(), c.center.y(), c.center.z()};
+                               return true;
+                           },
+                       },
+                       voxel);
 
         call_cbs_for_event_on_raycast_(origin, direction, raycast_length, did_hit, voxel_center);
         return did_hit;

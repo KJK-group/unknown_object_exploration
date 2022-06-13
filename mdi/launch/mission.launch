@@ -17,6 +17,7 @@
     <arg name="target_x" default="5" />
     <arg name="target_y" default="5" />
     <arg name="target_z" default="5" />
+    <arg name="id" default="0" />
 
     <!-- <arg name="lp" default="valgrind"/> -->
     <arg name="lp" default="" />
@@ -37,4 +38,8 @@
     <node pkg="$(arg package)" type="mission_manager" name="mission_manager" args="$(arg vel) $(arg alt) $(arg target_x) $(arg target_y) $(arg target_z)" output="screen" launch-prefix="$(arg lp)" />
     <node pkg="$(arg package)" type="control_manager" name="control_manager" args="$(arg xy_p) $(arg xy_i) $(arg xy_d) $(arg yaw_p) $(arg yaw_i) $(arg yaw_d) $(arg z_p) $(arg z_i) $(arg z_d)" />
     <node pkg="$(arg package)" type="publish_traversed_path" name="publish_traversed_path" />
+
+    <include file="$(arg package_path)/launch/map_to_bt.launch">
+        <arg name="id" default="$(arg id)" />
+    </include>
 </launch>

@@ -79,7 +79,7 @@ blocks=$(mktemp)
 # ~/Documents/Packaged\ Unreal\ Projects/Blocks/LinuxNoEditor/Blocks/Binaries/Linux/Blocks-Linux-Debug &
 # until pgrep -i "Blocks"; do sleep 1; done; sleep 5
 cat > "${blocks}" <<EOF
-sleep 5
+sleep 3
 echo "Launching airsim_ros_pkgs & rviz"
 roslaunch mdi airsim_vis.launch
 EOF

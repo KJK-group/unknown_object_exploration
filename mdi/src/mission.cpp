@@ -282,7 +282,7 @@ auto Mission::find_path_(Eigen::Vector3f start, Eigen::Vector3f end)
         if (interest_points_.back() != path.back()) {
             interest_points_.push_back(path.back());
         }
-        std::reverse(path.begin(), path.end());
+        // std::reverse(path.begin(), path.end());
         return {path};
     }
 
@@ -676,7 +676,7 @@ auto Mission::set_test_trajectory_() -> void {
 
 auto Mission::run_step() -> void {
     auto should_end = false;
-    duration_ = start_time_ - ros::Time::now();
+    duration_ = ros::Time::now() - start_time_;
     timeout_delta_time_ = ros::Time::now() - timeout_start_time_;
 
     if (timeout_delta_time_ - time_since_last_iteration_ > ros::Duration(1)) {
@@ -699,7 +699,7 @@ auto Mission::run_step() -> void {
         std::cout << "Exploration percentage threshold reached: " << object_map_.percentage << "/"
                   << percentage_threshold << std::endl;
 
-        auto f = std::ofstream("~/Desktop/experiment_stats.txt", std::ios_base::app);
+        auto f = std::ofstream("/home/jens/Desktop/experiment_stats.txt", std::ios_base::app);
         f << experiment_param_["id"] << ":\t" << duration_.toSec() << "\n";
         f.close();
         should_end = true;

@@ -114,7 +114,7 @@ class Octomap final {
     auto compute_total_volume_voxels_with_status(VoxelStatus status) -> double {
         // calculate the total volume of the received object map
         auto volume_total = 0.0;
-        for (auto it = octree().begin_tree(), end = octree().end_tree(); it != end; ++it) {
+        for (auto it = octree().begin_leafs(), end = octree().end_leafs(); it != end; ++it) {
             const auto key = it.getKey();
             const auto vs = get_voxelstatus_at_node_using_key_(key);
             if (vs == status) {
@@ -161,7 +161,7 @@ class Octomap final {
         }
 
         auto s = std::ofstream(path);
-        octree_.writeData(s);
+        octree_.writeBinaryConst(s);
     }
 
     using bbx_iterator_cb =

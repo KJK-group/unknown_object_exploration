@@ -53,6 +53,7 @@ std::unique_ptr<ros::Publisher> exclusion_marker_array_pub;
 // visualization_msgs::MarkerArray marker_array;
 
 #endif  // VISUALIZE_MARKERS_IN_RVIZ
+static constexpr auto MARKER_TIMEOUT = 10;
 double voxel_resolution = 0.5;
 using namespace std::string_literals;
 using vec3 = Eigen::Vector3f;
@@ -158,8 +159,8 @@ auto rrt_find_path_handler(mdi_msgs::RrtFindPath::Request& request,
                    .drone_depth(request.drone_config.depth)
                    .build();
 
-    rrt.register_cb_for_event_on_new_node_created(
-        [](const auto& p1, const auto& p2) { std::cout << "New node created" << '\n'; });
+    // rrt.register_cb_for_event_on_new_node_created(
+    //     [](const auto& p1, const auto& p2) { std::cout << "New node created" << '\n'; });
 
     rrt.register_cb_for_event_on_new_node_created(new_node_created);
 
@@ -212,9 +213,9 @@ auto nbv_handler(mdi_msgs::NBV::Request& request, mdi_msgs::NBV::Response& respo
                        geometry_msgs_point_to_vec3(
                            request.rrt_config.goal))  // goal is irrelevant - not really though
                    .max_iterations(request.rrt_config.max_iterations)
-                   .goal_bias(request.rrt_config.goal_bias)
-                   .probability_of_testing_full_path_from_new_node_to_goal(0.0)
-                   .max_dist_goal_tolerance(0.0)
+                   .goal_bias(0)
+                   .probability_of_testing_full_path_from_new_node_to_goal(0)
+                   .max_dist_goal_tolerance(0)
                    .step_size(request.rrt_config.step_size)
                    .drone_width(request.drone_config.width)
                    .drone_height(request.drone_config.height)
@@ -255,7 +256,8 @@ auto nbv_handler(mdi_msgs::NBV::Request& request, mdi_msgs::NBV::Response& respo
                                       .color({1, 0.8, 0, 1})
                                       .build();
     rrt.register_cb_for_event_on_new_node_created([&](const auto& from, const auto& to) {
-        auto msg = new_node_arrow_msg_gen({from, to});
+        auto msg =
+            new_node_arrow_msg_gen({from, to}, ros::Time::now(), ros::Duration(MARKER_TIMEOUT));
         rrt_marker_array.markers.push_back(msg);
     });
 
@@ -382,10 +384,10 @@ auto nbv_handler(mdi_msgs::NBV::Request& request, mdi_msgs::NBV::Response& respo
     {
         auto sphere_msg_gen = mdi::utils::rviz::sphere_msg_gen();
         for (const auto& ep : excluded_points) {
-            auto msg = sphere_msg_gen(ep);
-            msg.scale.x = request.nbv_config.excluded_points_distance_tolerance;
-            msg.scale.y = request.nbv_config.excluded_points_distance_tolerance;
-            msg.scale.z = request.nbv_config.excluded_points_distance_tolerance;
+            auto msg = sphere_msg_gen(ep, ros::Time::now(), ros::Duration(MARKER_TIMEOUT));
+            msg.scale.x = request.nbv_config.excluded_points_distance_tolerance * 2;
+            msg.scale.y = request.nbv_config.excluded_points_distance_tolerance * 2;
+            msg.scale.z = request.nbv_config.excluded_points_distance_tolerance * 2;
             msg.color.r = 1;
             msg.color.g = 0;
             msg.color.b = 0;
@@ -534,7 +536,8 @@ auto main(int argc, char* argv[]) -> int {
                                                           .build();
 
     before_waypoint_optimization = [&](const vec3& from, const vec3& to) {
-        auto msg = before_waypoint_optimization_arrow_msg_gen({from, to});
+        auto msg = before_waypoint_optimization_arrow_msg_gen({from, to}, ros::Time::now(),
+                                                              ros::Duration(MARKER_TIMEOUT));
         // waypoints_path_pub->publish(msg);
         rrt_marker_array.markers.push_back(msg);
 
@@ -563,7 +566,7 @@ auto main(int argc, char* argv[]) -> int {
                                      .arrow_head_width(0.15f)
                                      .arrow_length(0.3f)
                                      .arrow_width(0.05f)
-                                     .color({0, 1, 0, 1})
+                                     .color({1, 0, 0, 1})
                                      .build();
 
     auto unknown_voxel_cube_msg_gen =
@@ -578,15 +581,23 @@ auto main(int argc, char* argv[]) -> int {
             // auto msg = unknown_voxel_cube_msg_gen(origin + direction.normalized() * length,
             //                                       ros::Time::now(), ros::Duration(0));
 
-            auto msg =
-                unknown_voxel_cube_msg_gen(center_of_hit_voxel, ros::Time::now(), ros::Duration(0));
+            {
+                auto msg = unknown_voxel_cube_msg_gen(center_of_hit_voxel, ros::Time::now(),
+                                                      ros::Duration(MARKER_TIMEOUT));
 
-            msg.color.r = 0.0f;
-            msg.color.g = 1.0f;
-            msg.color.b = 1.0f;
-            msg.color.a = 0.5f;
+                msg.color.r = 1.0f;
+                msg.color.g = 0.0f;
+                msg.color.b = 0.0f;
+                msg.color.a = 0.8f;
 
-            unknown_voxel_hit_during_waypoint_optimization_marker_array.markers.push_back(msg);
+                unknown_voxel_hit_during_waypoint_optimization_marker_array.markers.push_back(msg);
+            }
+
+            {
+                auto msg = raycast_arrow_msg_gen({origin, center_of_hit_voxel}, ros::Time::now(),
+                                                 ros::Duration(MARKER_TIMEOUT));
+                unknown_voxel_hit_during_waypoint_optimization_marker_array.markers.push_back(msg);
+            }
         }
 
         // if (did_hit) {

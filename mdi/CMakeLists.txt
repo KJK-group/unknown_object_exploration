@@ -166,6 +166,9 @@ target_compile_definitions(
 
 add_ros_executable(voxel_map_data src/nodes/object_map_percentage_completion.cpp)
 target_link_libraries(voxel_map_data ${OCTOMAP_LIBRARIES})
+
+add_ros_executable(write_map_post_experiment src/nodes/write_map_post_experiment.cpp)
+target_link_libraries(write_map_post_experiment ${OCTOMAP_LIBRARIES})
 # target_link_libraries(object_map ${catkin_LIBRARIES} ${OCTOMAP_LIBRARIES})
 # target_link_directories(object_map ${PCL_INCLUDE_DIRS})
 
