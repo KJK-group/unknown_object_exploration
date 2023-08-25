@@ -5,7 +5,7 @@
 	<!-- <arg name="robot_name" default="my_robot" /> -->
 
 	<!-- <include file="$(find realsense_ros_gazebo)/launch/simulation.launch" /> -->
-<!-- 
+<!--
 	<node name="voxblox_tester" pkg="$(arg pkg)" type="test_voxblox" output="screen" respawn="false" respawn_delay="0">
 		<rosparam command="load" file="$(arg pkg_path)/launch/voxblox.rosparam.yaml" />
 	</node> -->
@@ -24,7 +24,7 @@
 		<param name="publish_esdf_map" value="true" />
 		<param name="publish_pointclouds" value="true" />
 		<param name="use_tf_transforms" value="true" />
-		
+
   <param name="update_mesh_every_n_sec" value="0.25" />
       <param name="update_esdf_every_n_sec" value="0.25" />
       <param name="publish_map_every_n_sec" value="0.25" />
